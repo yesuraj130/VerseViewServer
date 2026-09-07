@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Church Presentation Server — Express, Socket.io & SQLite</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <div class="hub-container">
+    <header class="hub-header">
+      <div class="hub-brand">
+        <div class="hub-logo-icon">✝️</div>
+        <div>
+          <h1 class="hub-title">Church Presentation Server</h1>
+          <p class="hub-subtitle">Real-Time Express + Socket.io + SQLite WAL Engine</p>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span class="server-dot" id="hub-server-dot"></span>
+        <span style="font-size: 13px; color: var(--text-secondary);" id="hub-server-status">Socket Synchronized</span>
+      </div>
+    </header>
+
+    <!-- Role Views Switcher Cards -->
+    <div class="hub-grid">
+      <!-- Presenter Console Card -->
+      <div class="hub-card">
+        <div>
+          <span class="hub-card-tag tag-presenter">Console Controller</span>
+          <h2 class="hub-card-title">Presenter Console</h2>
+          <p class="hub-card-desc">
+            Search, edit, and create songs in <code>sm.db</code> with slide deck previews (<code>&lt;slide&gt;</code> and <code>&lt;BR&gt;</code>).
+            Cascading Bible lookup (Version &rarr; Book &rarr; Chapter &rarr; Verse) from <code>words</code> table.
+            Instant real-time control with last-click-wins broadcasting.
+          </p>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <a href="/presenter/" class="btn-primary" style="flex-grow: 1;">
+            Open Presenter Console &rarr;
+          </a>
+        </div>
+      </div>
+
+      <!-- Display Client Output Card -->
+      <div class="hub-card">
+        <div>
+          <span class="hub-card-tag tag-display">Projector / TV Output</span>
+          <h2 class="hub-card-title">Projector Output Display</h2>
+          <p class="hub-card-desc">
+            Clean, high-contrast, black fullscreen output for church projectors, TVs, and monitors.
+            Listens to Socket.io events with zero lag, instant state recovery upon reconnection, and hotkeys.
+          </p>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <a href="/display/" target="_blank" class="btn-primary" style="background-color: #10b981; flex-grow: 1;">
+            Open Projector Screen &nearr;
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Monitor & Mini Preview Section -->
+    <div style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 24px; margin-bottom: 32px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid var(--border-color); padding-bottom: 14px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <h3 style="font-size: 16px; font-weight: 700; color: #fff;">📡 Live Screen Broadcast Preview</h3>
+          <span class="live-badge badge-live" id="hub-live-badge">LIVE</span>
+        </div>
+        <div class="controls-bar">
+          <button class="ctrl-btn btn-blank" id="hub-btn-blank">⚫ Blank</button>
+          <button class="ctrl-btn btn-clear" id="hub-btn-clear">⚪ Clear</button>
+          <button class="ctrl-btn btn-show" id="hub-btn-show">▶️ Show</button>
+        </div>
+      </div>
+
+      <!-- Mini Projector Screen Simulator -->
+      <div style="background-color: #000; border: 1px solid #334155; border-radius: 8px; min-height: 180px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 24px; text-align: center;" id="hub-preview-screen">
+        <div id="hub-preview-lines" style="font-size: 24px; font-weight: 700; color: #fff; line-height: 1.4;">
+          Loading current slide...
+        </div>
+        <div id="hub-preview-ref" style="font-size: 13px; color: #94a3b8; margin-top: 12px; text-transform: uppercase;">
+          Ready
+        </div>
+      </div>
+    </div>
+
+    <!-- Database & System Statistics -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 32px;">
+      <div style="background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px;">
+        <div style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Songs (sm.db)</div>
+        <div style="font-size: 28px; font-weight: 800; color: #60a5fa; margin-top: 4px;" id="stat-songs">--</div>
+        <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Delimited by &lt;slide&gt; &amp; &lt;BR&gt;</div>
+      </div>
+      <div style="background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px;">
+        <div style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Tamil Bible (tamil.db)</div>
+        <div style="font-size: 28px; font-weight: 800; color: #34d399; margin-top: 4px;" id="stat-tamil">--</div>
+        <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Indexed words table with WAL</div>
+      </div>
+      <div style="background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px;">
+        <div style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">KJV Bible (kjv.db)</div>
+        <div style="font-size: 28px; font-weight: 800; color: #f59e0b; margin-top: 4px;" id="stat-kjv">--</div>
+        <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">King James Version</div>
+      </div>
+      <div style="background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px;">
+        <div style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Connected Displays</div>
+        <div style="font-size: 28px; font-weight: 800; color: #a78bfa; margin-top: 4px;" id="stat-displays">--</div>
+        <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Real-time Socket.io clients</div>
+      </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Guide -->
+    <div style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 20px;">
+      <h4 style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 12px;">⚡ Keyboard Shortcuts for Live Presentation</h4>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; font-size: 13px; color: var(--text-secondary);">
+        <div><kbd style="background: #334155; padding: 2px 6px; border-radius: 4px; color: #fff;">&rarr;</kbd> or <kbd style="background: #334155; padding: 2px 6px; border-radius: 4px; color: #fff;">PageDown</kbd> : Next Slide</div>
+        <div><kbd style="background: #334155; padding: 2px 6px; border-radius: 4px; color: #fff;">&larr;</kbd> or <kbd style="background: #334155; padding: 2px 6px; border-radius: 4px; color: #fff;">PageUp</kbd> : Previous Slide</div>
+        <div><kbd style="background: #334155; padding: 2px 6px; border-radius: 4px; color: #fff;">B</kbd> : Blank Screen (Blackout)</div>
+        <div><kbd style="background: #334155; padding: 2px 6px; border-radius: 4px; color: #fff;">C</kbd> : Clear Slide Text</div>
+        <div><kbd style="background: #334155; padding: 2px 6px; border-radius: 4px; color: #fff;">S</kbd> : Show / Restore Active Slide</div>
+        <div><kbd style="background: #334155; padding: 2px 6px; border-radius: 4px; color: #fff;">F</kbd> : Toggle Fullscreen (Display)</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const hubSocket = (typeof io !== 'undefined') ? io() : null;
+    const hubLiveBadge = document.getElementById('hub-live-badge');
+    const hubPreviewLines = document.getElementById('hub-preview-lines');
+    const hubPreviewRef = document.getElementById('hub-preview-ref');
+    const hubPreviewScreen = document.getElementById('hub-preview-screen');
+    const hubServerDot = document.getElementById('hub-server-dot');
+    const hubServerStatus = document.getElementById('hub-server-status');
+
+    function updateHubPreview(state) {
+      if (!state) return;
+      if (state.status === 'blank') {
+        hubLiveBadge.className = 'live-badge badge-blank';
+        hubLiveBadge.textContent = 'BLANKED';
+        hubPreviewScreen.style.opacity = '0.2';
+      } else if (state.status === 'clear') {
+        hubLiveBadge.className = 'live-badge badge-clear';
+        hubLiveBadge.textContent = 'CLEARED';
+        hubPreviewScreen.style.opacity = '0.5';
+        hubPreviewLines.innerHTML = '<span style="color:#64748b; font-style:italic;">[Text Cleared from Screen]</span>';
+        hubPreviewRef.textContent = state.reference || '';
+        return;
+      } else {
+        hubLiveBadge.className = 'live-badge badge-live';
+        hubLiveBadge.textContent = 'LIVE';
+        hubPreviewScreen.style.opacity = '1';
+      }
+
+      const lines = Array.isArray(state.lines) ? state.lines : (state.rawSlide ? state.rawSlide.split('<BR>') : []);
+      hubPreviewLines.innerHTML = lines.map(l => '<div>' + l + '</div>').join('');
+      hubPreviewRef.textContent = state.reference || state.title || '';
+    }
+
+    if (hubSocket) {
+      hubSocket.on('connect', () => {
+        hubServerDot.classList.remove('disconnected');
+        hubServerStatus.textContent = 'Socket Connected';
+        hubSocket.emit('get:state');
+      });
+      hubSocket.on('disconnect', () => {
+        hubServerDot.classList.add('disconnected');
+        hubServerStatus.textContent = 'Disconnected';
+      });
+      hubSocket.on('display:update', (state) => {
+        updateHubPreview(state);
+      });
+      hubSocket.on('stats:update', (stats) => {
+        if (stats) {
+          document.getElementById('stat-displays').textContent = stats.displays;
+        }
+      });
+    }
+
+    // Load initial stats
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/stats');
+        const data = await res.json();
+        document.getElementById('stat-songs').textContent = data.songs;
+        document.getElementById('stat-tamil').textContent = data.tamilVerses;
+        document.getElementById('stat-kjv').textContent = data.kjvVerses;
+        document.getElementById('stat-displays').textContent = data.clients ? data.clients.displays : 0;
+      } catch (err) {
+        console.warn('Error loading stats:', err);
+      }
+    }
+
+    // Load initial state
+    fetch('/api/state').then(r => r.json()).then(updateHubPreview).catch(console.warn);
+    loadStats();
+    setInterval(loadStats, 5000);
+
+    // Quick Action controls on Hub
+    document.getElementById('hub-btn-blank').addEventListener('click', () => {
+      if (hubSocket) hubSocket.emit('action:blank');
+    });
+    document.getElementById('hub-btn-clear').addEventListener('click', () => {
+      if (hubSocket) hubSocket.emit('action:clear');
+    });
+    document.getElementById('hub-btn-show').addEventListener('click', () => {
+      if (hubSocket) hubSocket.emit('action:show');
+    });
+  </script>
+</body>
+</html>

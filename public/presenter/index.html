@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Presenter Console — Church Presentation Server</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <div class="presenter-app">
+    <!-- Top Bar with Real-Time Control & Live On Screen Indicator -->
+    <header class="presenter-header" id="presenter-header">
+      <div class="header-left">
+        <div class="app-title-badge">
+          <div class="server-dot" id="server-status-dot" title="Socket.io Connected"></div>
+          <span>Presenter Console</span>
+        </div>
+        <div class="live-monitor-pill" id="live-indicator-pill" title="Current live projection state">
+          <span class="live-badge badge-live" id="live-status-badge">LIVE</span>
+          <div class="live-text-preview">
+            <span class="live-title-preview" id="live-title-text">Amazing Grace</span>
+            <span class="live-line-preview" id="live-line-text">Amazing grace! How sweet the sound...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Real-Time Control Buttons -->
+      <div class="controls-bar" id="controls-bar">
+        <button class="ctrl-btn btn-nav" id="btn-prev-slide" title="Previous Slide (Left Arrow)">
+          ⏮️ Prev
+        </button>
+        <button class="ctrl-btn btn-nav" id="btn-next-slide" title="Next Slide (Right Arrow)">
+          Next ⏭️
+        </button>
+        <button class="ctrl-btn btn-blank" id="btn-blank-screen" title="Blank Output Screen (B key)">
+          ⚫ Blank Screen
+        </button>
+        <button class="ctrl-btn btn-clear" id="btn-clear-text" title="Clear Text / Keep Background (C key)">
+          ⚪ Clear Text
+        </button>
+        <button class="ctrl-btn btn-show" id="btn-show-slide" title="Restore / Show Active Slide (S key)">
+          ▶️ Show Slide
+        </button>
+        <a href="/display/" target="_blank" class="ctrl-btn btn-nav" title="Open Projector Output Display in New Tab">
+          📺 Open Projector
+        </a>
+      </div>
+    </header>
+
+    <!-- Main 3-Column Work Area -->
+    <main class="presenter-body" id="presenter-body">
+      <!-- 1. Song Library Column -->
+      <section class="library-column" id="library-column">
+        <div class="column-header">
+          <h2>🎵 Song Library</h2>
+          <button class="btn-primary" id="btn-open-add-song" style="padding: 6px 12px; font-size: 12px;">
+            + Add Song
+          </button>
+        </div>
+
+        <div class="search-box">
+          <input type="text" id="song-search-input" class="input-search" placeholder="Search song title or lyrics...">
+          <div class="cat-filter-chips" id="category-chips">
+            <span class="chip active" data-cat="All">All</span>
+          </div>
+        </div>
+
+        <div class="song-list" id="song-list-container">
+          <!-- Loaded dynamically via presenter.js -->
+        </div>
+      </section>
+
+      <!-- 2. Active Song & Clickable Slide Deck Column -->
+      <section class="stage-column" id="stage-column">
+        <div class="stage-header">
+          <div class="stage-song-title">
+            <span id="active-song-title">Select a Song or Scripture</span>
+            <span class="slide-card-badge" id="active-song-cat-badge" style="display:none;">Hymns</span>
+          </div>
+          <div style="font-size: 13px; color: var(--text-secondary);" id="active-slide-count-indicator">
+            0 slides
+          </div>
+        </div>
+
+        <!-- Slide deck: splits lyrics on '<slide>' and displays clickable cards -->
+        <div class="slide-deck" id="slide-deck-container">
+          <div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 48px;">
+            Select a song from the library on the left, or pick a Bible verse on the right to present.
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Scripture Bible Lookup Column (Cascading Dropdowns) -->
+      <section class="bible-column" id="bible-column">
+        <div class="column-header">
+          <h2>📖 Bible Lookup</h2>
+          <span style="font-size: 11px; color: var(--text-muted);">words table</span>
+        </div>
+
+        <div class="bible-form-container">
+          <!-- Quick Verse Search -->
+          <div class="form-group">
+            <input type="text" id="bible-quick-search" class="input-search" placeholder="Quick search verse text...">
+          </div>
+
+          <!-- Cascading Dropdown 1: Translation Version -->
+          <div class="form-group">
+            <label class="form-label" for="select-version">Version</label>
+            <select id="select-version" class="select-custom"></select>
+          </div>
+
+          <!-- Cascading Dropdown 2: Book -->
+          <div class="form-group">
+            <label class="form-label" for="select-book">Book</label>
+            <select id="select-book" class="select-custom">
+              <option value="">Loading books...</option>
+            </select>
+          </div>
+
+          <!-- Cascading Dropdowns 3 & 4: Chapter and Verse -->
+          <div class="select-grid">
+            <div class="form-group">
+              <label class="form-label" for="select-chapter">Chapter</label>
+              <select id="select-chapter" class="select-custom">
+                <option value="">Select Ch</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="select-verse">Verse</label>
+              <select id="select-verse" class="select-custom">
+                <option value="">Select V</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Verse Preview & Selection Area -->
+        <div class="verse-preview-area" id="verse-preview-container">
+          <!-- Verse cards rendered dynamically -->
+          <div style="text-align: center; color: var(--text-muted); font-size: 13px; padding-top: 20px;">
+            Choose a book and chapter to view and present verses.
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Add / Edit Song Modal -->
+  <div class="modal-backdrop" id="song-modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-song-title">Add New Song</h3>
+        <button id="btn-close-song-modal" class="btn-icon-tiny" style="font-size: 20px; color: #fff;">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="modal-song-id">
+        <div class="form-group">
+          <label class="form-label" for="modal-input-title">Song Title</label>
+          <input type="text" id="modal-input-title" class="input-text" placeholder="e.g. Amazing Grace">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="modal-input-cat">Category</label>
+          <input type="text" id="modal-input-cat" class="input-text" placeholder="e.g. Hymns, Worship, Tamil, Praise">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="modal-input-lyrics">
+            Lyrics (Delimited by <code>&lt;slide&gt;</code> for slides and <code>&lt;BR&gt;</code> for lines)
+          </label>
+          <div class="delimiter-helper-bar" style="margin-bottom: 6px;">
+            <button type="button" class="btn-helper" id="btn-insert-slide">+ &lt;slide&gt;</button>
+            <button type="button" class="btn-helper" id="btn-insert-br">+ &lt;BR&gt;</button>
+            <button type="button" class="btn-helper" id="btn-auto-format-stanzas">Convert Blank Lines to &lt;slide&gt;</button>
+          </div>
+          <textarea id="modal-input-lyrics" class="textarea-lyrics" placeholder="Line 1<BR>Line 2<slide>Next slide line 1<BR>Next slide line 2"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="modal-input-lyrics2">Secondary Lyrics / Author / Chords (Optional)</label>
+          <input type="text" id="modal-input-lyrics2" class="input-text" placeholder="e.g. Traditional or Tamil transliteration">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="btn-cancel-song-modal">Cancel</button>
+        <button type="button" class="btn-primary" id="btn-save-song">Save Song</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/presenter.js"></script>
+</body>
+</html>

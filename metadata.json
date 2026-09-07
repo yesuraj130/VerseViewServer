@@ -1,0 +1,6 @@
+{
+  "name": "Verse View Server",
+  "description": "Full-stack presentation web server using Express, Socket.io, and SQLite with WAL mode for real-time songs and scripture projection.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
