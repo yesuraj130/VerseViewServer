@@ -10,17 +10,23 @@ const btnToggleFs = document.getElementById('btn-toggle-fs');
 // Initialize Socket.io
 const socket = (typeof io !== 'undefined') ? io() : null;
 
-function renderDisplayState(state) {
+function renderDisplayState(state)
+{
   if (!state) return;
 
   // Handle Blank & Clear Statuses
-  if (state.status === 'blank') {
+  if (state.status === 'blank')
+  {
     viewport.classList.add('blank-mode');
     viewport.classList.remove('clear-mode');
-  } else if (state.status === 'clear') {
+  }
+  else if (state.status === 'clear')
+  {
     viewport.classList.remove('blank-mode');
     viewport.classList.add('clear-mode');
-  } else {
+  }
+  else
+  {
     viewport.classList.remove('blank-mode');
     viewport.classList.remove('clear-mode');
   }
@@ -29,13 +35,17 @@ function renderDisplayState(state) {
   const lines = Array.isArray(state.lines) ? state.lines : (state.rawSlide ? state.rawSlide.split('<BR>') : []);
   linesContainer.innerHTML = '';
 
-  if (lines.length === 0) {
+  if (lines.length === 0)
+  {
     const emptyLine = document.createElement('div');
     emptyLine.className = 'display-line';
     emptyLine.textContent = '';
     linesContainer.appendChild(emptyLine);
-  } else {
-    lines.forEach((line) => {
+  }
+  else
+  {
+    lines.forEach((line) =>
+    {
       const lineEl = document.createElement('div');
       lineEl.className = 'display-line';
       lineEl.textContent = line;
@@ -44,10 +54,13 @@ function renderDisplayState(state) {
   }
 
   // Render Footer Reference
-  if (state.reference) {
+  if (state.reference)
+  {
     displayRef.textContent = state.reference;
     displayRef.style.display = 'block';
-  } else {
+  }
+  else
+  {
     displayRef.style.display = 'none';
   }
 
@@ -55,42 +68,55 @@ function renderDisplayState(state) {
   adjustTypography(lines);
 }
 
-function adjustTypography(lines) {
+function adjustTypography(lines)
+{
   const lineCount = lines.length;
   let maxLineLength = 0;
-  for (const l of lines) {
+  for (const l of lines)
+  {
     if (l.length > maxLineLength) maxLineLength = l.length;
   }
 
   const lineEls = linesContainer.querySelectorAll('.display-line');
 
   let fontSize = 'clamp(28px, 5.2vw, 76px)';
-  if (lineCount >= 6 || maxLineLength > 60) {
+  if (lineCount >= 6 || maxLineLength > 60)
+  {
     fontSize = 'clamp(20px, 3.4vw, 48px)';
-  } else if (lineCount >= 4 || maxLineLength > 45) {
+  }
+  else if (lineCount >= 4 || maxLineLength > 45)
+  {
     fontSize = 'clamp(24px, 4.2vw, 60px)';
   }
 
-  lineEls.forEach((el) => {
+  lineEls.forEach((el) =>
+  {
     el.style.fontSize = fontSize;
   });
 }
 
 // Fallback fetch in case socket hasn't emitted yet
-async function fetchCurrentState() {
-  try {
+async function fetchCurrentState()
+{
+  try
+  {
     const res = await fetch('/api/state');
-    if (res.ok) {
+    if (res.ok)
+    {
       const state = await res.json();
       renderDisplayState(state);
     }
-  } catch (err) {
+  }
+  catch (err)
+  {
     console.warn('Could not fetch state via REST:', err);
   }
 }
 
-if (socket) {
-  socket.on('connect', () => {
+if (socket)
+{
+  socket.on('connect', () =>
+  {
     socketDot.classList.remove('disconnected');
     statusText.textContent = 'Live Connected';
     socket.emit('role:register', {
@@ -100,15 +126,19 @@ if (socket) {
     socket.emit('get:state');
   });
 
-  socket.on('disconnect', () => {
+  socket.on('disconnect', () =>
+  {
     socketDot.classList.add('disconnected');
     statusText.textContent = 'Reconnecting...';
   });
 
-  socket.on('display:update', (state) => {
+  socket.on('display:update', (state) =>
+  {
     renderDisplayState(state);
   });
-} else {
+}
+else
+{
   // If socket.io is unavailable, poll every 500ms as fallback
   setInterval(fetchCurrentState, 500);
 }
@@ -117,20 +147,28 @@ if (socket) {
 fetchCurrentState();
 
 // Fullscreen controls
-function toggleFullscreen() {
-  if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen().catch((err) => {
+function toggleFullscreen()
+{
+  if (!document.fullscreenElement)
+  {
+    document.documentElement.requestFullscreen().catch((err) =>
+    {
       console.warn('Error attempting to enable fullscreen:', err.message);
     });
-  } else {
-    if (document.exitFullscreen) {
+  }
+  else
+  {
+    if (document.exitFullscreen)
+    {
       document.exitFullscreen();
     }
   }
 }
 
-if (btnToggleFs) {
-  btnToggleFs.addEventListener('click', (e) => {
+if (btnToggleFs)
+{
+  btnToggleFs.addEventListener('click', (e) =>
+  {
     e.stopPropagation();
     toggleFullscreen();
   });
@@ -138,8 +176,10 @@ if (btnToggleFs) {
 
 document.body.addEventListener('dblclick', toggleFullscreen);
 
-window.addEventListener('keydown', (e) => {
-  if (e.key === 'f' || e.key === 'F') {
+window.addEventListener('keydown', (e) =>
+{
+  if (e.key === 'f' || e.key === 'F')
+  {
     e.preventDefault();
     toggleFullscreen();
   }

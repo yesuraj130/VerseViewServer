@@ -19,32 +19,49 @@ const io = new Server(server, {
 });
 
 const PORT = 3000;
+const APP_TITLE = process.env.APP_TITLE || 'Verse View Server';
+const APP_CONFIG = {
+  appName: APP_TITLE,
+  title: APP_TITLE,
+  tagline: 'Real-Time Church Presentation Server'
+};
 const dataDir = path.join(__dirname, 'data');
-if (!fs.existsSync(dataDir)) {
+if (!fs.existsSync(dataDir))
+{
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
 // Ensure all databases in data/ use standard DELETE journal mode so no -wal or -shm files are created
-for (const file of fs.readdirSync(dataDir)) {
-  if (file.endsWith('.db')) {
-    try {
+for (const file of fs.readdirSync(dataDir))
+{
+  if (file.endsWith('.db'))
+  {
+    try
+    {
       const fullPath = path.join(dataDir, file);
       const db = new DatabaseSync(fullPath);
       db.exec('PRAGMA wal_checkpoint(TRUNCATE);');
       db.exec('PRAGMA journal_mode = DELETE;');
       db.close();
-    } catch {
+    }
+    catch
+    {
       // Ignore if cannot write
     }
   }
 }
 
 // Remove any remaining -wal or -shm sidecar files
-for (const file of fs.readdirSync(dataDir)) {
-  if (file.endsWith('-wal') || file.endsWith('-shm')) {
-    try {
+for (const file of fs.readdirSync(dataDir))
+{
+  if (file.endsWith('-wal') || file.endsWith('-shm'))
+  {
+    try
+    {
       fs.unlinkSync(path.join(dataDir, file));
-    } catch {
+    }
+    catch
+    {
       // Ignore
     }
   }
@@ -64,13 +81,16 @@ const smDb = new DatabaseSync(smDbPath);
 // ---------------------------------------------------------------------------
 const bibleDbCache = new Map();
 
-function getVersionMetadata() {
+function getVersionMetadata()
+{
   const versionFile = path.join(dataDir, 'version.json');
   if (!fs.existsSync(versionFile)) return [];
-  try {
+  try
+  {
     const raw = JSON.parse(fs.readFileSync(versionFile, 'utf8'));
     const list = raw.version || raw.versions || [];
-    return list.map((item, idx) => {
+    return list.map((item, idx) =>
+    {
       const file = item.file || item.dbFile || `${item.id || 'bible'}.db`;
       const id = item.id || file.replace(/\.db$/i, '');
       const dbExists = fs.existsSync(path.join(dataDir, file));
@@ -88,34 +108,43 @@ function getVersionMetadata() {
         available: dbExists
       };
     });
-  } catch (err) {
+  }
+  catch (err)
+  {
     console.error('Error reading version.json:', err);
     return [];
   }
 }
 
-function getBibleDb(versionIdOrFile) {
+function getBibleDb(versionIdOrFile)
+{
   const versions = getVersionMetadata();
   const matched = versions.find(
     v => v.id === versionIdOrFile || v.file === versionIdOrFile || v.dbFile === versionIdOrFile
   );
 
   let targetFile = matched ? matched.file : versionIdOrFile;
-  if (!targetFile.endsWith('.db')) {
+  if (!targetFile.endsWith('.db'))
+  {
     targetFile = `${targetFile}.db`;
   }
 
   const dbPath = path.join(dataDir, targetFile);
-  if (!fs.existsSync(dbPath)) {
+  if (!fs.existsSync(dbPath))
+  {
     return null;
   }
 
-  if (!bibleDbCache.has(targetFile)) {
-    try {
+  if (!bibleDbCache.has(targetFile))
+  {
+    try
+    {
       // Strictly read-only connection without modifying the database or creating sidecar files
       const db = new DatabaseSync(dbPath, { readOnly: true });
       bibleDbCache.set(targetFile, db);
-    } catch (err) {
+    }
+    catch (err)
+    {
       console.error(`Error opening Bible DB ${targetFile}:`, err);
       return null;
     }
@@ -143,7 +172,8 @@ let currentState = {
 
 const connectedClients = new Map();
 
-function parseUserAgent(ua) {
+function parseUserAgent(ua)
+{
   if (!ua) return 'Web Browser';
   let browser = 'Browser';
   let os = 'Device';
@@ -164,9 +194,11 @@ function parseUserAgent(ua) {
   return `${browser} on ${os}`;
 }
 
-function getCleanIp(socket) {
+function getCleanIp(socket)
+{
   let ip = socket.handshake.headers['x-forwarded-for'] || socket.conn.remoteAddress || '127.0.0.1';
-  if (typeof ip === 'string') {
+  if (typeof ip === 'string')
+  {
     ip = ip.split(',')[0].trim();
     if (ip.startsWith('::ffff:')) ip = ip.slice(7);
     if (ip === '::1') ip = '127.0.0.1';
@@ -174,11 +206,14 @@ function getCleanIp(socket) {
   return ip;
 }
 
-function getClientSummaries() {
+function getClientSummaries()
+{
   const presenters = [];
   const displays = [];
-  for (const client of connectedClients.values()) {
-    if (client && typeof client === 'object') {
+  for (const client of connectedClients.values())
+  {
+    if (client && typeof client === 'object')
+    {
       const summary = {
         id: client.id,
         role: client.role,
@@ -194,11 +229,13 @@ function getClientSummaries() {
   return { presenters, displays, total: connectedClients.size };
 }
 
-function broadcastState() {
+function broadcastState()
+{
   io.emit('display:update', currentState);
 }
 
-function broadcastStats() {
+function broadcastStats()
+{
   const { presenters, displays, total } = getClientSummaries();
   io.emit('stats:update', {
     presenters: presenters.length,
@@ -212,7 +249,8 @@ function broadcastStats() {
 // ---------------------------------------------------------------------------
 // 4. Socket.io Real-Time Synchronization ("Last-Click-Wins")
 // ---------------------------------------------------------------------------
-io.on('connection', (socket) => {
+io.on('connection', (socket) =>
+{
   const cleanIp = getCleanIp(socket);
   const ua = socket.handshake.headers['user-agent'] || '';
   connectedClients.set(socket.id, {
@@ -227,8 +265,10 @@ io.on('connection', (socket) => {
   // Immediately push current authoritative state upon connection
   socket.emit('display:update', currentState);
 
-  socket.on('role:register', (data) => {
-    if (data && (data.role === 'presenter' || data.role === 'display')) {
+  socket.on('role:register', (data) =>
+  {
+    if (data && (data.role === 'presenter' || data.role === 'display'))
+    {
       const existing = connectedClients.get(socket.id) || {};
       connectedClients.set(socket.id, {
         ...existing,
@@ -243,12 +283,14 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('get:state', () => {
+  socket.on('get:state', () =>
+  {
     socket.emit('display:update', currentState);
   });
 
   // Action: Present Slide (Song or Scripture)
-  socket.on('action:present', (payload) => {
+  socket.on('action:present', (payload) =>
+  {
     if (!payload) return;
     const lines = Array.isArray(payload.lines)
       ? payload.lines
@@ -273,7 +315,8 @@ io.on('connection', (socket) => {
   });
 
   // Action: Clear Screen (Sets state to No Slide Presented)
-  socket.on('action:clear', () => {
+  socket.on('action:clear', () =>
+  {
     currentState = {
       type: 'none',
       status: 'clear',
@@ -290,7 +333,8 @@ io.on('connection', (socket) => {
     broadcastState();
   });
 
-  socket.on('disconnect', () => {
+  socket.on('disconnect', () =>
+  {
     connectedClients.delete(socket.id);
     broadcastStats();
   });
@@ -301,12 +345,20 @@ io.on('connection', (socket) => {
 // ---------------------------------------------------------------------------
 app.use(express.json());
 
+// API: App Configuration
+app.get('/api/config', (req, res) =>
+{
+  res.json(APP_CONFIG);
+});
+
 // API: Current Live State
-app.get('/api/state', (req, res) => {
+app.get('/api/state', (req, res) =>
+{
   res.json(currentState);
 });
 
-app.post('/api/state', (req, res) => {
+app.post('/api/state', (req, res) =>
+{
   const payload = req.body;
   if (!payload) return res.status(400).json({ error: 'Missing body' });
   
@@ -327,8 +379,10 @@ app.post('/api/state', (req, res) => {
 });
 
 // API: Songs (songs.db / sm.db)
-app.get('/api/songs', (req, res) => {
-  try {
+app.get('/api/songs', (req, res) =>
+{
+  try
+  {
     const q = req.query.q ? String(req.query.q).trim() : '';
     const cat = req.query.cat ? String(req.query.cat).trim() : '';
     const limit = Math.min(Number(req.query.limit) || 100, 200);
@@ -337,17 +391,20 @@ app.get('/api/songs', (req, res) => {
     const params = [];
     const conditions = [];
 
-    if (q) {
+    if (q)
+    {
       conditions.push('(name LIKE ? OR lyrics LIKE ? OR lyrics2 LIKE ?)');
       const term = `%${q}%`;
       params.push(term, term, term);
     }
-    if (cat && cat !== 'All') {
+    if (cat && cat !== 'All')
+    {
       conditions.push('cat = ?');
       params.push(cat);
     }
 
-    if (conditions.length > 0) {
+    if (conditions.length > 0)
+    {
       sql += ' WHERE ' + conditions.join(' AND ');
     }
     sql += ' ORDER BY id ASC LIMIT ?';
@@ -356,7 +413,8 @@ app.get('/api/songs', (req, res) => {
     const stmt = smDb.prepare(sql);
     const rows = stmt.all(...params);
 
-    const songs = rows.map((r) => {
+    const songs = rows.map((r) =>
+    {
       const slides = r.lyrics ? r.lyrics.split('<slide>') : [];
       return {
         id: r.id,
@@ -369,23 +427,29 @@ app.get('/api/songs', (req, res) => {
     });
 
     res.json(songs);
-  } catch (err) {
+  }
+  catch (err)
+  {
     console.error('Error fetching songs:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get('/api/songs/:id', (req, res) => {
-  try {
+app.get('/api/songs/:id', (req, res) =>
+{
+  try
+  {
     const songId = Number(req.params.id);
     const stmt = smDb.prepare('SELECT id, name, cat, lyrics, lyrics2 FROM sm WHERE id = ?');
     const song = stmt.get(songId);
 
-    if (!song) {
+    if (!song)
+    {
       return res.status(404).json({ error: 'Song not found' });
     }
 
-    const slides = (song.lyrics || '').split('<slide>').map((s, idx) => {
+    const slides = (song.lyrics || '').split('<slide>').map((s, idx) =>
+    {
       return {
         slideIndex: idx + 1,
         rawSlide: s,
@@ -398,15 +462,20 @@ app.get('/api/songs/:id', (req, res) => {
       slides,
       slideCount: slides.length
     });
-  } catch (err) {
+  }
+  catch (err)
+  {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post('/api/songs', (req, res) => {
-  try {
+app.post('/api/songs', (req, res) =>
+{
+  try
+  {
     const { name, cat, lyrics, lyrics2 } = req.body;
-    if (!name || !lyrics) {
+    if (!name || !lyrics)
+    {
       return res.status(400).json({ error: 'Name and lyrics are required' });
     }
 
@@ -418,16 +487,21 @@ app.post('/api/songs', (req, res) => {
 
     const created = smDb.prepare('SELECT id, name, cat, lyrics, lyrics2 FROM sm WHERE id = ?').get(newId);
     res.status(201).json(created);
-  } catch (err) {
+  }
+  catch (err)
+  {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.put('/api/songs/:id', (req, res) => {
-  try {
+app.put('/api/songs/:id', (req, res) =>
+{
+  try
+  {
     const songId = Number(req.params.id);
     const { name, cat, lyrics, lyrics2 } = req.body;
-    if (!name || !lyrics) {
+    if (!name || !lyrics)
+    {
       return res.status(400).json({ error: 'Name and lyrics are required' });
     }
 
@@ -438,28 +512,38 @@ app.put('/api/songs/:id', (req, res) => {
 
     const updated = smDb.prepare('SELECT id, name, cat, lyrics, lyrics2 FROM sm WHERE id = ?').get(songId);
     res.json(updated);
-  } catch (err) {
+  }
+  catch (err)
+  {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.delete('/api/songs/:id', (req, res) => {
-  try {
+app.delete('/api/songs/:id', (req, res) =>
+{
+  try
+  {
     const songId = Number(req.params.id);
     const stmt = smDb.prepare('DELETE FROM sm WHERE id = ?');
     stmt.run(songId);
     res.json({ success: true, deletedId: songId });
-  } catch (err) {
+  }
+  catch (err)
+  {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get('/api/categories', (req, res) => {
-  try {
+app.get('/api/categories', (req, res) =>
+{
+  try
+  {
     const rows = smDb.prepare("SELECT DISTINCT cat FROM sm WHERE cat IS NOT NULL AND cat != '' ORDER BY cat").all();
     const categories = rows.map(r => r.cat);
     res.json(categories);
-  } catch (err) {
+  }
+  catch (err)
+  {
     res.status(500).json({ error: err.message });
   }
 });
@@ -467,22 +551,29 @@ app.get('/api/categories', (req, res) => {
 // ---------------------------------------------------------------------------
 // 6. Bible Metadata (version.json) & Cascading Scripture Endpoints
 // ---------------------------------------------------------------------------
-app.get('/api/bible/versions', (req, res) => {
-  try {
+app.get('/api/bible/versions', (req, res) =>
+{
+  try
+  {
     const versions = getVersionMetadata();
     res.json(versions);
-  } catch (err) {
+  }
+  catch (err)
+  {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get('/api/bible/:version/books', (req, res) => {
-  try {
+app.get('/api/bible/:version/books', (req, res) =>
+{
+  try
+  {
     const versionId = req.params.version;
     const versions = getVersionMetadata();
     const ver = versions.find(v => v.id === versionId || v.file === versionId || v.dbFile === versionId);
 
-    if (ver && ver.books && ver.books.length > 0) {
+    if (ver && ver.books && ver.books.length > 0)
+    {
       return res.json({
         version: ver,
         books: ver.books.map((b, idx) => ({ bookNum: idx + 1, name: b }))
@@ -490,7 +581,8 @@ app.get('/api/bible/:version/books', (req, res) => {
     }
 
     const db = getBibleDb(versionId);
-    if (!db) {
+    if (!db)
+    {
       return res.status(404).json({ error: `Bible database for '${versionId}' not found in data/.` });
     }
 
@@ -504,19 +596,24 @@ app.get('/api/bible/:version/books', (req, res) => {
       version: ver || { id: versionId, name: versionId },
       books
     });
-  } catch (err) {
+  }
+  catch (err)
+  {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get('/api/bible/:version/chapters', (req, res) => {
-  try {
+app.get('/api/bible/:version/chapters', (req, res) =>
+{
+  try
+  {
     const versionId = req.params.version;
     const bookNum = Number(req.query.bookNum);
     if (!bookNum) return res.status(400).json({ error: 'bookNum query param required' });
 
     const db = getBibleDb(versionId);
-    if (!db) {
+    if (!db)
+    {
       return res.status(404).json({ error: `Bible database for '${versionId}' not found.` });
     }
 
@@ -526,22 +623,28 @@ app.get('/api/bible/:version/chapters', (req, res) => {
 
     const chapters = rows.map(r => r.chNum);
     res.json(chapters);
-  } catch (err) {
+  }
+  catch (err)
+  {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get('/api/bible/:version/verses', (req, res) => {
-  try {
+app.get('/api/bible/:version/verses', (req, res) =>
+{
+  try
+  {
     const versionId = req.params.version;
     const bookNum = Number(req.query.bookNum);
     const chNum = Number(req.query.chNum);
-    if (!bookNum || !chNum) {
+    if (!bookNum || !chNum)
+    {
       return res.status(400).json({ error: 'bookNum and chNum required' });
     }
 
     const db = getBibleDb(versionId);
-    if (!db) {
+    if (!db)
+    {
       return res.status(404).json({ error: `Bible database for '${versionId}' not found.` });
     }
 
@@ -551,19 +654,24 @@ app.get('/api/bible/:version/verses', (req, res) => {
 
     const verses = rows.map(r => r.verseNum);
     res.json(verses);
-  } catch (err) {
+  }
+  catch (err)
+  {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get('/api/bible/:version/text', (req, res) => {
-  try {
+app.get('/api/bible/:version/text', (req, res) =>
+{
+  try
+  {
     const versionId = req.params.version;
     const bookNum = Number(req.query.bookNum);
     const chNum = Number(req.query.chNum);
     const verseNum = req.query.verseNum !== undefined && req.query.verseNum !== '' ? Number(req.query.verseNum) : null;
 
-    if (!bookNum || !chNum) {
+    if (!bookNum || !chNum)
+    {
       return res.status(400).json({ error: 'bookNum and chNum required' });
     }
 
@@ -571,21 +679,26 @@ app.get('/api/bible/:version/text', (req, res) => {
     const ver = versions.find(v => v.id === versionId || v.file === versionId || v.dbFile === versionId);
     const versionName = ver ? ver.name : versionId;
     let bookName = `Book ${bookNum}`;
-    if (ver && ver.books && ver.books[bookNum - 1]) {
+    if (ver && ver.books && ver.books[bookNum - 1])
+    {
       bookName = ver.books[bookNum - 1];
     }
 
     const db = getBibleDb(versionId);
-    if (!db) {
+    if (!db)
+    {
       return res.status(404).json({ error: `Bible database for '${versionId}' not found.` });
     }
 
     let rows;
-    if (verseNum) {
+    if (verseNum)
+    {
       rows = db.prepare(
         'SELECT wordId, word, bookNum, chNum, verseNum FROM words WHERE bookNum = ? AND chNum = ? AND verseNum = ? ORDER BY verseNum'
       ).all(bookNum, chNum, verseNum);
-    } else {
+    }
+    else
+    {
       rows = db.prepare(
         'SELECT wordId, word, bookNum, chNum, verseNum FROM words WHERE bookNum = ? AND chNum = ? ORDER BY verseNum'
       ).all(bookNum, chNum);
@@ -600,14 +713,18 @@ app.get('/api/bible/:version/text', (req, res) => {
       verseNum,
       verses: rows
     });
-  } catch (err) {
+  }
+  catch (err)
+  {
     res.status(500).json({ error: err.message });
   }
 });
 
 // API: Quick Bible Search
-app.get('/api/bible/:version/search', (req, res) => {
-  try {
+app.get('/api/bible/:version/search', (req, res) =>
+{
+  try
+  {
     const versionId = req.params.version;
     const q = req.query.q ? String(req.query.q).trim() : '';
     if (!q) return res.json([]);
@@ -617,7 +734,8 @@ app.get('/api/bible/:version/search', (req, res) => {
     const bookList = (ver && ver.books) ? ver.books : [];
 
     const db = getBibleDb(versionId);
-    if (!db) {
+    if (!db)
+    {
       return res.status(404).json({ error: `Bible database for '${versionId}' not found.` });
     }
 
@@ -625,7 +743,8 @@ app.get('/api/bible/:version/search', (req, res) => {
       'SELECT wordId, word, bookNum, chNum, verseNum FROM words WHERE word LIKE ? LIMIT 50'
     ).all(`%${q}%`);
 
-    const results = rows.map(r => {
+    const results = rows.map(r =>
+    {
       const bName = bookList[r.bookNum - 1] || `Book ${r.bookNum}`;
       return {
         ...r,
@@ -635,19 +754,24 @@ app.get('/api/bible/:version/search', (req, res) => {
     });
 
     res.json(results);
-  } catch (err) {
+  }
+  catch (err)
+  {
     res.status(500).json({ error: err.message });
   }
 });
 
 // API: Stats & System Info
-app.get('/api/stats', (req, res) => {
-  try {
+app.get('/api/stats', (req, res) =>
+{
+  try
+  {
     const songCount = smDb.prepare('SELECT COUNT(*) as count FROM sm').get().count;
     
     let tamilCount = 0;
     const tamilDb = getBibleDb('tamil.db');
-    if (tamilDb) {
+    if (tamilDb)
+    {
       tamilCount = tamilDb.prepare('SELECT COUNT(*) as count FROM words').get().count;
     }
 
@@ -672,17 +796,23 @@ app.get('/api/stats', (req, res) => {
         type: currentState.type
       }
     });
-  } catch (err) {
+  }
+  catch (err)
+  {
     res.status(500).json({ error: err.message });
   }
 });
 
 // API: Detailed Connected Clients List
-app.get('/api/clients', (req, res) => {
-  try {
+app.get('/api/clients', (req, res) =>
+{
+  try
+  {
     const summaries = getClientSummaries();
     res.json(summaries);
-  } catch (err) {
+  }
+  catch (err)
+  {
     res.status(500).json({ error: err.message });
   }
 });
@@ -693,20 +823,26 @@ app.get('/api/clients', (req, res) => {
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Explicit redirects for clean paths
-app.get('/presenter', (req, res) => {
+app.get('/presenter', (req, res) =>
+{
   res.sendFile(path.join(__dirname, 'public', 'presenter', 'index.html'));
 });
 
-app.get('/display', (req, res) => {
+app.get('/display', (req, res) =>
+{
   res.sendFile(path.join(__dirname, 'public', 'display', 'index.html'));
 });
 
 // Fallback to public index
-app.get('*', (req, res) => {
+app.get('*', (req, res) =>
+{
   const publicIndex = path.join(__dirname, 'public', 'index.html');
-  if (fs.existsSync(publicIndex)) {
+  if (fs.existsSync(publicIndex))
+  {
     res.sendFile(publicIndex);
-  } else {
+  }
+  else
+  {
     res.redirect('/presenter');
   }
 });
@@ -714,7 +850,8 @@ app.get('*', (req, res) => {
 // ---------------------------------------------------------------------------
 // 8. Start HTTP + Socket.io Server
 // ---------------------------------------------------------------------------
-server.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '0.0.0.0', () =>
+{
   console.log(`Verse View Server running at http://0.0.0.0:${PORT}`);
   console.log(`Using songs database: ${songsDbFileName}`);
   console.log(`Presenter Console: http://0.0.0.0:${PORT}/presenter/`);

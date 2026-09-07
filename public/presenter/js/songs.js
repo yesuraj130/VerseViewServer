@@ -1,28 +1,35 @@
 // ===========================================================================
-// VerseVIEW 10 Presenter — Songs Management & Slide Deck Controller
+// Presenter Console — Songs Management & Slide Deck Controller
 // ===========================================================================
 
 let selectedCategory = 'All';
 
-async function loadCategories() {
-  try {
+async function loadCategories()
+{
+  try
+  {
     const res = await fetch('/api/categories');
     const categories = await res.json();
     renderCategoryChips(categories);
-  } catch (err) {
+  }
+  catch (err)
+  {
     console.error('Error loading categories:', err);
   }
 }
 
-function renderCategoryChips(categories) {
+function renderCategoryChips(categories)
+{
   if (!categoryChips) return;
   categoryChips.innerHTML = '<span class="chip active" data-cat="All">All</span>';
-  categories.forEach((cat) => {
+  categories.forEach((cat) =>
+  {
     const chip = document.createElement('span');
     chip.className = 'chip';
     chip.setAttribute('data-cat', cat);
     chip.textContent = cat;
-    chip.addEventListener('click', () => {
+    chip.addEventListener('click', () =>
+    {
       document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
       chip.classList.add('active');
       selectedCategory = cat;
@@ -32,8 +39,10 @@ function renderCategoryChips(categories) {
   });
 
   const allChip = categoryChips.querySelector('[data-cat="All"]');
-  if (allChip) {
-    allChip.addEventListener('click', () => {
+  if (allChip)
+  {
+    allChip.addEventListener('click', () =>
+    {
       document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
       allChip.classList.add('active');
       selectedCategory = 'All';
@@ -42,8 +51,10 @@ function renderCategoryChips(categories) {
   }
 }
 
-async function loadSongs(q = '', cat = 'All') {
-  try {
+async function loadSongs(q = '', cat = 'All')
+{
+  try
+  {
     let url = `/api/songs?`;
     if (q) url += `q=${encodeURIComponent(q)}&`;
     if (cat && cat !== 'All') url += `cat=${encodeURIComponent(cat)}`;
@@ -52,26 +63,33 @@ async function loadSongs(q = '', cat = 'All') {
     const songs = await res.json();
     renderSongList(songs);
 
-    if (!currentSong && songs.length > 0) {
+    if (!currentSong && songs.length > 0)
+    {
       selectSong(songs[0].id);
     }
-  } catch (err) {
+  }
+  catch (err)
+  {
     console.error('Error loading songs:', err);
   }
 }
 
-function renderSongList(songs) {
+function renderSongList(songs)
+{
   if (!songListContainer) return;
   songListContainer.innerHTML = '';
-  if (!songs || songs.length === 0) {
+  if (!songs || songs.length === 0)
+  {
     songListContainer.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px;">No songs found. Click "+ Add Song" above.</div>';
     return;
   }
 
-  songs.forEach((song) => {
+  songs.forEach((song) =>
+  {
     const item = document.createElement('div');
     item.className = 'song-item';
-    if (currentSong && currentSong.id === song.id) {
+    if (currentSong && currentSong.id === song.id)
+    {
       item.classList.add('selected');
     }
 
@@ -90,7 +108,8 @@ function renderSongList(songs) {
       </div>
     `;
 
-    item.addEventListener('click', (e) => {
+    item.addEventListener('click', (e) =>
+    {
       if (e.target.closest('.btn-edit-song') || e.target.closest('.btn-delete-song')) return;
       document.querySelectorAll('.song-item').forEach(i => i.classList.remove('selected'));
       item.classList.add('selected');
@@ -98,15 +117,18 @@ function renderSongList(songs) {
     });
 
     const editBtn = item.querySelector('.btn-edit-song');
-    editBtn.addEventListener('click', (e) => {
+    editBtn.addEventListener('click', (e) =>
+    {
       e.stopPropagation();
       openEditSongModal(song.id);
     });
 
     const delBtn = item.querySelector('.btn-delete-song');
-    delBtn.addEventListener('click', (e) => {
+    delBtn.addEventListener('click', (e) =>
+    {
       e.stopPropagation();
-      if (confirm(`Delete song "${song.name}"?`)) {
+      if (confirm(`Delete song "${song.name}"?`))
+      {
         deleteSong(song.id);
       }
     });
@@ -115,8 +137,10 @@ function renderSongList(songs) {
   });
 }
 
-async function selectSong(songId, autoPresent = false) {
-  try {
+async function selectSong(songId, autoPresent = false)
+{
+  try
+  {
     const res = await fetch(`/api/songs/${songId}`);
     const song = await res.json();
     currentSong = song;
@@ -125,39 +149,48 @@ async function selectSong(songId, autoPresent = false) {
     currentPresentationType = 'song';
 
     if (activeSongTitle) activeSongTitle.textContent = song.name;
-    if (deckTypeBadge) {
+    if (deckTypeBadge)
+    {
       deckTypeBadge.textContent = 'SONG';
       deckTypeBadge.style.color = '#38bdf8';
       deckTypeBadge.style.borderColor = 'rgba(56, 189, 248, 0.4)';
     }
-    if (activeSongCatBadge) {
+    if (activeSongCatBadge)
+    {
       activeSongCatBadge.textContent = song.cat || 'General';
       activeSongCatBadge.style.display = 'inline-block';
     }
-    if (activeSlideCountIndicator) {
+    if (activeSlideCountIndicator)
+    {
       activeSlideCountIndicator.textContent = `${currentSongSlides.length} slides`;
     }
     if (btnDeckEditSong) btnDeckEditSong.style.display = 'inline-block';
 
     renderSlideDeck(currentSong, currentSongSlides);
 
-    if (autoPresent && currentSongSlides.length > 0) {
+    if (autoPresent && currentSongSlides.length > 0)
+    {
       presentSlide(song, 1, currentSongSlides[0]);
     }
-  } catch (err) {
+  }
+  catch (err)
+  {
     console.error('Error selecting song:', err);
   }
 }
 
-function renderSlideDeck(song, slides) {
+function renderSlideDeck(song, slides)
+{
   if (!slideDeckContainer) return;
   slideDeckContainer.innerHTML = '';
-  if (!slides || slides.length === 0) {
+  if (!slides || slides.length === 0)
+  {
     slideDeckContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 48px;">This song has no slides.</div>';
     return;
   }
 
-  slides.forEach((slide) => {
+  slides.forEach((slide) =>
+  {
     const card = document.createElement('div');
     card.className = 'slide-card';
     card.setAttribute('data-slide-index', slide.slideIndex);
@@ -177,7 +210,8 @@ function renderSlideDeck(song, slides) {
       </div>
     `;
 
-    card.addEventListener('click', () => {
+    card.addEventListener('click', () =>
+    {
       presentSlide(song, slide.slideIndex, slide);
     });
 
@@ -185,7 +219,8 @@ function renderSlideDeck(song, slides) {
   });
 }
 
-function presentSlide(song, slideIndex, slideObj) {
+function presentSlide(song, slideIndex, slideObj)
+{
   activeSongSlideIndex = slideIndex;
   const total = currentSongSlides.length;
   const payload = {
@@ -200,9 +235,12 @@ function presentSlide(song, slideIndex, slideObj) {
     verseInfo: null
   };
 
-  if (socket) {
+  if (socket)
+  {
     socket.emit('action:present', payload);
-  } else {
+  }
+  else
+  {
     fetch('/api/state', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -214,8 +252,10 @@ function presentSlide(song, slideIndex, slideObj) {
 // ---------------------------------------------------------------------------
 // Song Add / Edit / Delete Modal & Event Listeners
 // ---------------------------------------------------------------------------
-if (btnOpenAddSong) {
-  btnOpenAddSong.addEventListener('click', () => {
+if (btnOpenAddSong)
+{
+  btnOpenAddSong.addEventListener('click', () =>
+  {
     modalSongId.value = '';
     modalSongTitle.textContent = 'Add New Song';
     modalInputTitle.value = '';
@@ -227,13 +267,16 @@ if (btnOpenAddSong) {
   });
 }
 
-if (btnDeckEditSong) {
-  btnDeckEditSong.addEventListener('click', () => {
+if (btnDeckEditSong)
+{
+  btnDeckEditSong.addEventListener('click', () =>
+  {
     if (currentSong) openEditSongModal(currentSong.id);
   });
 }
 
-function closeSongModal() {
+function closeSongModal()
+{
   if (songModal) songModal.style.display = 'none';
 }
 
@@ -242,37 +285,46 @@ if (btnCancelSongModal) btnCancelSongModal.addEventListener('click', closeSongMo
 
 if (btnInsertSlide) btnInsertSlide.addEventListener('click', () => insertAtCursor(modalInputLyrics, '<slide>'));
 if (btnInsertBr) btnInsertBr.addEventListener('click', () => insertAtCursor(modalInputLyrics, '<BR>'));
-if (btnAutoFormatStanzas) {
-  btnAutoFormatStanzas.addEventListener('click', () => {
+if (btnAutoFormatStanzas)
+{
+  btnAutoFormatStanzas.addEventListener('click', () =>
+  {
     const val = modalInputLyrics.value;
     modalInputLyrics.value = val.replace(/\n\s*\n/g, '<slide>\n').replace(/\n/g, '<BR>\n');
   });
 }
 
-if (btnSaveSong) {
-  btnSaveSong.addEventListener('click', async () => {
+if (btnSaveSong)
+{
+  btnSaveSong.addEventListener('click', async () =>
+  {
     const title = modalInputTitle.value.trim();
     const cat = modalInputCat.value.trim() || 'General';
     const lyrics = modalInputLyrics.value.trim();
     const lyrics2 = modalInputLyrics2.value.trim();
     const songId = modalSongId.value;
 
-    if (!title) {
+    if (!title)
+    {
       alert('Please enter a song title.');
       modalInputTitle.focus();
       return;
     }
 
     const payload = { name: title, cat, lyrics, lyrics2 };
-    try {
+    try
+    {
       let res;
-      if (songId) {
+      if (songId)
+      {
         res = await fetch(`/api/songs/${songId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-      } else {
+      }
+      else
+      {
         res = await fetch('/api/songs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -280,7 +332,8 @@ if (btnSaveSong) {
         });
       }
 
-      if (!res.ok) {
+      if (!res.ok)
+      {
         const err = await res.json();
         throw new Error(err.error || 'Failed to save');
       }
@@ -290,15 +343,19 @@ if (btnSaveSong) {
       await loadCategories();
       await loadSongs(songSearchInput ? songSearchInput.value : '', selectedCategory);
       selectSong(saved.id);
-    } catch (err) {
+    }
+    catch (err)
+    {
       console.error('Error saving song:', err);
       alert('Failed to save song: ' + err.message);
     }
   });
 }
 
-async function openEditSongModal(songId) {
-  try {
+async function openEditSongModal(songId)
+{
+  try
+  {
     const res = await fetch(`/api/songs/${songId}`);
     const song = await res.json();
     modalSongId.value = song.id;
@@ -308,18 +365,25 @@ async function openEditSongModal(songId) {
     modalInputLyrics.value = song.lyrics || '';
     modalInputLyrics2.value = song.lyrics2 || '';
     songModal.style.display = 'flex';
-  } catch (err) {
+  }
+  catch (err)
+  {
     console.error('Error loading song for edit:', err);
   }
 }
 
-async function deleteSong(songId) {
-  try {
+async function deleteSong(songId)
+{
+  try
+  {
     const res = await fetch(`/api/songs/${songId}`, { method: 'DELETE' });
-    if (res.ok) {
-      if (currentSong && currentSong.id === songId) {
+    if (res.ok)
+    {
+      if (currentSong && currentSong.id === songId)
+      {
         currentSong = null;
-        if (slideDeckContainer) {
+        if (slideDeckContainer)
+        {
           slideDeckContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 48px;">Select a song from the library on the left.</div>';
         }
         if (activeSongTitle) activeSongTitle.textContent = 'Select a Song';
@@ -328,17 +392,22 @@ async function deleteSong(songId) {
       await loadCategories();
       await loadSongs(songSearchInput ? songSearchInput.value : '', selectedCategory);
     }
-  } catch (err) {
+  }
+  catch (err)
+  {
     console.error('Error deleting song:', err);
   }
 }
 
 // Debounced Song Search
 let searchDebounce = null;
-if (songSearchInput) {
-  songSearchInput.addEventListener('input', () => {
+if (songSearchInput)
+{
+  songSearchInput.addEventListener('input', () =>
+  {
     clearTimeout(searchDebounce);
-    searchDebounce = setTimeout(() => {
+    searchDebounce = setTimeout(() =>
+    {
       loadSongs(songSearchInput.value, selectedCategory);
     }, 200);
   });

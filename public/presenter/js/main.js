@@ -1,8 +1,9 @@
 // ===========================================================================
-// VerseVIEW 10 Presenter — Main Entry & Initialization Orchestrator
+// Presenter Console — Main Entry & Initialization Orchestrator
 // ===========================================================================
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () =>
+{
   initResizer();
   initTabNavigation();
   loadCategories();

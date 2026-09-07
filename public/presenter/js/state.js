@@ -1,5 +1,5 @@
 // ===========================================================================
-// VerseVIEW 10 Presenter — State, DOM References & Common Utilities
+// Presenter Console — State, DOM References & Common Utilities
 // ===========================================================================
 
 // Initialize Socket.io
@@ -27,10 +27,13 @@ let bookSearchFilter = '';
 
 // Persistent Recent Verses
 let recentVerses = [];
-try {
-  const savedRecent = localStorage.getItem('verseview_recent_verses');
+try
+{
+  const savedRecent = localStorage.getItem('recent_bible_verses') || localStorage.getItem('verseview_recent_verses');
   if (savedRecent) recentVerses = JSON.parse(savedRecent);
-} catch (e) {
+}
+catch (e)
+{
   recentVerses = [];
 }
 
@@ -45,8 +48,8 @@ const btnClear = document.getElementById('btn-clear');
 const btnPrevSlide = document.getElementById('btn-prev-slide');
 const btnNextSlide = document.getElementById('btn-next-slide');
 
-const tabButtons = document.querySelectorAll('.vv-tab-btn');
-const tabPanels = document.querySelectorAll('.vv-tab-panel');
+const tabButtons = document.querySelectorAll('.tab-btn');
+const tabPanels = document.querySelectorAll('.tab-panel');
 
 const songListContainer = document.getElementById('song-list-container');
 const songSearchInput = document.getElementById('song-search-input');
@@ -93,7 +96,8 @@ const btnAutoFormatStanzas = document.getElementById('btn-auto-format-stanzas');
 // ---------------------------------------------------------------------------
 // Common Utility Functions
 // ---------------------------------------------------------------------------
-function escapeHtml(str) {
+function escapeHtml(str)
+{
   if (!str) return '';
   return String(str)
     .replace(/&/g, '&amp;')
@@ -103,7 +107,8 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
-function insertAtCursor(textarea, text) {
+function insertAtCursor(textarea, text)
+{
   if (!textarea) return;
   const start = textarea.selectionStart;
   const end = textarea.selectionEnd;

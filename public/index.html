@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/css/base.css">
   <link rel="stylesheet" href="/css/hub.css">
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/config.js"></script>
 </head>
 <body>
   <div class="hub-container">
@@ -14,14 +15,12 @@
       <div class="hub-brand">
         <div class="hub-logo-icon">✝️</div>
         <div>
-          <h1 class="hub-title">Verse View Server</h1>
+          <h1 class="hub-title" data-app-title>Verse View Server</h1>
           <p class="hub-subtitle">Real-Time Express + Socket.io + SQLite WAL Engine</p>
         </div>
       </div>
-      <div style="display: flex; align-items: center; gap: 12px;">
-        <span class="server-dot" id="hub-server-dot"></span>
-        <span style="font-size: 13px; color: var(--text-secondary);" id="hub-server-status">Socket Synchronized</span>
-      </div>
+      <div style="display: flex; align-items: center; gap: 12px;"><span class="server-dot" id="hub-server-dot"></span>
+        <span style="font-size: 13px; color: var(--text-secondary);" id="hub-server-status">Socket Synchronized</span></div>
     </header>
 
     <!-- Role Views Switcher Cards -->
@@ -31,16 +30,12 @@
         <div>
           <span class="hub-card-tag tag-presenter">Console Controller</span>
           <h2 class="hub-card-title">Presenter Console</h2>
-          <p class="hub-card-desc">
-            Search, edit, and create songs in <code>sm.db</code> with slide deck previews (<code>&lt;slide&gt;</code> and <code>&lt;BR&gt;</code>).
+          <p class="hub-card-desc">Search, edit, and create songs in <code>sm.db</code> with slide deck previews (<code>&lt;slide&gt;</code> and <code>&lt;BR&gt;</code>).
             Cascading Bible lookup (Version &rarr; Book &rarr; Chapter &rarr; Verse) from <code>words</code> table.
-            Instant real-time control with last-click-wins broadcasting.
-          </p>
+            Instant real-time control with last-click-wins broadcasting.</p>
         </div>
         <div style="display: flex; gap: 12px; align-items: center;">
-          <a href="/presenter/" class="btn-primary" style="flex-grow: 1;">
-            Open Presenter Console &rarr;
-          </a>
+          <a href="/presenter/" class="btn-primary" style="flex-grow: 1;">Open Presenter Console &rarr;</a>
         </div>
       </div>
 
@@ -49,15 +44,11 @@
         <div>
           <span class="hub-card-tag tag-display">Projector / TV Output</span>
           <h2 class="hub-card-title">Projector Output Display</h2>
-          <p class="hub-card-desc">
-            Clean, high-contrast, black fullscreen output for church projectors, TVs, and monitors.
-            Listens to Socket.io events with zero lag, instant state recovery upon reconnection, and hotkeys.
-          </p>
+          <p class="hub-card-desc">Clean, high-contrast, black fullscreen output for church projectors, TVs, and monitors.
+            Listens to Socket.io events with zero lag, instant state recovery upon reconnection, and hotkeys.</p>
         </div>
         <div style="display: flex; gap: 12px; align-items: center;">
-          <a href="/display/" target="_blank" class="btn-primary" style="background-color: #10b981; flex-grow: 1;">
-            Open Projector Screen &nearr;
-          </a>
+          <a href="/display/" target="_blank" class="btn-primary" style="background-color: #10b981; flex-grow: 1;">Open Projector Screen &nearr;</a>
         </div>
       </div>
     </div>
@@ -78,12 +69,8 @@
 
       <!-- Mini Projector Screen Simulator -->
       <div style="background-color: #000; border: 1px solid #334155; border-radius: 8px; min-height: 180px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 24px; text-align: center;" id="hub-preview-screen">
-        <div id="hub-preview-lines" style="font-size: 24px; font-weight: 700; color: #fff; line-height: 1.4;">
-          Loading current slide...
-        </div>
-        <div id="hub-preview-ref" style="font-size: 13px; color: #94a3b8; margin-top: 12px; text-transform: uppercase;">
-          Ready
-        </div>
+        <div id="hub-preview-lines" style="font-size: 24px; font-weight: 700; color: #fff; line-height: 1.4;">Loading current slide...</div>
+        <div id="hub-preview-ref" style="font-size: 13px; color: #94a3b8; margin-top: 12px; text-transform: uppercase;">Ready</div>
       </div>
     </div>
 
@@ -137,15 +124,9 @@
 
       <!-- Tab Filter Chips inside modal -->
       <div style="padding: 10px 20px; background-color: var(--bg-primary); border-bottom: 1px solid var(--border-color); display: flex; gap: 8px;">
-        <button id="modal-tab-presenters" class="chip active" style="font-size: 12px; padding: 5px 12px; cursor: pointer;">
-          Presenters (<span id="count-tab-presenters">0</span>)
-        </button>
-        <button id="modal-tab-displays" class="chip" style="font-size: 12px; padding: 5px 12px; cursor: pointer;">
-          Displays (<span id="count-tab-displays">0</span>)
-        </button>
-        <button id="modal-tab-all" class="chip" style="font-size: 12px; padding: 5px 12px; cursor: pointer;">
-          All Devices (<span id="count-tab-all">0</span>)
-        </button>
+        <button id="modal-tab-presenters" class="chip active" style="font-size: 12px; padding: 5px 12px; cursor: pointer;">Presenters (<span id="count-tab-presenters">0</span>)</button>
+        <button id="modal-tab-displays" class="chip" style="font-size: 12px; padding: 5px 12px; cursor: pointer;">Displays (<span id="count-tab-displays">0</span>)</button>
+        <button id="modal-tab-all" class="chip" style="font-size: 12px; padding: 5px 12px; cursor: pointer;">All Devices (<span id="count-tab-all">0</span>)</button>
       </div>
 
       <div class="modal-body" id="clients-modal-list" style="max-height: 380px; gap: 10px; padding: 18px 20px;">
@@ -153,17 +134,11 @@
       </div>
 
       <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
-        <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted);">
-          <span style="width: 8px; height: 8px; border-radius: 50%; background-color: var(--accent-live); display: inline-block;"></span>
-          <span>Syncs in real-time via Socket.io</span>
-        </div>
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted);"><span style="width: 8px; height: 8px; border-radius: 50%; background-color: var(--accent-live); display: inline-block;"></span>
+          <span>Syncs in real-time via Socket.io</span></div>
         <div style="display: flex; gap: 10px;">
-          <a id="btn-modal-open-link" href="/presenter" target="_blank" class="btn-primary" style="padding: 8px 14px; font-size: 13px; text-decoration: none;">
-            Open New Presenter &rarr;
-          </a>
-          <button id="btn-modal-close" class="btn-secondary" style="padding: 8px 14px; font-size: 13px;">
-            Close
-          </button>
+          <a id="btn-modal-open-link" href="/presenter" target="_blank" class="btn-primary" style="padding: 8px 14px; font-size: 13px; text-decoration: none;">Open New Presenter &rarr;</a>
+          <button id="btn-modal-close" class="btn-secondary" style="padding: 8px 14px; font-size: 13px;">Close</button>
         </div>
       </div>
     </div>
@@ -181,20 +156,26 @@
     let currentClientsData = { presenters: [], displays: [], total: 0 };
     let currentModalTab = 'presenter'; // 'presenter' | 'display' | 'all'
 
-    function updateHubPreview(state) {
+    function updateHubPreview(state)
+    {
       if (!state) return;
-      if (state.status === 'blank') {
+      if (state.status === 'blank')
+      {
         hubLiveBadge.className = 'live-badge badge-blank';
         hubLiveBadge.textContent = 'BLANKED';
         hubPreviewScreen.style.opacity = '0.2';
-      } else if (state.status === 'clear') {
+      }
+      else if (state.status === 'clear')
+      {
         hubLiveBadge.className = 'live-badge badge-clear';
         hubLiveBadge.textContent = 'CLEARED';
         hubPreviewScreen.style.opacity = '0.5';
         hubPreviewLines.innerHTML = '<span style="color:#64748b; font-style:italic;">[Text Cleared from Screen]</span>';
         hubPreviewRef.textContent = state.reference || '';
         return;
-      } else {
+      }
+      else
+      {
         hubLiveBadge.className = 'live-badge badge-live';
         hubLiveBadge.textContent = 'LIVE';
         hubPreviewScreen.style.opacity = '1';
@@ -205,7 +186,8 @@
       hubPreviewRef.textContent = state.reference || state.title || '';
     }
 
-    function formatTimeAgo(timestamp) {
+    function formatTimeAgo(timestamp)
+    {
       if (!timestamp) return 'Just now';
       const diffSec = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
       if (diffSec < 5) return 'Just connected';
@@ -216,7 +198,8 @@
       return `${diffHr}h ago`;
     }
 
-    function escapeHtml(str) {
+    function escapeHtml(str)
+    {
       if (!str) return '';
       return String(str)
         .replace(/&/g, '&amp;')
@@ -226,7 +209,8 @@
         .replace(/'/g, '&#039;');
     }
 
-    function renderClientsList() {
+    function renderClientsList()
+    {
       const container = document.getElementById('clients-modal-list');
       const modalIcon = document.getElementById('clients-modal-icon');
       const modalTitle = document.getElementById('clients-modal-title');
@@ -234,21 +218,26 @@
       const openLink = document.getElementById('btn-modal-open-link');
 
       let items = [];
-      if (currentModalTab === 'presenter') {
+      if (currentModalTab === 'presenter')
+      {
         items = currentClientsData.presenters || [];
         modalIcon.textContent = '🎛️';
         modalTitle.textContent = `Connected Presenters (${items.length})`;
         modalSubtitle.textContent = 'Active console controllers transmitting slide updates';
         openLink.href = '/presenter';
         openLink.textContent = 'Open New Presenter ↗';
-      } else if (currentModalTab === 'display') {
+      }
+      else if (currentModalTab === 'display')
+      {
         items = currentClientsData.displays || [];
         modalIcon.textContent = '📺';
         modalTitle.textContent = `Connected Displays (${items.length})`;
         modalSubtitle.textContent = 'Projector, TV, and monitor screens receiving live broadcasts';
         openLink.href = '/display';
         openLink.textContent = 'Open New Display ↗';
-      } else {
+      }
+      else
+      {
         items = [...(currentClientsData.presenters || []), ...(currentClientsData.displays || [])];
         modalIcon.textContent = '🌐';
         modalTitle.textContent = `All Connected Devices (${items.length})`;
@@ -265,42 +254,43 @@
       document.getElementById('count-tab-all').textContent = pCount + dCount;
 
       // Update Tab Active styling
-      ['presenters', 'displays', 'all'].forEach(tabKey => {
+      ['presenters', 'displays', 'all'].forEach(tabKey =>
+      {
         const btn = document.getElementById(`modal-tab-${tabKey}`);
-        if (btn) {
+        if (btn)
+        {
           if ((currentModalTab === 'presenter' && tabKey === 'presenters') ||
               (currentModalTab === 'display' && tabKey === 'displays') ||
-              (currentModalTab === 'all' && tabKey === 'all')) {
+              (currentModalTab === 'all' && tabKey === 'all'))
+              {
             btn.classList.add('active');
-          } else {
+          }
+          else
+          {
             btn.classList.remove('active');
           }
         }
       });
 
-      if (items.length === 0) {
+      if (items.length === 0)
+      {
         const roleName = currentModalTab === 'presenter' ? 'Presenters' : (currentModalTab === 'display' ? 'Displays' : 'Devices');
         const defaultPath = currentModalTab === 'presenter' ? '/presenter' : '/display';
         container.innerHTML = `
           <div style="text-align: center; padding: 40px 16px; color: var(--text-muted);">
             <div style="font-size: 36px; margin-bottom: 10px;">${currentModalTab === 'presenter' ? '🎛️' : '📺'}</div>
-            <div style="font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 6px;">
-              No Connected ${roleName}
-            </div>
-            <div style="font-size: 13px; max-width: 340px; margin: 0 auto 18px auto; line-height: 1.5; color: var(--text-secondary);">
-              ${currentModalTab === 'presenter' 
+            <div style="font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 6px;">No Connected ${roleName}</div>
+            <div style="font-size: 13px; max-width: 340px; margin: 0 auto 18px auto; line-height: 1.5; color: var(--text-secondary);">${currentModalTab === 'presenter' 
                 ? 'Launch the Presenter Console in another tab, browser, or laptop to control slides in real-time.' 
-                : 'Launch the Display Screen on your projector, TV, or another screen to output live slides.'}
-            </div>
-            <a href="${defaultPath}" target="_blank" class="btn-secondary" style="font-size: 13px; padding: 8px 16px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
-              Launch ${currentModalTab === 'presenter' ? 'Presenter' : 'Display'} Screen &rarr;
-            </a>
+                : 'Launch the Display Screen on your projector, TV, or another screen to output live slides.'}</div>
+            <a href="${defaultPath}" target="_blank" class="btn-secondary" style="font-size: 13px; padding: 8px 16px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">Launch ${currentModalTab === 'presenter' ? 'Presenter' : 'Display'} Screen &rarr;</a>
           </div>
         `;
         return;
       }
 
-      container.innerHTML = items.map((client, idx) => {
+      container.innerHTML = items.map((client, idx) =>
+      {
         const isPresenter = client.role === 'presenter';
         const roleColor = isPresenter ? '#60a5fa' : '#34d399';
         const roleBg = isPresenter ? 'rgba(59, 130, 246, 0.15)' : 'rgba(16, 185, 129, 0.15)';
@@ -310,18 +300,10 @@
         return `
           <div style="background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px;">
             <div style="display: flex; align-items: center; gap: 14px; min-width: 0;">
-              <div style="width: 40px; height: 40px; border-radius: 10px; background: ${roleBg}; border: 1px solid ${roleBorder}; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;">
-                ${roleIcon}
-              </div>
+              <div style="width: 40px; height: 40px; border-radius: 10px; background: ${roleBg}; border: 1px solid ${roleBorder}; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;">${roleIcon}</div>
               <div style="min-width: 0;">
-                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                  <span style="font-size: 14px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                    ${escapeHtml(client.device || 'Web Browser')}
-                  </span>
-                  <span style="font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; background: ${roleBg}; color: ${roleColor}; border: 1px solid ${roleBorder}; letter-spacing: 0.04em;">
-                    ${escapeHtml(client.role)}
-                  </span>
-                </div>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;"><span style="font-size: 14px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(client.device || 'Web Browser')}</span>
+                  <span style="font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; background: ${roleBg}; color: ${roleColor}; border: 1px solid ${roleBorder}; letter-spacing: 0.04em;">${escapeHtml(client.role)}</span></div>
                 <div style="font-size: 12px; color: var(--text-secondary); margin-top: 3px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                   <span>IP: <code style="color: #cbd5e1; font-family: monospace;">${escapeHtml(client.ip || '127.0.0.1')}</code></span>
                   ${client.screen ? `<span>• Display: ${escapeHtml(client.screen)}</span>` : ''}
@@ -329,22 +311,22 @@
                 </div>
               </div>
             </div>
-            <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0; background: rgba(16, 185, 129, 0.12); padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(16, 185, 129, 0.25);">
-              <span style="width: 7px; height: 7px; border-radius: 50%; background: #10b981; box-shadow: 0 0 6px #10b981;"></span>
-              <span style="font-size: 11px; color: #34d399; font-weight: 700; letter-spacing: 0.02em;">Online</span>
-            </div>
+            <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0; background: rgba(16, 185, 129, 0.12); padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(16, 185, 129, 0.25);"><span style="width: 7px; height: 7px; border-radius: 50%; background: #10b981; box-shadow: 0 0 6px #10b981;"></span>
+              <span style="font-size: 11px; color: #34d399; font-weight: 700; letter-spacing: 0.02em;">Online</span></div>
           </div>
         `;
       }).join('');
     }
 
-    function openClientsModal(role) {
+    function openClientsModal(role)
+    {
       currentModalTab = role;
       renderClientsList();
       document.getElementById('clients-modal').style.display = 'flex';
     }
 
-    function closeClientsModal() {
+    function closeClientsModal()
+    {
       document.getElementById('clients-modal').style.display = 'none';
     }
 
@@ -353,42 +335,53 @@
     document.getElementById('card-stat-displays').addEventListener('click', () => openClientsModal('display'));
     document.getElementById('btn-close-clients-modal').addEventListener('click', closeClientsModal);
     document.getElementById('btn-modal-close').addEventListener('click', closeClientsModal);
-    document.getElementById('clients-modal').addEventListener('click', (e) => {
+    document.getElementById('clients-modal').addEventListener('click', (e) =>
+    {
       if (e.target.id === 'clients-modal') closeClientsModal();
     });
 
-    document.getElementById('modal-tab-presenters').addEventListener('click', () => {
+    document.getElementById('modal-tab-presenters').addEventListener('click', () =>
+    {
       currentModalTab = 'presenter';
       renderClientsList();
     });
-    document.getElementById('modal-tab-displays').addEventListener('click', () => {
+    document.getElementById('modal-tab-displays').addEventListener('click', () =>
+    {
       currentModalTab = 'display';
       renderClientsList();
     });
-    document.getElementById('modal-tab-all').addEventListener('click', () => {
+    document.getElementById('modal-tab-all').addEventListener('click', () =>
+    {
       currentModalTab = 'all';
       renderClientsList();
     });
 
-    window.addEventListener('keydown', (e) => {
+    window.addEventListener('keydown', (e) =>
+    {
       if (e.key === 'Escape') closeClientsModal();
     });
 
-    if (hubSocket) {
-      hubSocket.on('connect', () => {
+    if (hubSocket)
+    {
+      hubSocket.on('connect', () =>
+      {
         hubServerDot.classList.remove('disconnected');
         hubServerStatus.textContent = 'Socket Connected';
         hubSocket.emit('get:state');
       });
-      hubSocket.on('disconnect', () => {
+      hubSocket.on('disconnect', () =>
+      {
         hubServerDot.classList.add('disconnected');
         hubServerStatus.textContent = 'Disconnected';
       });
-      hubSocket.on('display:update', (state) => {
+      hubSocket.on('display:update', (state) =>
+      {
         updateHubPreview(state);
       });
-      hubSocket.on('stats:update', (stats) => {
-        if (stats) {
+      hubSocket.on('stats:update', (stats) =>
+      {
+        if (stats)
+        {
           const presentersEl = document.getElementById('stat-presenters');
           if (presentersEl) presentersEl.textContent = stats.presenters !== undefined ? stats.presenters : 0;
           const displaysEl = document.getElementById('stat-displays');
@@ -401,7 +394,8 @@
           };
 
           // Re-render if modal is currently open
-          if (document.getElementById('clients-modal').style.display === 'flex') {
+          if (document.getElementById('clients-modal').style.display === 'flex')
+          {
             renderClientsList();
           }
         }
@@ -409,30 +403,38 @@
     }
 
     // Load initial stats and client list
-    async function loadStats() {
-      try {
+    async function loadStats()
+    {
+      try
+      {
         const res = await fetch('/api/stats');
         const data = await res.json();
         const presentersEl = document.getElementById('stat-presenters');
-        if (presentersEl) {
+        if (presentersEl)
+        {
           presentersEl.textContent = data.clients ? data.clients.presenters : 0;
         }
         const displaysEl = document.getElementById('stat-displays');
-        if (displaysEl) {
+        if (displaysEl)
+        {
           displaysEl.textContent = data.clients ? data.clients.displays : 0;
         }
 
-        if (data.clients) {
+        if (data.clients)
+        {
           currentClientsData = {
             presenters: data.clients.presentersList || [],
             displays: data.clients.displaysList || [],
             total: data.clients.total || 0
           };
-          if (document.getElementById('clients-modal').style.display === 'flex') {
+          if (document.getElementById('clients-modal').style.display === 'flex')
+          {
             renderClientsList();
           }
         }
-      } catch (err) {
+      }
+      catch (err)
+      {
         console.warn('Error loading stats:', err);
       }
     }
@@ -443,13 +445,16 @@
     setInterval(loadStats, 4000);
 
     // Quick Action controls on Hub
-    document.getElementById('hub-btn-blank').addEventListener('click', () => {
+    document.getElementById('hub-btn-blank').addEventListener('click', () =>
+    {
       if (hubSocket) hubSocket.emit('action:blank');
     });
-    document.getElementById('hub-btn-clear').addEventListener('click', () => {
+    document.getElementById('hub-btn-clear').addEventListener('click', () =>
+    {
       if (hubSocket) hubSocket.emit('action:clear');
     });
-    document.getElementById('hub-btn-show').addEventListener('click', () => {
+    document.getElementById('hub-btn-show').addEventListener('click', () =>
+    {
       if (hubSocket) hubSocket.emit('action:show');
     });
   </script>

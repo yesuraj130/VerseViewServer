@@ -1,40 +1,50 @@
 // ===========================================================================
-// VerseVIEW 10 Presenter — Bible Word / Phrase Search
+// Presenter Console — Bible Word / Phrase Search
 // ===========================================================================
 
-if (btnRunBibleSearch) {
+if (btnRunBibleSearch)
+{
   btnRunBibleSearch.addEventListener('click', performBibleSearch);
 }
-if (bibleFullSearchInput) {
-  bibleFullSearchInput.addEventListener('keydown', (e) => {
+if (bibleFullSearchInput)
+{
+  bibleFullSearchInput.addEventListener('keydown', (e) =>
+  {
     if (e.key === 'Enter') performBibleSearch();
   });
 }
 
-async function performBibleSearch() {
+async function performBibleSearch()
+{
   const query = (bibleFullSearchInput ? bibleFullSearchInput.value : '').trim();
   if (!query) return;
 
   if (bibleSearchStatus) bibleSearchStatus.textContent = 'Searching...';
-  if (bibleSearchResultsContainer) {
+  if (bibleSearchResultsContainer)
+  {
     bibleSearchResultsContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); font-size: 13px; padding: 24px;">Searching Scripture database...</div>';
   }
 
-  try {
+  try
+  {
     const res = await fetch(`/api/bible/${selectedVersionId}/search?q=${encodeURIComponent(query)}`);
     const results = await res.json();
     if (bibleSearchStatus) bibleSearchStatus.textContent = `${results.length} results found`;
 
-    if (!results || results.length === 0) {
-      if (bibleSearchResultsContainer) {
+    if (!results || results.length === 0)
+    {
+      if (bibleSearchResultsContainer)
+      {
         bibleSearchResultsContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 13px; padding: 24px;">No verses found matching "${escapeHtml(query)}".</div>`;
       }
       return;
     }
 
-    if (bibleSearchResultsContainer) {
+    if (bibleSearchResultsContainer)
+    {
       bibleSearchResultsContainer.innerHTML = '';
-      results.forEach((r) => {
+      results.forEach((r) =>
+      {
         const card = document.createElement('div');
         card.className = 'verse-card';
 
@@ -53,24 +63,30 @@ async function performBibleSearch() {
         `;
 
         const presBtn = card.querySelector('.btn-search-pres');
-        if (presBtn) {
-          presBtn.addEventListener('click', async (e) => {
+        if (presBtn)
+        {
+          presBtn.addEventListener('click', async (e) =>
+          {
             e.stopPropagation();
             await selectBibleBook(r.bookNum, r.bookName, r.chNum, r.verseNum);
           });
         }
 
-        card.addEventListener('click', async () => {
+        card.addEventListener('click', async () =>
+        {
           await selectBibleBook(r.bookNum, r.bookName, r.chNum, r.verseNum);
         });
 
         bibleSearchResultsContainer.appendChild(card);
       });
     }
-  } catch (err) {
+  }
+  catch (err)
+  {
     console.error('Error during Bible search:', err);
     if (bibleSearchStatus) bibleSearchStatus.textContent = 'Search failed';
-    if (bibleSearchResultsContainer) {
+    if (bibleSearchResultsContainer)
+    {
       bibleSearchResultsContainer.innerHTML = '<div style="color: #ef4444; text-align: center; padding: 24px;">Failed to perform search.</div>';
     }
   }

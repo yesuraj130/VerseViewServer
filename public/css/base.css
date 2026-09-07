@@ -2,7 +2,8 @@
    Base Theme, CSS Variables, Reset & Common Components
    ========================================================================== */
 
-:root {
+:root
+{
   --bg-primary: #0a0f1d;
   --bg-secondary: #111827;
   --bg-surface: #1e293b;
@@ -29,13 +30,15 @@
   --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Mukta Malar", "Latha", sans-serif;
 }
 
-* {
+*
+{
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-body {
+body
+{
   font-family: var(--font-family);
   background-color: var(--bg-primary);
   color: var(--text-primary);
@@ -45,26 +48,31 @@ body {
 }
 
 /* Custom Scrollbars */
-::-webkit-scrollbar {
+::-webkit-scrollbar
+{
   width: 6px;
   height: 6px;
 }
 
-::-webkit-scrollbar-track {
+::-webkit-scrollbar-track
+{
   background: var(--bg-primary);
 }
 
-::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb
+{
   background: var(--border-color);
   border-radius: 4px;
 }
 
-::-webkit-scrollbar-thumb:hover {
+::-webkit-scrollbar-thumb:hover
+{
   background: var(--border-light);
 }
 
 /* Status Indicator Dot */
-.server-dot {
+.server-dot
+{
   width: 10px;
   height: 10px;
   border-radius: 50%;
@@ -74,13 +82,15 @@ body {
   flex-shrink: 0;
 }
 
-.server-dot.disconnected {
+.server-dot.disconnected
+{
   background-color: var(--accent-danger);
   box-shadow: 0 0 8px var(--accent-danger);
 }
 
 /* Common Button Styles */
-.btn-primary {
+.btn-primary
+{
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -97,11 +107,13 @@ body {
   transition: all 0.15s ease;
 }
 
-.btn-primary:hover {
+.btn-primary:hover
+{
   background-color: var(--accent-hover);
 }
 
-.btn-secondary {
+.btn-secondary
+{
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -118,12 +130,14 @@ body {
   transition: all 0.15s ease;
 }
 
-.btn-secondary:hover {
+.btn-secondary:hover
+{
   background-color: var(--bg-card-hover);
   border-color: var(--border-light);
 }
 
-.btn-icon-tiny {
+.btn-icon-tiny
+{
   padding: 4px 6px;
   background: transparent;
   border: none;
@@ -134,13 +148,15 @@ body {
   transition: all 0.15s ease;
 }
 
-.btn-icon-tiny:hover {
+.btn-icon-tiny:hover
+{
   background-color: rgba(255, 255, 255, 0.1);
   color: #ffffff;
 }
 
 /* Category & Filter Chips */
-.chip {
+.chip
+{
   padding: 4px 10px;
   font-size: 11px;
   font-weight: 600;
@@ -154,7 +170,8 @@ body {
 }
 
 .chip.active,
-.chip:hover {
+.chip:hover
+{
   background-color: var(--accent-primary);
   color: #ffffff;
   border-color: var(--accent-primary);
