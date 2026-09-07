@@ -5,4 +5,11 @@ coverage/
 .DS_Store
 *.log
 .env*
-!.env.example
+
+# AI Studio workspace configuration
+metadata.json
+.aistudio/
+
+# Lock files
+bun.lock
+
