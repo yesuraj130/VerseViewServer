@@ -361,12 +361,17 @@ async function initBibleDropdowns() {
     bibleVersions.forEach((ver) => {
       const opt = document.createElement('option');
       opt.value = ver.id;
-      opt.textContent = ver.name;
+      opt.textContent = ver.available ? ver.name : `${ver.name} (DB missing)`;
+      if (!ver.available) {
+        opt.style.color = '#94a3b8';
+      }
       selectVersion.appendChild(opt);
     });
 
-    if (bibleVersions.length > 0) {
-      selectedVersionId = bibleVersions[0].id;
+    const firstAvailable = bibleVersions.find(v => v.available) || bibleVersions[0];
+    if (firstAvailable) {
+      selectedVersionId = firstAvailable.id;
+      selectVersion.value = firstAvailable.id;
       await loadBooks(selectedVersionId);
     }
   } catch (err) {
@@ -377,13 +382,21 @@ async function initBibleDropdowns() {
 async function loadBooks(versionId) {
   try {
     const res = await fetch(`/api/bible/${versionId}/books`);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      versePreviewContainer.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px;">${escapeHtml(errData.error || 'Database for this version is not installed.')}</div>`;
+      selectBook.innerHTML = '<option value="">(No Database)</option>';
+      selectChapter.innerHTML = '<option value="">Ch</option>';
+      selectVerse.innerHTML = '<option value="">Verse</option>';
+      return;
+    }
     const data = await res.json();
     
     selectBook.innerHTML = '<option value="">Select Book...</option>';
     (data.books || []).forEach((b) => {
       const opt = document.createElement('option');
       opt.value = b.bookNum;
-      opt.textContent = b.name;
+      opt.textContent = `${b.bookNum}. ${b.name}`;
       selectBook.appendChild(opt);
     });
 
