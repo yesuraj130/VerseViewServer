@@ -1,7 +1,3 @@
-/**
- * Church Presentation Server - Presenter Console
- * Socket.io synchronization with last-click-wins pattern
- */
 
 // Initialize Socket.io
 const socket = (typeof io !== 'undefined') ? io() : null;

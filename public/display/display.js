@@ -1,7 +1,3 @@
-/**
- * Church Presentation Server - Display Client (Projector/TV Output)
- * Clean, fullscreen, high-contrast, real-time push receiver
- */
 
 const viewport = document.getElementById('display-viewport');
 const contentContainer = document.getElementById('display-content');
