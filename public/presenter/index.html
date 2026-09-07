@@ -4,7 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>VerseVIEW 10 — Presenter Console</title>
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/presenter/css/presenter.css">
+  <link rel="stylesheet" href="/presenter/css/bible.css">
   <script src="/socket.io/socket.io.js"></script>
 </head>
 <body class="vv-body">
@@ -37,14 +39,8 @@
         <button class="ctrl-btn btn-nav" id="btn-next-slide" title="Next Slide (Right Arrow / PageDown)">
           Next ⏭️
         </button>
-        <button class="ctrl-btn btn-blank" id="btn-blank-screen" title="Blank Screen (B key)">
-          ⚫ Blank
-        </button>
-        <button class="ctrl-btn btn-clear" id="btn-clear-text" title="Clear Text (C key)">
-          ⚪ Clear
-        </button>
-        <button class="ctrl-btn btn-show" id="btn-show-slide" title="Show / Restore (S key)">
-          ▶️ Show
+        <button class="ctrl-btn btn-clear" id="btn-clear" title="Clear Presentation (C key)">
+          ✕ Clear
         </button>
         <a href="/display/" target="_blank" class="ctrl-btn btn-nav" title="Open Main Output Screen in New Tab">
           📺 Output ↗
@@ -261,6 +257,13 @@
     </div>
   </div>
 
-  <script src="/presenter/presenter.js"></script>
+  <!-- Modular Presenter JavaScript (VerseVIEW 10) -->
+  <script src="/presenter/js/state.js"></script>
+  <script src="/presenter/js/socket.js"></script>
+  <script src="/presenter/js/controls.js"></script>
+  <script src="/presenter/js/songs.js"></script>
+  <script src="/presenter/js/bible.js"></script>
+  <script src="/presenter/js/search.js"></script>
+  <script src="/presenter/js/main.js"></script>
 </body>
 </html>

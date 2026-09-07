@@ -125,49 +125,21 @@ function getBibleDb(versionIdOrFile) {
 }
 
 // ---------------------------------------------------------------------------
-// 3. Authoritative Real-Time Global State
+// 3. Authoritative Real-Time Global State ("No Slide Presented" on Startup)
 // ---------------------------------------------------------------------------
 let currentState = {
-  type: 'song',
-  status: 'live', // 'live' | 'blank' | 'clear'
-  title: 'Verse View Server',
-  reference: 'Ready for Presentation',
-  lines: [
-    'Welcome to Verse View Server',
-    'Ready for presentation'
-  ],
-  rawSlide: 'Welcome to Verse View Server<BR>Ready for presentation',
-  slideIndex: 1,
-  totalSlides: 1,
+  type: 'none',
+  status: 'clear', // 'live' | 'clear'
+  title: '',
+  reference: '',
+  lines: [],
+  rawSlide: '',
+  slideIndex: 0,
+  totalSlides: 0,
   songId: null,
   verseInfo: null,
   updatedAt: Date.now()
 };
-
-// If songs exist, pick first song for default state preview
-try {
-  const firstSong = smDb.prepare("SELECT id, name, cat, lyrics FROM sm WHERE lyrics IS NOT NULL AND lyrics != '' LIMIT 1").get();
-  if (firstSong) {
-    const slides = firstSong.lyrics.split('<slide>');
-    const firstSlide = slides[0] || '';
-    const lines = firstSlide.split('<BR>').map(l => l.trim()).filter(Boolean);
-    currentState = {
-      type: 'song',
-      status: 'live',
-      title: firstSong.name,
-      reference: `${firstSong.cat || 'Song'} • Slide 1 of ${slides.length}`,
-      lines: lines.length > 0 ? lines : [firstSong.name],
-      rawSlide: firstSlide,
-      slideIndex: 1,
-      totalSlides: slides.length,
-      songId: firstSong.id,
-      verseInfo: null,
-      updatedAt: Date.now()
-    };
-  }
-} catch (err) {
-  console.warn('Could not load initial song for state:', err.message);
-}
 
 const connectedClients = new Map();
 
@@ -300,32 +272,21 @@ io.on('connection', (socket) => {
     broadcastState();
   });
 
-  // Action: Blank Screen (Toggle or set blank)
-  socket.on('action:blank', (payload) => {
-    if (payload && payload.force !== undefined) {
-      currentState.status = payload.force ? 'blank' : 'live';
-    } else {
-      currentState.status = currentState.status === 'blank' ? 'live' : 'blank';
-    }
-    currentState.updatedAt = Date.now();
-    broadcastState();
-  });
-
-  // Action: Clear Text (Toggle or set clear)
-  socket.on('action:clear', (payload) => {
-    if (payload && payload.force !== undefined) {
-      currentState.status = payload.force ? 'clear' : 'live';
-    } else {
-      currentState.status = currentState.status === 'clear' ? 'live' : 'clear';
-    }
-    currentState.updatedAt = Date.now();
-    broadcastState();
-  });
-
-  // Action: Show Slide (restore live view)
-  socket.on('action:show', () => {
-    currentState.status = 'live';
-    currentState.updatedAt = Date.now();
+  // Action: Clear Screen (Sets state to No Slide Presented)
+  socket.on('action:clear', () => {
+    currentState = {
+      type: 'none',
+      status: 'clear',
+      title: '',
+      reference: '',
+      lines: [],
+      rawSlide: '',
+      slideIndex: 0,
+      totalSlides: 0,
+      songId: null,
+      verseInfo: null,
+      updatedAt: Date.now()
+    };
     broadcastState();
   });
 

@@ -4,18 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Display Output — Verse View Server</title>
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/display/display.css">
   <script src="/socket.io/socket.io.js"></script>
 </head>
 <body class="display-body">
-  <div class="display-viewport" id="display-viewport">
+  <div class="display-viewport clear-mode" id="display-viewport">
     <div class="display-content" id="display-content">
-      <div id="lines-container">
-        <div class="display-line">Welcome to Church Presentation</div>
-      </div>
-      <div class="display-footer-ref" id="display-ref">
-        Ready for Presentation
-      </div>
+      <div id="lines-container"></div>
+      <div class="display-footer-ref" id="display-ref" style="display: none;"></div>
     </div>
   </div>
 

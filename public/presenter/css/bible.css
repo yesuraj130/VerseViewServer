@@ -1,0 +1,379 @@
+/* ==========================================================================
+   VerseVIEW 10 Bible System & Search Styles
+   ========================================================================== */
+
+/* Quick Scripture Jump Box & Recent Verses Strip */
+.vv-quick-ref-box {
+  padding: 8px 12px;
+  border-bottom: 1px solid #1e293b;
+  display: flex;
+  gap: 6px;
+  background: #0b1120;
+}
+
+.vv-quick-ref-input {
+  flex-grow: 1;
+  padding: 5px 10px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 5px;
+  color: #ffffff;
+  font-size: 12px;
+  outline: none;
+}
+
+.vv-quick-ref-input:focus {
+  border-color: #38bdf8;
+}
+
+.vv-recent-strip {
+  padding: 6px 12px;
+  border-bottom: 1px solid #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow-x: auto;
+  background: #0b1120;
+}
+
+.vv-recent-chip {
+  padding: 2px 7px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  font-size: 11px;
+  color: #94a3b8;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.12s;
+}
+
+.vv-recent-chip:hover {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+}
+
+.vv-version-select-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.select-version-compact {
+  padding: 3px 6px;
+  font-size: 11px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 5px;
+  color: #f1f5f9;
+  cursor: pointer;
+  outline: none;
+}
+
+/* 3-Column Selectable Lists Container (Book, Chapter, Verse) */
+.vv-bible-cols-container {
+  flex-grow: 1;
+  display: grid;
+  grid-template-columns: minmax(110px, 1.3fr) minmax(64px, 1fr) minmax(64px, 1fr);
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  border-top: 1px solid #1e293b;
+  background: #0f172a;
+}
+
+.vv-bcol {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  border-right: 1px solid #1e293b;
+}
+
+.vv-bcol:last-child {
+  border-right: none;
+}
+
+.vv-bcol-header {
+  padding: 6px 8px;
+  background: #131d31;
+  border-bottom: 1px solid #1e293b;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.vv-bcol-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.vv-bcol-title {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+}
+
+.vv-testament-tabs {
+  display: flex;
+  gap: 2px;
+  background: #0b1120;
+  padding: 2px;
+  border-radius: 4px;
+  border: 1px solid #1e293b;
+}
+
+.vv-tt-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.vv-tt-btn:hover {
+  color: #ffffff;
+}
+
+.vv-tt-btn.active {
+  background: #0284c7;
+  color: #ffffff;
+}
+
+.vv-bcol-search-wrap {
+  width: 100%;
+}
+
+.vv-bcol-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 3px 6px;
+  font-size: 11px;
+  background: #0b1120;
+  border: 1px solid #1e293b;
+  border-radius: 4px;
+  color: #ffffff;
+  outline: none;
+}
+
+.vv-bcol-search-input:focus {
+  border-color: #38bdf8;
+}
+
+.vv-bcol-list {
+  flex-grow: 1;
+  overflow-y: auto;
+  min-height: 0;
+  min-width: 0;
+  padding: 4px;
+}
+
+/* Books List item */
+.vv-book-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 6px;
+  font-size: 11px;
+  color: #cbd5e1;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-bottom: 2px;
+  transition: all 0.12s;
+  user-select: none;
+}
+
+.vv-book-item:hover {
+  background: #1e293b;
+  color: #ffffff;
+}
+
+.vv-book-item.active {
+  background: #0284c7;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.vv-book-item .book-num {
+  font-size: 9px;
+  color: #64748b;
+  margin-right: 5px;
+  min-width: 14px;
+}
+
+.vv-book-item.active .book-num {
+  color: #e0f2fe;
+}
+
+/* Responsive Number Grid for Chapters & Verses */
+.vv-nums-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(28px, 1fr));
+  gap: 4px;
+  padding: 4px;
+  align-content: start;
+}
+
+.vv-num-btn {
+  height: 30px;
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #cbd5e1;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.12s;
+  user-select: none;
+  box-sizing: border-box;
+  padding: 0;
+  line-height: 1;
+}
+
+.vv-num-btn:hover {
+  background: #334155;
+  color: #ffffff;
+  border-color: #475569;
+}
+
+.vv-num-btn.active {
+  background: #10b981;
+  border-color: #059669;
+  color: #ffffff;
+  font-weight: 800;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+}
+
+/* Vertical Bible Verse Slide Card in Deck */
+.slide-card-vertical {
+  width: 100%;
+  box-sizing: border-box;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+
+.slide-card-vertical:hover {
+  background: #243248;
+  border-color: #475569;
+  transform: translateY(-1px);
+}
+
+.slide-card-vertical.active {
+  background: #0d2847;
+  border-color: #38bdf8;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.25);
+}
+
+.slide-card-vertical.is-live {
+  background: #062d1d;
+  border-color: #10b981;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.35);
+}
+
+.sc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 5px;
+}
+
+.sc-index-badge {
+  font-size: 11px;
+  font-weight: 800;
+  color: #94a3b8;
+  background: #0f172a;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid #334155;
+}
+
+.slide-card-vertical.active .sc-index-badge {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #38bdf8;
+}
+
+.slide-card-vertical.is-live .sc-index-badge {
+  background: #10b981;
+  color: #ffffff;
+  border-color: #059669;
+}
+
+.sc-live-pill {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: #10b981;
+  color: #ffffff;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.sc-text-main {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #f8fafc;
+  font-weight: 500;
+}
+
+/* Bible Search Results Cards */
+.verse-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-bottom: 8px;
+}
+
+.verse-card:hover {
+  border-color: var(--accent-primary);
+  background-color: var(--bg-card-hover);
+}
+
+.verse-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.verse-ref {
+  font-size: 12px;
+  font-weight: 700;
+  color: #60a5fa;
+}
+
+.verse-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
