@@ -70,7 +70,7 @@ body
   background: var(--border-light);
 }
 
-/* Status Indicator Dot */
+/* Status Indicator Dot & Tooltip */
 .server-dot
 {
   width: 10px;
@@ -80,12 +80,55 @@ body
   box-shadow: 0 0 8px var(--accent-live);
   display: inline-block;
   flex-shrink: 0;
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .server-dot.disconnected
 {
   background-color: var(--accent-danger);
   box-shadow: 0 0 8px var(--accent-danger);
+}
+
+.server-status-tooltip
+{
+  position: fixed;
+  background-color: #0f172a;
+  border: 1px solid #334155;
+  color: #ffffff;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  z-index: 9999;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  white-space: nowrap;
+}
+
+.server-status-tooltip.visible
+{
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.server-status-tooltip.online
+{
+  border-color: #059669;
+  color: #34d399;
+}
+
+.server-status-tooltip.offline
+{
+  border-color: #dc2626;
+  color: #f87171;
 }
 
 /* Common Button Styles */

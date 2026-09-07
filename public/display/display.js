@@ -143,8 +143,36 @@ else
   setInterval(fetchCurrentState, 500);
 }
 
-// Initial fetch on mount
-fetchCurrentState();
+// Handle bfcache restoration (Back-Forward Cache)
+window.addEventListener('pageshow', (event) =>
+{
+  if (event.persisted)
+  {
+    // Page was restored from bfcache: immediately clear stale slide and fetch fresh state from server
+    if (viewport)
+    {
+      viewport.classList.add('clear-mode');
+    }
+    if (linesContainer)
+    {
+      linesContainer.innerHTML = '';
+    }
+    if (displayRef)
+    {
+      displayRef.style.display = 'none';
+    }
+    if (statusText)
+    {
+      statusText.textContent = 'Syncing...';
+    }
+
+    if (socket && !socket.connected)
+    {
+      socket.connect();
+    }
+    fetchCurrentState();
+  }
+});
 
 // Fullscreen controls
 function toggleFullscreen()

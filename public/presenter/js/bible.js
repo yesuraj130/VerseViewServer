@@ -22,13 +22,15 @@ async function initBible()
       });
     }
 
-    const firstAvailable = bibleVersions.find(v => v.available) || bibleVersions[0];
-    if (firstAvailable)
+    const targetVer = bibleVersions.find(v => v.id === selectedVersionId && v.available) ||
+                      bibleVersions.find(v => v.available) ||
+                      bibleVersions[0];
+    if (targetVer)
     {
-      selectedVersionId = firstAvailable.id;
-      if (selectVersion) selectVersion.value = firstAvailable.id;
-      if (bibleSearchVersionLabel) bibleSearchVersionLabel.textContent = firstAvailable.name;
-      await loadBibleBooks(selectedVersionId);
+      selectedVersionId = targetVer.id;
+      if (selectVersion) selectVersion.value = targetVer.id;
+      if (bibleSearchVersionLabel) bibleSearchVersionLabel.textContent = targetVer.name;
+      await loadBibleBooks(selectedVersionId, selectedBookNum, selectedChapterNum, selectedVerseNum);
     }
 
     // Initialize Testament filter tabs
@@ -98,9 +100,10 @@ async function loadBibleBooks(versionId, targetBookNum = null, targetChapter = n
     renderBibleBooksList();
 
     let initialBook = null;
-    if (targetBookNum)
+    const bookNumToFind = (targetBookNum !== null && targetBookNum !== undefined) ? targetBookNum : selectedBookNum;
+    if (bookNumToFind)
     {
-      initialBook = allBibleBooks.find(b => Number(b.bookNum) === Number(targetBookNum));
+      initialBook = allBibleBooks.find(b => Number(b.bookNum) === Number(bookNumToFind));
     }
     if (!initialBook)
     {
@@ -109,7 +112,9 @@ async function loadBibleBooks(versionId, targetBookNum = null, targetChapter = n
 
     if (initialBook)
     {
-      await selectBibleBook(initialBook.bookNum, initialBook.name, targetChapter || 3, targetVerse || 16);
+      const ch = (targetChapter !== null && targetChapter !== undefined) ? targetChapter : selectedChapterNum;
+      const v = (targetVerse !== null && targetVerse !== undefined) ? targetVerse : selectedVerseNum;
+      await selectBibleBook(initialBook.bookNum, initialBook.name, ch, v);
     }
   }
   catch (err)
@@ -174,12 +179,18 @@ function renderBibleBooksList()
 
     bibleBooksList.appendChild(item);
   });
+
+  if (typeof highlightActiveInDecks === 'function' && liveState)
+  {
+    highlightActiveInDecks(liveState);
+  }
 }
 
 async function selectBibleBook(bookNum, bookName, targetChapter = null, targetVerse = null)
 {
   selectedBookNum = Number(bookNum);
   selectedBookName = bookName;
+  if (typeof saveLastBrowsedBible === 'function') saveLastBrowsedBible();
 
   if (bibleBooksList)
   {
@@ -238,11 +249,17 @@ function renderBibleChaptersList(chapters)
 
     bibleChaptersList.appendChild(btn);
   });
+
+  if (typeof highlightActiveInDecks === 'function' && liveState)
+  {
+    highlightActiveInDecks(liveState);
+  }
 }
 
 async function selectBibleChapter(chNum, targetVerse = null)
 {
   selectedChapterNum = Number(chNum);
+  if (typeof saveLastBrowsedBible === 'function') saveLastBrowsedBible();
 
   if (bibleChaptersList)
   {
@@ -305,40 +322,34 @@ function renderBibleVersesList(verseNumbers)
 
     bibleVersesList.appendChild(btn);
   });
+
+  if (typeof highlightActiveInDecks === 'function' && liveState)
+  {
+    highlightActiveInDecks(liveState);
+  }
 }
 
 function renderChapterVersesDeck(verses, bookName, chNum)
 {
   currentPresentationType = 'bible';
-  currentSong = null;
 
   const verObj = bibleVersions.find(v => v.id === selectedVersionId);
   const verName = verObj ? verObj.name : 'Bible';
 
-  if (activeSongTitle) activeSongTitle.textContent = `${bookName} Chapter ${chNum}`;
-  if (deckTypeBadge)
+  if (activeBibleTitle) activeBibleTitle.textContent = `${bookName} Chapter ${chNum}`;
+  if (activeBibleVerBadge) activeBibleVerBadge.textContent = verName;
+  if (activeSlideCountIndicatorBible)
   {
-    deckTypeBadge.textContent = 'BIBLE';
-    deckTypeBadge.style.color = '#10b981';
-    deckTypeBadge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+    activeSlideCountIndicatorBible.textContent = `${verses ? verses.length : 0} verses`;
   }
-  if (activeSongCatBadge)
-  {
-    activeSongCatBadge.textContent = verName;
-    activeSongCatBadge.style.display = 'inline-block';
-  }
-  if (activeSlideCountIndicator)
-  {
-    activeSlideCountIndicator.textContent = `${verses.length} verses`;
-  }
-  if (btnDeckEditSong) btnDeckEditSong.style.display = 'none';
 
-  if (!slideDeckContainer) return;
-  slideDeckContainer.innerHTML = '';
+  const targetContainer = slideDeckBible || slideDeckContainer;
+  if (!targetContainer) return;
+  targetContainer.innerHTML = '';
 
   if (!verses || verses.length === 0)
   {
-    slideDeckContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 48px;">No verses available in this chapter.</div>';
+    targetContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 48px;">No verses available in this chapter.</div>';
     return;
   }
 
@@ -370,17 +381,17 @@ function renderChapterVersesDeck(verses, bookName, chNum)
 
     card.addEventListener('click', () =>
     {
-      selectBibleVerse(v.verseNum, false);
       presentBibleVerse(selectedVersionId, selectedBookName, v);
     });
 
-    slideDeckContainer.appendChild(card);
+    targetContainer.appendChild(card);
   });
 }
 
 function selectBibleVerse(verseNum, doPresent = true)
 {
   selectedVerseNum = Number(verseNum);
+  if (typeof saveLastBrowsedBible === 'function') saveLastBrowsedBible();
 
   if (bibleVersesList)
   {
@@ -391,12 +402,13 @@ function selectBibleVerse(verseNum, doPresent = true)
     });
   }
 
-  const targetCard = document.getElementById(`slide-verse-${selectedVerseNum}`);
-  if (targetCard && slideDeckContainer)
+  const targetContainer = slideDeckBible || slideDeckContainer;
+  const targetCard = targetContainer ? targetContainer.querySelector(`#slide-verse-${selectedVerseNum}`) : null;
+  if (targetCard && targetContainer)
   {
-    slideDeckContainer.querySelectorAll('.slide-card-vertical').forEach(c => c.classList.remove('active'));
+    targetContainer.querySelectorAll('.slide-card-vertical').forEach(c => c.classList.remove('active'));
     targetCard.classList.add('active');
-    targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    smoothScrollToElement(targetContainer, targetCard, 200);
   }
 
   if (doPresent)

@@ -25,6 +25,37 @@ let currentChapterVerses = [];
 let testamentFilter = 'all'; // 'all' | 'ot' | 'nt'
 let bookSearchFilter = '';
 
+// Restore Last Browsed Bible from LocalStorage (Option B)
+try
+{
+  const savedLastBible = localStorage.getItem('last_browsed_bible');
+  if (savedLastBible)
+  {
+    const parsed = JSON.parse(savedLastBible);
+    if (parsed.versionId) selectedVersionId = parsed.versionId;
+    if (parsed.bookNum) selectedBookNum = Number(parsed.bookNum);
+    if (parsed.bookName) selectedBookName = parsed.bookName;
+    if (parsed.chapterNum) selectedChapterNum = Number(parsed.chapterNum);
+    if (parsed.verseNum) selectedVerseNum = Number(parsed.verseNum);
+  }
+}
+catch (e) {}
+
+function saveLastBrowsedBible()
+{
+  try
+  {
+    localStorage.setItem('last_browsed_bible', JSON.stringify({
+      versionId: selectedVersionId,
+      bookNum: selectedBookNum,
+      bookName: selectedBookName,
+      chapterNum: selectedChapterNum,
+      verseNum: selectedVerseNum
+    }));
+  }
+  catch (e) {}
+}
+
 // Persistent Recent Verses
 let recentVerses = [];
 try
@@ -41,6 +72,7 @@ catch (e)
 // Cached DOM Elements
 // ---------------------------------------------------------------------------
 const serverStatusDot = document.getElementById('server-status-dot');
+const liveIndicatorPill = document.getElementById('live-indicator-pill');
 const liveStatusBadge = document.getElementById('live-status-badge');
 const liveTitleText = document.getElementById('live-title-text');
 const liveLineText = document.getElementById('live-line-text');
@@ -71,12 +103,24 @@ const bibleSearchResultsContainer = document.getElementById('bible-search-result
 const bibleSearchStatus = document.getElementById('bible-search-status');
 const bibleSearchVersionLabel = document.getElementById('bible-search-version-label');
 
-const slideDeckContainer = document.getElementById('slide-deck-container');
+const slideDeckSongs = document.getElementById('slide-deck-songs');
+const slideDeckBible = document.getElementById('slide-deck-bible');
+const slideDeckSearch = document.getElementById('slide-deck-search');
+const slideDeckContainer = slideDeckSongs || document.getElementById('slide-deck-container');
+
 const activeSongTitle = document.getElementById('active-song-title');
 const activeSongCatBadge = document.getElementById('active-song-cat-badge');
-const deckTypeBadge = document.getElementById('deck-type-badge');
+const deckTypeBadge = document.getElementById('deck-type-badge-songs') || document.getElementById('deck-type-badge');
 const activeSlideCountIndicator = document.getElementById('active-slide-count-indicator');
 const btnDeckEditSong = document.getElementById('btn-deck-edit-song');
+
+const activeBibleTitle = document.getElementById('active-bible-title');
+const activeBibleVerBadge = document.getElementById('active-bible-ver-badge');
+const activeSlideCountIndicatorBible = document.getElementById('active-slide-count-indicator-bible');
+
+const activeSearchTitle = document.getElementById('active-search-title');
+const activeSearchVerBadge = document.getElementById('active-search-ver-badge');
+const activeSlideCountIndicatorSearch = document.getElementById('active-slide-count-indicator-search');
 
 const songModal = document.getElementById('song-modal');
 const modalSongTitle = document.getElementById('modal-song-title');
@@ -116,4 +160,46 @@ function insertAtCursor(textarea, text)
   textarea.value = val.substring(0, start) + text + val.substring(end);
   textarea.selectionStart = textarea.selectionEnd = start + text.length;
   textarea.focus();
+}
+
+/**
+ * Smoothly scrolls a container to center an element with a fixed duration (default ~220ms),
+ * irrespective of how far away the target element is.
+ */
+function smoothScrollToElement(container, targetEl, duration = 220)
+{
+  if (!container || !targetEl) return;
+
+  const containerRect = container.getBoundingClientRect();
+  const targetRect = targetEl.getBoundingClientRect();
+
+  const startScrollTop = container.scrollTop;
+  // Calculate relative target offset to center the element
+  const targetOffsetTop = (targetRect.top - containerRect.top) + startScrollTop - (container.clientHeight / 2) + (targetEl.clientHeight / 2);
+  const distance = targetOffsetTop - startScrollTop;
+
+  if (Math.abs(distance) < 5) return;
+
+  const startTime = performance.now();
+
+  function easeInOutCubic(t)
+  {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
+  function step(currentTime)
+  {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const ease = easeInOutCubic(progress);
+
+    container.scrollTop = startScrollTop + (distance * ease);
+
+    if (progress < 1)
+    {
+      requestAnimationFrame(step);
+    }
+  }
+
+  requestAnimationFrame(step);
 }

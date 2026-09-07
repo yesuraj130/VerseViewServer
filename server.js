@@ -820,16 +820,28 @@ app.get('/api/clients', (req, res) =>
 // ---------------------------------------------------------------------------
 // 7. Static Files & Routing
 // ---------------------------------------------------------------------------
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, filePath) =>
+  {
+    if (filePath.endsWith('.html'))
+    {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+  }
+}));
 
 // Explicit redirects for clean paths
 app.get('/presenter', (req, res) =>
 {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.sendFile(path.join(__dirname, 'public', 'presenter', 'index.html'));
 });
 
 app.get('/display', (req, res) =>
 {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.sendFile(path.join(__dirname, 'public', 'display', 'index.html'));
 });
 

@@ -65,7 +65,18 @@ async function loadSongs(q = '', cat = 'All')
 
     if (!currentSong && songs.length > 0)
     {
-      selectSong(songs[0].id);
+      let songToSelect = songs[0];
+      try
+      {
+        const savedSongId = localStorage.getItem('last_browsed_song_id');
+        if (savedSongId)
+        {
+          const match = songs.find(s => Number(s.id) === Number(savedSongId));
+          if (match) songToSelect = match;
+        }
+      }
+      catch (e) {}
+      selectSong(songToSelect.id);
     }
   }
   catch (err)
@@ -88,7 +99,8 @@ function renderSongList(songs)
   {
     const item = document.createElement('div');
     item.className = 'song-item';
-    if (currentSong && currentSong.id === song.id)
+    item.setAttribute('data-id', song.id);
+    if (currentSong && Number(currentSong.id) === Number(song.id))
     {
       item.classList.add('selected');
     }
@@ -135,10 +147,21 @@ function renderSongList(songs)
 
     songListContainer.appendChild(item);
   });
+
+  if (typeof highlightActiveInDecks === 'function' && liveState)
+  {
+    highlightActiveInDecks(liveState);
+  }
 }
 
 async function selectSong(songId, autoPresent = false)
 {
+  try
+  {
+    localStorage.setItem('last_browsed_song_id', songId);
+  }
+  catch (e) {}
+
   try
   {
     const res = await fetch(`/api/songs/${songId}`);
@@ -181,11 +204,12 @@ async function selectSong(songId, autoPresent = false)
 
 function renderSlideDeck(song, slides)
 {
-  if (!slideDeckContainer) return;
-  slideDeckContainer.innerHTML = '';
+  const targetContainer = document.getElementById('slide-deck-songs') || slideDeckContainer;
+  if (!targetContainer) return;
+  targetContainer.innerHTML = '';
   if (!slides || slides.length === 0)
   {
-    slideDeckContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 48px;">This song has no slides.</div>';
+    targetContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 48px;">This song has no slides.</div>';
     return;
   }
 
@@ -215,7 +239,7 @@ function renderSlideDeck(song, slides)
       presentSlide(song, slide.slideIndex, slide);
     });
 
-    slideDeckContainer.appendChild(card);
+    targetContainer.appendChild(card);
   });
 }
 

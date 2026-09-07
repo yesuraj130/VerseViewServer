@@ -32,6 +32,7 @@
 
       <!-- Quick Action Controls -->
       <div class="header-controls" id="controls-bar">
+        <a href="/" class="ctrl-btn btn-nav" id="btn-home" title="Go to Server Home / Hub">🏠 Home</a>
         <button class="ctrl-btn btn-nav" id="btn-prev-slide" title="Previous Slide (Left Arrow / PageUp)">⏮️ Prev</button>
         <button class="ctrl-btn btn-nav" id="btn-next-slide" title="Next Slide (Right Arrow / PageDown)">Next ⏭️</button>
         <button class="ctrl-btn btn-clear" id="btn-clear" title="Clear Presentation (C key)">✕ Clear</button>
@@ -39,22 +40,21 @@
       </div>
     </header>
 
-    <!-- Main Workspace: Left Tab Browser + Center Presentation Slide Deck -->
+    <!-- Primary Workspace Tabs Bar -->
+    <nav class="tabs-bar" id="tabs-bar">
+      <div class="tabs-left">
+        <button class="tab-btn active" data-tab="songs" id="tab-btn-songs"><span>🎵</span> Songs</button>
+        <button class="tab-btn" data-tab="bible" id="tab-btn-bible"><span>📖</span> Bible</button>
+        <button class="tab-btn" data-tab="biblesearch" id="tab-btn-biblesearch"><span>🔍</span> Bible Search</button>
+      </div>
+    </nav>
+
+    <!-- Main Workspace with 3 Separate Tab Views -->
     <main class="presenter-workspace" id="presenter-workspace">
-      <!-- Left Browser Pane -->
-      <aside class="browser-pane" id="browser-pane">
-        
-        <!-- Primary Tabs Bar -->
-        <nav class="tabs-bar" id="tabs-bar">
-          <div class="tabs-left">
-            <button class="tab-btn active" data-tab="songs" id="tab-btn-songs"><span>🎵</span> Songs</button>
-            <button class="tab-btn" data-tab="bible" id="tab-btn-bible"><span>📖</span> Bible</button>
-            <button class="tab-btn" data-tab="biblesearch" id="tab-btn-biblesearch"><span>🔍</span> Bible Search</button>
-          </div>
-        </nav>
-        
-        <!-- Tab Panel 1: Songs -->
-        <div class="tab-panel active" id="panel-songs">
+      
+      <!-- ==================== TAB 1: SONGS ==================== -->
+      <div class="workspace-tab-view active" id="workspace-songs">
+        <aside class="browser-pane">
           <div class="panel-header">
             <h3><span>🎵</span> Song Library</h3>
             <button class="btn-primary" id="btn-open-add-song" style="padding: 5px 10px; font-size: 12px;">+ Add Song</button>
@@ -70,10 +70,35 @@
           <div class="song-list" id="song-list-container">
             <!-- Loaded dynamically -->
           </div>
-        </div>
+        </aside>
 
-        <!-- Tab Panel 2: Bible (Selectable Lists) -->
-        <div class="tab-panel" id="panel-bible">
+        <div class="resizer-handle" title="Drag to resize panel"></div>
+
+        <section class="deck-pane" id="deck-pane-songs">
+          <div class="deck-header">
+            <div class="deck-meta">
+              <div class="deck-badges">
+                <span class="badge-type" id="deck-type-badge-songs" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);">SONG</span>
+                <span class="badge-cat" id="active-song-cat-badge">Hymns</span>
+              </div>
+              <h2 class="deck-title" id="active-song-title">Select a Song</h2>
+            </div>
+
+            <div class="deck-actions">
+              <button class="btn-secondary btn-sm" id="btn-deck-edit-song" title="Edit current song lyrics" style="display: none; padding: 5px 10px; font-size: 12px;">✏️ Edit</button>
+              <span class="slide-counter" id="active-slide-count-indicator">0 slides</span>
+            </div>
+          </div>
+
+          <div class="slide-deck" id="slide-deck-songs">
+            <div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 48px;">Select a song from the library on the left.</div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ==================== TAB 2: BIBLE ==================== -->
+      <div class="workspace-tab-view" id="workspace-bible">
+        <aside class="browser-pane">
           <div class="panel-header">
             <h3><span>📖</span> Scripture Lookup</h3>
             <div class="version-select-wrap">
@@ -81,21 +106,16 @@
             </div>
           </div>
 
-          <!-- Quick Scripture Reference Box (e.g. John 3:16) -->
           <div class="quick-ref-box">
             <input type="text" id="bible-ref-quick-input" class="quick-ref-input" placeholder="Quick Jump (e.g. John 3:16 or Gen 1:1)">
             <button class="btn-primary" id="btn-quick-ref-go" style="padding: 5px 12px; font-size: 12px;">Go</button>
           </div>
 
-          <!-- Recently Selected Verses Strip -->
           <div class="recent-strip" id="bible-recent-strip">
             <span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Recent:</span>
-            <!-- Populated dynamically -->
           </div>
 
-          <!-- 3-Column Selectable Lists (Book, Chapter, Verse) -->
           <div class="bible-cols-container" id="bible-cols-container">
-            <!-- Column 1: Book Selectable List -->
             <div class="bible-col bible-col-books">
               <div class="bible-col-header">
                 <div class="bible-col-title-row">
@@ -110,35 +130,51 @@
                   <input type="text" id="bible-book-filter" class="bible-col-search-input" placeholder="Filter book...">
                 </div>
               </div>
-              <div class="bible-col-list books-scroll" id="bible-books-list">
-                <!-- Populated dynamically -->
-              </div>
+              <div class="bible-col-list books-scroll" id="bible-books-list"></div>
             </div>
 
-            <!-- Column 2: Chapter Selectable List -->
             <div class="bible-col bible-col-chapters">
               <div class="bible-col-header">
                 <div class="bible-col-title-row"><span class="bible-col-title">Chapter</span></div>
               </div>
-              <div class="bible-col-list nums-grid" id="bible-chapters-list">
-                <!-- Populated dynamically -->
-              </div>
+              <div class="bible-col-list nums-grid" id="bible-chapters-list"></div>
             </div>
 
-            <!-- Column 3: Verse Selectable List -->
             <div class="bible-col bible-col-verses">
               <div class="bible-col-header">
                 <div class="bible-col-title-row"><span class="bible-col-title">Verse</span></div>
               </div>
-              <div class="bible-col-list nums-grid" id="bible-verses-list">
-                <!-- Populated dynamically -->
-              </div>
+              <div class="bible-col-list nums-grid" id="bible-verses-list"></div>
             </div>
           </div>
-        </div>
+        </aside>
 
-        <!-- Tab Panel 3: Bible Search -->
-        <div class="tab-panel" id="panel-biblesearch">
+        <div class="resizer-handle" title="Drag to resize panel"></div>
+
+        <section class="deck-pane" id="deck-pane-bible">
+          <div class="deck-header">
+            <div class="deck-meta">
+              <div class="deck-badges">
+                <span class="badge-type" style="color: #10b981; border-color: rgba(16, 185, 129, 0.4);">BIBLE</span>
+                <span class="badge-cat" id="active-bible-ver-badge">Bible</span>
+              </div>
+              <h2 class="deck-title" id="active-bible-title">John Chapter 3</h2>
+            </div>
+
+            <div class="deck-actions">
+              <span class="slide-counter" id="active-slide-count-indicator-bible">0 verses</span>
+            </div>
+          </div>
+
+          <div class="slide-deck" id="slide-deck-bible">
+            <div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 48px;">Select a Bible book and chapter on the left.</div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ==================== TAB 3: BIBLE SEARCH ==================== -->
+      <div class="workspace-tab-view" id="workspace-biblesearch">
+        <aside class="browser-pane">
           <div class="panel-header">
             <h3><span>🔍</span> Bible Word Search</h3>
           </div>
@@ -148,41 +184,40 @@
               <input type="text" id="bible-full-search-input" class="input-search" placeholder="Search Scripture (e.g. grace, அன்பு)...">
               <button class="btn-primary" id="btn-run-bible-search" style="padding: 6px 12px; font-size: 12px;">Search</button>
             </div>
-            <div style="font-size: 11px; color: #94a3b8; display: flex; justify-content: space-between; align-items: center;"><span id="bible-search-status">Ready to search</span>
-              <span id="bible-search-version-label">Tamil (BSI)</span></div>
+            <div style="font-size: 11px; color: #94a3b8; display: flex; justify-content: space-between; align-items: center;">
+              <span id="bible-search-status">Ready to search</span>
+              <span id="bible-search-version-label">Tamil (BSI)</span>
+            </div>
           </div>
 
           <div class="verse-preview-area" id="bible-search-results-container" style="flex-grow: 1; overflow-y: auto; padding: 8px;">
             <div style="text-align: center; color: var(--text-muted); font-size: 13px; padding-top: 24px;">Enter any word or phrase to find matching verses across Scripture.</div>
           </div>
-        </div>
+        </aside>
 
-      </aside>
+        <div class="resizer-handle" title="Drag to resize panel"></div>
 
-      <!-- Resizable Splitter Handle -->
-      <div class="resizer-handle" id="resizer-handle" title="Drag to resize panel"></div>
+        <section class="deck-pane" id="deck-pane-search">
+          <div class="deck-header">
+            <div class="deck-meta">
+              <div class="deck-badges">
+                <span class="badge-type" style="color: #a855f7; border-color: rgba(168, 85, 247, 0.4);">SEARCH</span>
+                <span class="badge-cat" id="active-search-ver-badge">Bible Search</span>
+              </div>
+              <h2 class="deck-title" id="active-search-title">Search Verse Deck</h2>
+            </div>
 
-      <!-- Center Stage: Slide Deck -->
-      <section class="deck-pane" id="deck-pane">
-        <!-- Deck Header -->
-        <div class="deck-header">
-          <div class="deck-meta">
-            <div class="deck-badges"><span class="badge-type" id="deck-type-badge">SONG</span>
-              <span class="badge-cat" id="active-song-cat-badge">Hymns</span></div>
-            <h2 class="deck-title" id="active-song-title">Select a Song or Scripture</h2>
+            <div class="deck-actions">
+              <span class="slide-counter" id="active-slide-count-indicator-search">0 results</span>
+            </div>
           </div>
 
-          <div class="deck-actions">
-            <button class="btn-secondary btn-sm" id="btn-deck-edit-song" title="Edit current song lyrics" style="display: none; padding: 5px 10px; font-size: 12px;">✏️ Edit</button>
-            <span class="slide-counter" id="active-slide-count-indicator">0 slides</span>
+          <div class="slide-deck" id="slide-deck-search">
+            <div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 48px;">Click any search result on the left to display or present.</div>
           </div>
-        </div>
+        </section>
+      </div>
 
-        <!-- Clickable Slide Deck Cards -->
-        <div class="slide-deck" id="slide-deck-container">
-          <div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 48px;">Select a song from the library on the left, or pick a Bible verse to present.</div>
-        </div>
-      </section>
     </main>
   </div>
 

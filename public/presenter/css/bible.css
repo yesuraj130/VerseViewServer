@@ -231,6 +231,20 @@
   font-weight: 700;
 }
 
+.book-item.is-live-active
+{
+  outline: 2px solid #10b981;
+  outline-offset: -1px;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+}
+
+.book-item.active.is-live-active
+{
+  background: #0284c7;
+  outline: 2px solid #10b981;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
 .book-item .book-num
 {
   font-size: 9px;
@@ -283,13 +297,31 @@
   border-color: #475569;
 }
 
+/* Blue selected state for Chapter and Verse buttons to match right section */
 .num-btn.active
 {
-  background: #10b981;
-  border-color: #059669;
+  background: #0284c7;
+  border-color: #38bdf8;
   color: #ffffff;
-  font-weight: 800;
+  font-weight: 700;
+  box-shadow: 0 0 8px rgba(2, 132, 199, 0.4);
+}
+
+/* Green outline highlight preview on current on-air / live active slide */
+.num-btn.is-live-active
+{
+  outline: 2px solid #10b981;
+  outline-offset: -1px;
   box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+}
+
+.num-btn.active.is-live-active
+{
+  background: #0284c7;
+  border-color: #38bdf8;
+  outline: 2px solid #10b981;
+  outline-offset: -1px;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
 }
 
 /* Vertical Bible Verse Slide Card in Deck */

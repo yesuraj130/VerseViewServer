@@ -68,13 +68,31 @@ async function performBibleSearch()
           presBtn.addEventListener('click', async (e) =>
           {
             e.stopPropagation();
-            await selectBibleBook(r.bookNum, r.bookName, r.chNum, r.verseNum);
+            displaySearchVerseDeck(r);
+            if (typeof presentBibleVerse === 'function')
+            {
+              presentBibleVerse(selectedVersionId, r.bookName, {
+                bookNum: r.bookNum,
+                chNum: r.chNum,
+                verseNum: r.verseNum,
+                word: r.word
+              });
+            }
           });
         }
 
         card.addEventListener('click', async () =>
         {
-          await selectBibleBook(r.bookNum, r.bookName, r.chNum, r.verseNum);
+          displaySearchVerseDeck(r);
+          if (typeof presentBibleVerse === 'function')
+          {
+            presentBibleVerse(selectedVersionId, r.bookName, {
+              bookNum: r.bookNum,
+              chNum: r.chNum,
+              verseNum: r.verseNum,
+              word: r.word
+            });
+          }
         });
 
         bibleSearchResultsContainer.appendChild(card);
@@ -89,5 +107,43 @@ async function performBibleSearch()
     {
       bibleSearchResultsContainer.innerHTML = '<div style="color: #ef4444; text-align: center; padding: 24px;">Failed to perform search.</div>';
     }
+  }
+}
+
+function displaySearchVerseDeck(r)
+{
+  if (activeSearchTitle) activeSearchTitle.textContent = r.reference;
+  if (activeSlideCountIndicatorSearch) activeSlideCountIndicatorSearch.textContent = '1 verse';
+
+  if (slideDeckSearch)
+  {
+    slideDeckSearch.innerHTML = '';
+    const card = document.createElement('div');
+    card.className = 'slide-card-vertical active';
+    card.innerHTML = `
+      <div class="sc-header">
+        <span class="sc-index-badge">${escapeHtml(r.reference)}</span>
+        <span class="sc-live-pill" style="display: inline-block;">LIVE</span>
+      </div>
+      <div class="sc-text-main" style="font-size: 16px; line-height: 1.6;">${escapeHtml(r.word)}</div>
+      <div style="margin-top: 12px; display: flex; gap: 8px;">
+        <button class="btn-secondary btn-sm btn-open-ch" style="padding: 4px 10px; font-size: 11px;">📖 Open Full Chapter in Bible Tab</button>
+      </div>
+    `;
+
+    const btnOpenCh = card.querySelector('.btn-open-ch');
+    if (btnOpenCh)
+    {
+      btnOpenCh.addEventListener('click', async () =>
+      {
+        if (typeof switchTab === 'function') switchTab('bible');
+        if (typeof selectBibleBook === 'function')
+        {
+          await selectBibleBook(r.bookNum, r.bookName, r.chNum, r.verseNum);
+        }
+      });
+    }
+
+    slideDeckSearch.appendChild(card);
   }
 }
