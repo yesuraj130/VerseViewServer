@@ -3,143 +3,220 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Presenter Console — Verse View Server</title>
+  <title>VerseVIEW 10 — Presenter Console</title>
   <link rel="stylesheet" href="/style.css">
   <script src="/socket.io/socket.io.js"></script>
 </head>
-<body>
+<body class="vv-body">
   <div class="presenter-app">
-    <!-- Top Bar with Real-Time Control & Live On Screen Indicator -->
-    <header class="presenter-header" id="presenter-header">
-      <div class="header-left">
-        <div class="app-title-badge">
-          <div class="server-dot" id="server-status-dot" title="Socket.io Connected"></div>
-          <span>Presenter Console</span>
+    <!-- 1. VerseVIEW 10 Top Header -->
+    <header class="vv-header" id="presenter-header">
+      <div class="vv-header-left">
+        <div class="vv-logo" title="VerseVIEW 10 Presentation Engine">
+          <span class="vv-logo-main">VerseVIEW</span>
+          <span class="vv-logo-dot"></span>
+          <span class="vv-logo-ver">10</span>
         </div>
-        <div class="live-monitor-pill" id="live-indicator-pill" title="Current live projection state">
+        <div class="server-dot" id="server-status-dot" title="Server Status: Connected"></div>
+
+        <!-- Live On-Air Monitor Pill -->
+        <div class="vv-live-pill" id="live-indicator-pill" title="Current Projection State">
           <span class="live-badge badge-live" id="live-status-badge">LIVE</span>
-          <div class="live-text-preview">
-            <span class="live-title-preview" id="live-title-text">Amazing Grace</span>
-            <span class="live-line-preview" id="live-line-text">Amazing grace! How sweet the sound...</span>
+          <div class="vv-live-pill-meta">
+            <span class="vv-live-title" id="live-title-text">Select Song or Scripture</span>
+            <span class="vv-live-sub" id="live-line-text">Ready for Presentation</span>
           </div>
         </div>
       </div>
 
-      <!-- Real-Time Control Buttons -->
-      <div class="controls-bar" id="controls-bar">
-        <button class="ctrl-btn btn-nav" id="btn-prev-slide" title="Previous Slide (Left Arrow)">
+      <!-- Quick Action Controls -->
+      <div class="vv-header-controls" id="controls-bar">
+        <button class="ctrl-btn btn-nav" id="btn-prev-slide" title="Previous Slide (Left Arrow / PageUp)">
           ⏮️ Prev
         </button>
-        <button class="ctrl-btn btn-nav" id="btn-next-slide" title="Next Slide (Right Arrow)">
+        <button class="ctrl-btn btn-nav" id="btn-next-slide" title="Next Slide (Right Arrow / PageDown)">
           Next ⏭️
         </button>
-        <button class="ctrl-btn btn-blank" id="btn-blank-screen" title="Blank Output Screen (B key)">
-          ⚫ Blank Screen
+        <button class="ctrl-btn btn-blank" id="btn-blank-screen" title="Blank Screen (B key)">
+          ⚫ Blank
         </button>
-        <button class="ctrl-btn btn-clear" id="btn-clear-text" title="Clear Text / Keep Background (C key)">
-          ⚪ Clear Text
+        <button class="ctrl-btn btn-clear" id="btn-clear-text" title="Clear Text (C key)">
+          ⚪ Clear
         </button>
-        <button class="ctrl-btn btn-show" id="btn-show-slide" title="Restore / Show Active Slide (S key)">
-          ▶️ Show Slide
+        <button class="ctrl-btn btn-show" id="btn-show-slide" title="Show / Restore (S key)">
+          ▶️ Show
         </button>
-        <a href="/display/" target="_blank" class="ctrl-btn btn-nav" title="Open Projector Output Display in New Tab">
-          📺 Open Projector
+        <a href="/display/" target="_blank" class="ctrl-btn btn-nav" title="Open Main Output Screen in New Tab">
+          📺 Output ↗
         </a>
       </div>
     </header>
 
-    <!-- Main 3-Column Work Area -->
-    <main class="presenter-body" id="presenter-body">
-      <!-- 1. Song Library Column -->
-      <section class="library-column" id="library-column">
-        <div class="column-header">
-          <h2>🎵 Song Library</h2>
-          <button class="btn-primary" id="btn-open-add-song" style="padding: 6px 12px; font-size: 12px;">
-            + Add Song
-          </button>
-        </div>
+    <!-- 2. Primary Tabs Bar (VerseVIEW 10) -->
+    <nav class="vv-tabs-bar" id="vv-tabs-bar">
+      <div class="vv-tabs-left">
+        <button class="vv-tab-btn active" data-tab="songs" id="tab-btn-songs">
+          <span>🎵</span> Songs
+        </button>
+        <button class="vv-tab-btn" data-tab="bible" id="tab-btn-bible">
+          <span>📖</span> Bible
+        </button>
+        <button class="vv-tab-btn" data-tab="biblesearch" id="tab-btn-biblesearch">
+          <span>🔍</span> Bible Search
+        </button>
+      </div>
+    </nav>
 
-        <div class="search-box">
-          <input type="text" id="song-search-input" class="input-search" placeholder="Search song title or lyrics...">
-          <div class="cat-filter-chips" id="category-chips">
-            <span class="chip active" data-cat="All">All</span>
+    <!-- 3. Main Workspace: Left Tab Browser + Center Presentation Slide Deck -->
+    <main class="vv-workspace" id="vv-workspace">
+      <!-- ================= Left Browser Pane ================= -->
+      <aside class="vv-browser-pane" id="vv-browser-pane">
+        
+        <!-- Tab Panel 1: Songs -->
+        <div class="vv-tab-panel active" id="panel-songs">
+          <div class="vv-panel-header">
+            <h3><span>🎵</span> Song Library</h3>
+            <button class="btn-primary" id="btn-open-add-song" style="padding: 5px 10px; font-size: 12px;">
+              + Add Song
+            </button>
+          </div>
+
+          <div class="search-box">
+            <input type="text" id="song-search-input" class="input-search" placeholder="Search title, lyrics, or number...">
+            <div class="cat-filter-chips" id="category-chips">
+              <span class="chip active" data-cat="All">All</span>
+            </div>
+          </div>
+
+          <div class="song-list" id="song-list-container">
+            <!-- Loaded dynamically -->
           </div>
         </div>
 
-        <div class="song-list" id="song-list-container">
-          <!-- Loaded dynamically via presenter.js -->
-        </div>
-      </section>
-
-      <!-- 2. Active Song & Clickable Slide Deck Column -->
-      <section class="stage-column" id="stage-column">
-        <div class="stage-header">
-          <div class="stage-song-title">
-            <span id="active-song-title">Select a Song or Scripture</span>
-            <span class="slide-card-badge" id="active-song-cat-badge" style="display:none;">Hymns</span>
+        <!-- Tab Panel 2: Bible (VerseVIEW 10 Selectable Lists) -->
+        <div class="vv-tab-panel" id="panel-bible">
+          <div class="vv-panel-header">
+            <h3><span>📖</span> Scripture Lookup</h3>
+            <div class="vv-version-select-wrap">
+              <select id="select-version" class="select-custom select-version-compact" title="Choose Bible Version"></select>
+            </div>
           </div>
-          <div style="font-size: 13px; color: var(--text-secondary);" id="active-slide-count-indicator">
-            0 slides
+
+          <!-- Quick Scripture Reference Box (e.g. John 3:16) -->
+          <div class="vv-quick-ref-box">
+            <input type="text" id="bible-ref-quick-input" class="vv-quick-ref-input" placeholder="Quick Jump (e.g. John 3:16 or Gen 1:1)">
+            <button class="btn-primary" id="btn-quick-ref-go" style="padding: 5px 12px; font-size: 12px;">Go</button>
+          </div>
+
+          <!-- Recently Selected Verses Strip -->
+          <div class="vv-recent-strip" id="bible-recent-strip">
+            <span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Recent:</span>
+            <!-- Populated dynamically -->
+          </div>
+
+          <!-- 3-Column Selectable Lists (Book, Chapter, Verse) same as VerseVIEW -->
+          <div class="vv-bible-cols-container" id="bible-cols-container">
+            <!-- Column 1: Book Selectable List -->
+            <div class="vv-bcol vv-bcol-books">
+              <div class="vv-bcol-header">
+                <div class="vv-bcol-title-row">
+                  <span class="vv-bcol-title">Book</span>
+                  <div class="vv-testament-tabs" id="testament-tabs">
+                    <button type="button" class="vv-tt-btn active" data-testament="all">All</button>
+                    <button type="button" class="vv-tt-btn" data-testament="ot" title="Old Testament (1-39)">OT</button>
+                    <button type="button" class="vv-tt-btn" data-testament="nt" title="New Testament (40-66)">NT</button>
+                  </div>
+                </div>
+                <div class="vv-bcol-search-wrap">
+                  <input type="text" id="bible-book-filter" class="vv-bcol-search-input" placeholder="Filter book...">
+                </div>
+              </div>
+              <div class="vv-bcol-list vv-books-scroll" id="bible-books-list">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+
+            <!-- Column 2: Chapter Selectable List -->
+            <div class="vv-bcol vv-bcol-chapters">
+              <div class="vv-bcol-header">
+                <div class="vv-bcol-title-row">
+                  <span class="vv-bcol-title">Chapter</span>
+                  <span class="vv-bcol-badge" id="bible-chapters-count"></span>
+                </div>
+              </div>
+              <div class="vv-bcol-list vv-nums-grid" id="bible-chapters-list">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+
+            <!-- Column 3: Verse Selectable List -->
+            <div class="vv-bcol vv-bcol-verses">
+              <div class="vv-bcol-header">
+                <div class="vv-bcol-title-row">
+                  <span class="vv-bcol-title">Verse</span>
+                  <span class="vv-bcol-badge" id="bible-verses-count"></span>
+                </div>
+              </div>
+              <div class="vv-bcol-list vv-nums-grid" id="bible-verses-list">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Slide deck: splits lyrics on '<slide>' and displays clickable cards -->
-        <div class="slide-deck" id="slide-deck-container">
+        <!-- Tab Panel 3: Bible Search -->
+        <div class="vv-tab-panel" id="panel-biblesearch">
+          <div class="vv-panel-header">
+            <h3><span>🔍</span> Bible Word Search</h3>
+          </div>
+
+          <div class="search-box">
+            <div style="display: flex; gap: 6px;">
+              <input type="text" id="bible-full-search-input" class="input-search" placeholder="Search Scripture (e.g. grace, அன்பு)...">
+              <button class="btn-primary" id="btn-run-bible-search" style="padding: 6px 12px; font-size: 12px;">Search</button>
+            </div>
+            <div style="font-size: 11px; color: #94a3b8; display: flex; justify-content: space-between; align-items: center;">
+              <span id="bible-search-status">Ready to search</span>
+              <span id="bible-search-version-label">Tamil (BSI)</span>
+            </div>
+          </div>
+
+          <div class="verse-preview-area" id="bible-search-results-container" style="flex-grow: 1; overflow-y: auto; padding: 8px;">
+            <div style="text-align: center; color: var(--text-muted); font-size: 13px; padding-top: 24px;">
+              Enter any word or phrase to find matching verses across Scripture.
+            </div>
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- Resizable Splitter Handle -->
+      <div class="vv-resizer" id="vv-resizer" title="Drag to resize panel"></div>
+
+      <!-- ================= Center Stage: Slide Deck ================= -->
+      <section class="vv-deck-pane" id="vv-deck-pane">
+        <!-- Deck Header -->
+        <div class="vv-deck-header">
+          <div class="vv-deck-meta">
+            <div class="vv-deck-badges">
+              <span class="vv-badge-type" id="deck-type-badge">SONG</span>
+              <span class="vv-badge-cat" id="active-song-cat-badge">Hymns</span>
+            </div>
+            <h2 class="vv-deck-title" id="active-song-title">Select a Song or Scripture</h2>
+          </div>
+
+          <div class="vv-deck-actions">
+            <button class="btn-secondary btn-sm" id="btn-deck-edit-song" title="Edit current song lyrics" style="display: none; padding: 5px 10px; font-size: 12px;">
+              ✏️ Edit
+            </button>
+            <span class="vv-slide-counter" id="active-slide-count-indicator">0 slides</span>
+          </div>
+        </div>
+
+        <!-- Clickable Slide Deck Cards -->
+        <div class="vv-slide-deck" id="slide-deck-container">
           <div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 48px;">
-            Select a song from the library on the left, or pick a Bible verse on the right to present.
-          </div>
-        </div>
-      </section>
-
-      <!-- 3. Scripture Bible Lookup Column (Cascading Dropdowns) -->
-      <section class="bible-column" id="bible-column">
-        <div class="column-header">
-          <h2>📖 Bible Lookup</h2>
-          <span style="font-size: 11px; color: var(--text-muted);">words table</span>
-        </div>
-
-        <div class="bible-form-container">
-          <!-- Quick Verse Search -->
-          <div class="form-group">
-            <input type="text" id="bible-quick-search" class="input-search" placeholder="Quick search verse text...">
-          </div>
-
-          <!-- Cascading Dropdown 1: Translation Version -->
-          <div class="form-group">
-            <label class="form-label" for="select-version">Version</label>
-            <select id="select-version" class="select-custom"></select>
-          </div>
-
-          <!-- Cascading Dropdown 2: Book -->
-          <div class="form-group">
-            <label class="form-label" for="select-book">Book</label>
-            <select id="select-book" class="select-custom">
-              <option value="">Loading books...</option>
-            </select>
-          </div>
-
-          <!-- Cascading Dropdowns 3 & 4: Chapter and Verse -->
-          <div class="select-grid">
-            <div class="form-group">
-              <label class="form-label" for="select-chapter">Chapter</label>
-              <select id="select-chapter" class="select-custom">
-                <option value="">Select Ch</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="select-verse">Verse</label>
-              <select id="select-verse" class="select-custom">
-                <option value="">Select V</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- Verse Preview & Selection Area -->
-        <div class="verse-preview-area" id="verse-preview-container">
-          <!-- Verse cards rendered dynamically -->
-          <div style="text-align: center; color: var(--text-muted); font-size: 13px; padding-top: 20px;">
-            Choose a book and chapter to view and present verses.
+            Select a song from the library on the left, or pick a Bible verse to present.
           </div>
         </div>
       </section>
