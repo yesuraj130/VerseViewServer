@@ -64,7 +64,10 @@ if (socket) {
       serverStatusDot.classList.remove('disconnected');
       serverStatusDot.title = 'Connected to Presentation Server';
     }
-    socket.emit('role:register', { role: 'presenter' });
+    socket.emit('role:register', {
+      role: 'presenter',
+      screen: `${window.innerWidth}x${window.innerHeight}`
+    });
   });
 
   socket.on('disconnect', () => {

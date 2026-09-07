@@ -93,7 +93,10 @@ if (socket) {
   socket.on('connect', () => {
     socketDot.classList.remove('disconnected');
     statusText.textContent = 'Live Connected';
-    socket.emit('role:register', { role: 'display' });
+    socket.emit('role:register', {
+      role: 'display',
+      screen: `${window.screen.width || window.innerWidth}x${window.screen.height || window.innerHeight}`
+    });
     socket.emit('get:state');
   });
 

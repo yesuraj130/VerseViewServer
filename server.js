@@ -171,21 +171,69 @@ try {
 
 const connectedClients = new Map();
 
+function parseUserAgent(ua) {
+  if (!ua) return 'Web Browser';
+  let browser = 'Browser';
+  let os = 'Device';
+
+  if (/edg/i.test(ua)) browser = 'Edge';
+  else if (/opr|opera/i.test(ua)) browser = 'Opera';
+  else if (/chrome|crios/i.test(ua)) browser = 'Chrome';
+  else if (/firefox|fxios/i.test(ua)) browser = 'Firefox';
+  else if (/safari/i.test(ua)) browser = 'Safari';
+
+  if (/windows/i.test(ua)) os = 'Windows';
+  else if (/macintosh|mac os x/i.test(ua)) os = 'macOS';
+  else if (/ipad/i.test(ua)) os = 'iPad';
+  else if (/iphone/i.test(ua)) os = 'iPhone';
+  else if (/android/i.test(ua)) os = 'Android';
+  else if (/linux/i.test(ua)) os = 'Linux';
+
+  return `${browser} on ${os}`;
+}
+
+function getCleanIp(socket) {
+  let ip = socket.handshake.headers['x-forwarded-for'] || socket.conn.remoteAddress || '127.0.0.1';
+  if (typeof ip === 'string') {
+    ip = ip.split(',')[0].trim();
+    if (ip.startsWith('::ffff:')) ip = ip.slice(7);
+    if (ip === '::1') ip = '127.0.0.1';
+  }
+  return ip;
+}
+
+function getClientSummaries() {
+  const presenters = [];
+  const displays = [];
+  for (const client of connectedClients.values()) {
+    if (client && typeof client === 'object') {
+      const summary = {
+        id: client.id,
+        role: client.role,
+        connectedAt: client.connectedAt,
+        ip: client.ip,
+        device: client.device,
+        screen: client.screen || null
+      };
+      if (client.role === 'presenter') presenters.push(summary);
+      else if (client.role === 'display') displays.push(summary);
+    }
+  }
+  return { presenters, displays, total: connectedClients.size };
+}
+
 function broadcastState() {
   io.emit('display:update', currentState);
 }
 
 function broadcastStats() {
-  let presenterCount = 0;
-  let displayCount = 0;
-  for (const role of connectedClients.values()) {
-    if (role === 'presenter') presenterCount++;
-    else if (role === 'display') displayCount++;
-  }
+  const { presenters, displays, total } = getClientSummaries();
   io.emit('stats:update', {
-    presenters: presenterCount,
-    displays: displayCount,
-    total: connectedClients.size
+    presenters: presenters.length,
+    displays: displays.length,
+    presentersList: presenters,
+    displaysList: displays,
+    total
   });
 }
 
@@ -193,7 +241,15 @@ function broadcastStats() {
 // 4. Socket.io Real-Time Synchronization ("Last-Click-Wins")
 // ---------------------------------------------------------------------------
 io.on('connection', (socket) => {
-  connectedClients.set(socket.id, 'viewer');
+  const cleanIp = getCleanIp(socket);
+  const ua = socket.handshake.headers['user-agent'] || '';
+  connectedClients.set(socket.id, {
+    id: socket.id,
+    role: 'viewer',
+    ip: cleanIp,
+    connectedAt: Date.now(),
+    device: parseUserAgent(ua)
+  });
   broadcastStats();
 
   // Immediately push current authoritative state upon connection
@@ -201,7 +257,16 @@ io.on('connection', (socket) => {
 
   socket.on('role:register', (data) => {
     if (data && (data.role === 'presenter' || data.role === 'display')) {
-      connectedClients.set(socket.id, data.role);
+      const existing = connectedClients.get(socket.id) || {};
+      connectedClients.set(socket.id, {
+        ...existing,
+        id: socket.id,
+        role: data.role,
+        screen: data.screen || existing.screen || '',
+        connectedAt: existing.connectedAt || Date.now(),
+        ip: existing.ip || cleanIp,
+        device: parseUserAgent(data.userAgent || socket.handshake.headers['user-agent'] || '')
+      });
       broadcastStats();
     }
   });
@@ -625,13 +690,7 @@ app.get('/api/stats', (req, res) => {
       tamilCount = tamilDb.prepare('SELECT COUNT(*) as count FROM words').get().count;
     }
 
-    let presenterCount = 0;
-    let displayCount = 0;
-    for (const role of connectedClients.values()) {
-      if (role === 'presenter') presenterCount++;
-      else if (role === 'display') displayCount++;
-    }
-
+    const { presenters, displays, total } = getClientSummaries();
     const versions = getVersionMetadata();
 
     res.json({
@@ -640,9 +699,11 @@ app.get('/api/stats', (req, res) => {
       databaseFile: songsDbFileName,
       availableBibles: versions.filter(v => v.available).map(v => v.name),
       clients: {
-        presenters: presenterCount,
-        displays: displayCount,
-        total: connectedClients.size
+        presenters: presenters.length,
+        displays: displays.length,
+        presentersList: presenters,
+        displaysList: displays,
+        total: total
       },
       currentLive: {
         title: currentState.title,
@@ -650,6 +711,16 @@ app.get('/api/stats', (req, res) => {
         type: currentState.type
       }
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Detailed Connected Clients List
+app.get('/api/clients', (req, res) => {
+  try {
+    const summaries = getClientSummaries();
+    res.json(summaries);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -86,27 +86,23 @@
       </div>
     </div>
 
-    <!-- Database & System Statistics -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 32px;">
-      <div style="background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px;">
-        <div style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Songs (sm.db)</div>
-        <div style="font-size: 28px; font-weight: 800; color: #60a5fa; margin-top: 4px;" id="stat-songs">--</div>
-        <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Delimited by &lt;slide&gt; &amp; &lt;BR&gt;</div>
+    <!-- Connected Presenters & Displays Status -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 32px;">
+      <div id="card-stat-presenters" style="background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px; cursor: pointer; transition: all 0.2s ease;" title="Click to view connected presenters list" onmouseover="this.style.borderColor='var(--accent-primary)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.transform='none';">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Connected Presenters</div>
+          <span style="font-size: 11px; color: #60a5fa; background: rgba(59, 130, 246, 0.15); padding: 2px 8px; border-radius: 12px; font-weight: 600;">View list &rarr;</span>
+        </div>
+        <div style="font-size: 28px; font-weight: 800; color: #60a5fa; margin-top: 4px;" id="stat-presenters">--</div>
+        <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Active console controllers • Click to view</div>
       </div>
-      <div style="background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px;">
-        <div style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Tamil Bible (tamil.db)</div>
-        <div style="font-size: 28px; font-weight: 800; color: #34d399; margin-top: 4px;" id="stat-tamil">--</div>
-        <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Indexed words table with WAL</div>
-      </div>
-      <div style="background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px;">
-        <div style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">KJV Bible (kjv.db)</div>
-        <div style="font-size: 28px; font-weight: 800; color: #f59e0b; margin-top: 4px;" id="stat-kjv">--</div>
-        <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">King James Version</div>
-      </div>
-      <div style="background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px;">
-        <div style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Connected Displays</div>
+      <div id="card-stat-displays" style="background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px; cursor: pointer; transition: all 0.2s ease;" title="Click to view connected displays list" onmouseover="this.style.borderColor='#a78bfa'; this.style.transform='translateY(-2px)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.transform='none';">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Connected Displays</div>
+          <span style="font-size: 11px; color: #a78bfa; background: rgba(167, 139, 250, 0.15); padding: 2px 8px; border-radius: 12px; font-weight: 600;">View list &rarr;</span>
+        </div>
         <div style="font-size: 28px; font-weight: 800; color: #a78bfa; margin-top: 4px;" id="stat-displays">--</div>
-        <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Real-time Socket.io clients</div>
+        <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Real-time output screens • Click to view</div>
       </div>
     </div>
 
@@ -124,6 +120,54 @@
     </div>
   </div>
 
+  <!-- Connected Devices Modal -->
+  <div class="modal-backdrop" id="clients-modal" style="display: none;">
+    <div class="modal-content" style="max-width: 620px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span id="clients-modal-icon" style="font-size: 22px;">🎛️</span>
+          <div>
+            <h3 id="clients-modal-title" style="margin: 0; font-size: 18px; color: #fff;">Connected Presenters</h3>
+            <div id="clients-modal-subtitle" style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">Active console controllers connected to this server</div>
+          </div>
+        </div>
+        <button id="btn-close-clients-modal" style="background: none; border: none; color: var(--text-secondary); font-size: 24px; cursor: pointer; padding: 2px 8px; line-height: 1;">&times;</button>
+      </div>
+
+      <!-- Tab Filter Chips inside modal -->
+      <div style="padding: 10px 20px; background-color: var(--bg-primary); border-bottom: 1px solid var(--border-color); display: flex; gap: 8px;">
+        <button id="modal-tab-presenters" class="chip active" style="font-size: 12px; padding: 5px 12px; cursor: pointer;">
+          Presenters (<span id="count-tab-presenters">0</span>)
+        </button>
+        <button id="modal-tab-displays" class="chip" style="font-size: 12px; padding: 5px 12px; cursor: pointer;">
+          Displays (<span id="count-tab-displays">0</span>)
+        </button>
+        <button id="modal-tab-all" class="chip" style="font-size: 12px; padding: 5px 12px; cursor: pointer;">
+          All Devices (<span id="count-tab-all">0</span>)
+        </button>
+      </div>
+
+      <div class="modal-body" id="clients-modal-list" style="max-height: 380px; gap: 10px; padding: 18px 20px;">
+        <!-- Dynamically rendered client cards -->
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted);">
+          <span style="width: 8px; height: 8px; border-radius: 50%; background-color: var(--accent-live); display: inline-block;"></span>
+          <span>Syncs in real-time via Socket.io</span>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <a id="btn-modal-open-link" href="/presenter" target="_blank" class="btn-primary" style="padding: 8px 14px; font-size: 13px; text-decoration: none;">
+            Open New Presenter &rarr;
+          </a>
+          <button id="btn-modal-close" class="btn-secondary" style="padding: 8px 14px; font-size: 13px;">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     const hubSocket = (typeof io !== 'undefined') ? io() : null;
     const hubLiveBadge = document.getElementById('hub-live-badge');
@@ -132,6 +176,9 @@
     const hubPreviewScreen = document.getElementById('hub-preview-screen');
     const hubServerDot = document.getElementById('hub-server-dot');
     const hubServerStatus = document.getElementById('hub-server-status');
+
+    let currentClientsData = { presenters: [], displays: [], total: 0 };
+    let currentModalTab = 'presenter'; // 'presenter' | 'display' | 'all'
 
     function updateHubPreview(state) {
       if (!state) return;
@@ -153,9 +200,178 @@
       }
 
       const lines = Array.isArray(state.lines) ? state.lines : (state.rawSlide ? state.rawSlide.split('<BR>') : []);
-      hubPreviewLines.innerHTML = lines.map(l => '<div>' + l + '</div>').join('');
+      hubPreviewLines.innerHTML = lines.map(l => '<div>' + escapeHtml(l) + '</div>').join('');
       hubPreviewRef.textContent = state.reference || state.title || '';
     }
+
+    function formatTimeAgo(timestamp) {
+      if (!timestamp) return 'Just now';
+      const diffSec = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+      if (diffSec < 5) return 'Just connected';
+      if (diffSec < 60) return `${diffSec}s ago`;
+      const diffMin = Math.floor(diffSec / 60);
+      if (diffMin < 60) return `${diffMin}m ago`;
+      const diffHr = Math.floor(diffMin / 60);
+      return `${diffHr}h ago`;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function renderClientsList() {
+      const container = document.getElementById('clients-modal-list');
+      const modalIcon = document.getElementById('clients-modal-icon');
+      const modalTitle = document.getElementById('clients-modal-title');
+      const modalSubtitle = document.getElementById('clients-modal-subtitle');
+      const openLink = document.getElementById('btn-modal-open-link');
+
+      let items = [];
+      if (currentModalTab === 'presenter') {
+        items = currentClientsData.presenters || [];
+        modalIcon.textContent = '🎛️';
+        modalTitle.textContent = `Connected Presenters (${items.length})`;
+        modalSubtitle.textContent = 'Active console controllers transmitting slide updates';
+        openLink.href = '/presenter';
+        openLink.textContent = 'Open New Presenter ↗';
+      } else if (currentModalTab === 'display') {
+        items = currentClientsData.displays || [];
+        modalIcon.textContent = '📺';
+        modalTitle.textContent = `Connected Displays (${items.length})`;
+        modalSubtitle.textContent = 'Projector, TV, and monitor screens receiving live broadcasts';
+        openLink.href = '/display';
+        openLink.textContent = 'Open New Display ↗';
+      } else {
+        items = [...(currentClientsData.presenters || []), ...(currentClientsData.displays || [])];
+        modalIcon.textContent = '🌐';
+        modalTitle.textContent = `All Connected Devices (${items.length})`;
+        modalSubtitle.textContent = 'All active presenter consoles and display outputs';
+        openLink.href = '/presenter';
+        openLink.textContent = 'Open Presenter Console ↗';
+      }
+
+      // Update Tab Badges
+      const pCount = (currentClientsData.presenters || []).length;
+      const dCount = (currentClientsData.displays || []).length;
+      document.getElementById('count-tab-presenters').textContent = pCount;
+      document.getElementById('count-tab-displays').textContent = dCount;
+      document.getElementById('count-tab-all').textContent = pCount + dCount;
+
+      // Update Tab Active styling
+      ['presenters', 'displays', 'all'].forEach(tabKey => {
+        const btn = document.getElementById(`modal-tab-${tabKey}`);
+        if (btn) {
+          if ((currentModalTab === 'presenter' && tabKey === 'presenters') ||
+              (currentModalTab === 'display' && tabKey === 'displays') ||
+              (currentModalTab === 'all' && tabKey === 'all')) {
+            btn.classList.add('active');
+          } else {
+            btn.classList.remove('active');
+          }
+        }
+      });
+
+      if (items.length === 0) {
+        const roleName = currentModalTab === 'presenter' ? 'Presenters' : (currentModalTab === 'display' ? 'Displays' : 'Devices');
+        const defaultPath = currentModalTab === 'presenter' ? '/presenter' : '/display';
+        container.innerHTML = `
+          <div style="text-align: center; padding: 40px 16px; color: var(--text-muted);">
+            <div style="font-size: 36px; margin-bottom: 10px;">${currentModalTab === 'presenter' ? '🎛️' : '📺'}</div>
+            <div style="font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 6px;">
+              No Connected ${roleName}
+            </div>
+            <div style="font-size: 13px; max-width: 340px; margin: 0 auto 18px auto; line-height: 1.5; color: var(--text-secondary);">
+              ${currentModalTab === 'presenter' 
+                ? 'Launch the Presenter Console in another tab, browser, or laptop to control slides in real-time.' 
+                : 'Launch the Display Screen on your projector, TV, or another screen to output live slides.'}
+            </div>
+            <a href="${defaultPath}" target="_blank" class="btn-secondary" style="font-size: 13px; padding: 8px 16px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+              Launch ${currentModalTab === 'presenter' ? 'Presenter' : 'Display'} Screen &rarr;
+            </a>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = items.map((client, idx) => {
+        const isPresenter = client.role === 'presenter';
+        const roleColor = isPresenter ? '#60a5fa' : '#34d399';
+        const roleBg = isPresenter ? 'rgba(59, 130, 246, 0.15)' : 'rgba(16, 185, 129, 0.15)';
+        const roleBorder = isPresenter ? 'rgba(59, 130, 246, 0.3)' : 'rgba(16, 185, 129, 0.3)';
+        const roleIcon = isPresenter ? '🎛️' : '📺';
+
+        return `
+          <div style="background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px;">
+            <div style="display: flex; align-items: center; gap: 14px; min-width: 0;">
+              <div style="width: 40px; height: 40px; border-radius: 10px; background: ${roleBg}; border: 1px solid ${roleBorder}; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;">
+                ${roleIcon}
+              </div>
+              <div style="min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <span style="font-size: 14px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    ${escapeHtml(client.device || 'Web Browser')}
+                  </span>
+                  <span style="font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; background: ${roleBg}; color: ${roleColor}; border: 1px solid ${roleBorder}; letter-spacing: 0.04em;">
+                    ${escapeHtml(client.role)}
+                  </span>
+                </div>
+                <div style="font-size: 12px; color: var(--text-secondary); margin-top: 3px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                  <span>IP: <code style="color: #cbd5e1; font-family: monospace;">${escapeHtml(client.ip || '127.0.0.1')}</code></span>
+                  ${client.screen ? `<span>• Display: ${escapeHtml(client.screen)}</span>` : ''}
+                  <span>• Active ${formatTimeAgo(client.connectedAt)}</span>
+                </div>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0; background: rgba(16, 185, 129, 0.12); padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(16, 185, 129, 0.25);">
+              <span style="width: 7px; height: 7px; border-radius: 50%; background: #10b981; box-shadow: 0 0 6px #10b981;"></span>
+              <span style="font-size: 11px; color: #34d399; font-weight: 700; letter-spacing: 0.02em;">Online</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openClientsModal(role) {
+      currentModalTab = role;
+      renderClientsList();
+      document.getElementById('clients-modal').style.display = 'flex';
+    }
+
+    function closeClientsModal() {
+      document.getElementById('clients-modal').style.display = 'none';
+    }
+
+    // Modal Events
+    document.getElementById('card-stat-presenters').addEventListener('click', () => openClientsModal('presenter'));
+    document.getElementById('card-stat-displays').addEventListener('click', () => openClientsModal('display'));
+    document.getElementById('btn-close-clients-modal').addEventListener('click', closeClientsModal);
+    document.getElementById('btn-modal-close').addEventListener('click', closeClientsModal);
+    document.getElementById('clients-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'clients-modal') closeClientsModal();
+    });
+
+    document.getElementById('modal-tab-presenters').addEventListener('click', () => {
+      currentModalTab = 'presenter';
+      renderClientsList();
+    });
+    document.getElementById('modal-tab-displays').addEventListener('click', () => {
+      currentModalTab = 'display';
+      renderClientsList();
+    });
+    document.getElementById('modal-tab-all').addEventListener('click', () => {
+      currentModalTab = 'all';
+      renderClientsList();
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeClientsModal();
+    });
 
     if (hubSocket) {
       hubSocket.on('connect', () => {
@@ -172,20 +388,49 @@
       });
       hubSocket.on('stats:update', (stats) => {
         if (stats) {
-          document.getElementById('stat-displays').textContent = stats.displays;
+          const presentersEl = document.getElementById('stat-presenters');
+          if (presentersEl) presentersEl.textContent = stats.presenters !== undefined ? stats.presenters : 0;
+          const displaysEl = document.getElementById('stat-displays');
+          if (displaysEl) displaysEl.textContent = stats.displays !== undefined ? stats.displays : 0;
+
+          currentClientsData = {
+            presenters: stats.presentersList || [],
+            displays: stats.displaysList || [],
+            total: stats.total || 0
+          };
+
+          // Re-render if modal is currently open
+          if (document.getElementById('clients-modal').style.display === 'flex') {
+            renderClientsList();
+          }
         }
       });
     }
 
-    // Load initial stats
+    // Load initial stats and client list
     async function loadStats() {
       try {
         const res = await fetch('/api/stats');
         const data = await res.json();
-        document.getElementById('stat-songs').textContent = data.songs;
-        document.getElementById('stat-tamil').textContent = data.tamilVerses;
-        document.getElementById('stat-kjv').textContent = data.kjvVerses;
-        document.getElementById('stat-displays').textContent = data.clients ? data.clients.displays : 0;
+        const presentersEl = document.getElementById('stat-presenters');
+        if (presentersEl) {
+          presentersEl.textContent = data.clients ? data.clients.presenters : 0;
+        }
+        const displaysEl = document.getElementById('stat-displays');
+        if (displaysEl) {
+          displaysEl.textContent = data.clients ? data.clients.displays : 0;
+        }
+
+        if (data.clients) {
+          currentClientsData = {
+            presenters: data.clients.presentersList || [],
+            displays: data.clients.displaysList || [],
+            total: data.clients.total || 0
+          };
+          if (document.getElementById('clients-modal').style.display === 'flex') {
+            renderClientsList();
+          }
+        }
       } catch (err) {
         console.warn('Error loading stats:', err);
       }
@@ -194,7 +439,7 @@
     // Load initial state
     fetch('/api/state').then(r => r.json()).then(updateHubPreview).catch(console.warn);
     loadStats();
-    setInterval(loadStats, 5000);
+    setInterval(loadStats, 4000);
 
     // Quick Action controls on Hub
     document.getElementById('hub-btn-blank').addEventListener('click', () => {
