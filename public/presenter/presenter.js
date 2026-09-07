@@ -67,8 +67,6 @@ const bibleRecentStrip = document.getElementById('bible-recent-strip');
 const bibleBooksList = document.getElementById('bible-books-list');
 const bibleChaptersList = document.getElementById('bible-chapters-list');
 const bibleVersesList = document.getElementById('bible-verses-list');
-const bibleChaptersCount = document.getElementById('bible-chapters-count');
-const bibleVersesCount = document.getElementById('bible-verses-count');
 const bibleBookFilter = document.getElementById('bible-book-filter');
 const testamentTabs = document.getElementById('testament-tabs');
 
@@ -134,6 +132,14 @@ if (socket) {
   socket.on('stats:update', (stats) => {
     handleStatsUpdate(stats);
   });
+}
+
+function handleStatsUpdate(stats) {
+  if (!stats) return;
+  const presenterCountEl = document.getElementById('count-presenters');
+  const displayCountEl = document.getElementById('count-displays');
+  if (presenterCountEl) presenterCountEl.textContent = stats.presenters || 0;
+  if (displayCountEl) displayCountEl.textContent = stats.displays || 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -590,10 +596,6 @@ async function selectBibleBook(bookNum, bookName, targetChapter = null, targetVe
     const res = await fetch(`/api/bible/${selectedVersionId}/chapters?bookNum=${selectedBookNum}`);
     const chapters = await res.json();
 
-    if (bibleChaptersCount) {
-      bibleChaptersCount.textContent = `${chapters.length} Ch`;
-    }
-
     renderBibleChaptersList(chapters);
 
     // Determine chosen chapter
@@ -649,10 +651,6 @@ async function selectBibleChapter(chNum, targetVerse = null) {
     // 1. Fetch verse numbers for the verse list column
     const resVerses = await fetch(`/api/bible/${selectedVersionId}/verses?bookNum=${selectedBookNum}&chNum=${selectedChapterNum}`);
     const verseNumbers = await resVerses.json();
-
-    if (bibleVersesCount) {
-      bibleVersesCount.textContent = `${verseNumbers.length} Vs`;
-    }
 
     renderBibleVersesList(verseNumbers);
 

@@ -1102,30 +1102,35 @@ body {
   flex-shrink: 0;
 }
 
-/* Primary Tabs Bar (VerseVIEW 10) */
+/* Primary Tabs Bar (VerseVIEW 10 - In Left Browser Pane) */
 .vv-tabs-bar {
-  background-color: #0f172a;
+  background-color: #0b1120;
   border-bottom: 1px solid #1e293b;
   display: flex;
   align-items: center;
-  padding: 0 16px;
-  gap: 4px;
-  height: 42px;
+  padding: 0 8px;
+  gap: 3px;
+  height: 38px;
   flex-shrink: 0;
   overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.vv-tabs-bar::-webkit-scrollbar {
+  display: none;
 }
 
 .vv-tab-btn {
   background: transparent;
   border: none;
   color: #94a3b8;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  padding: 8px 14px;
-  border-radius: 6px;
+  padding: 5px 10px;
+  border-radius: 5px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   cursor: pointer;
   transition: all 0.15s ease;
   white-space: nowrap;
@@ -1139,7 +1144,7 @@ body {
 .vv-tab-btn.active {
   background: #0284c7;
   color: #ffffff;
-  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35);
 }
 
 .vv-tab-badge {
@@ -1153,7 +1158,8 @@ body {
 .vv-tabs-left {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
+  width: 100%;
 }
 
 .vv-tabs-right {
@@ -1232,7 +1238,7 @@ body {
 .vv-workspace {
   display: grid;
   grid-template-columns: var(--left-panel-width, 420px) 6px 1fr;
-  height: calc(100vh - 100px);
+  height: calc(100vh - 58px);
   overflow: hidden;
   background-color: #0b1120;
 }
@@ -1241,7 +1247,7 @@ body {
   .vv-workspace {
     grid-template-columns: 1fr;
     grid-template-rows: auto 1fr;
-    height: calc(100vh - 100px);
+    height: calc(100vh - 58px);
   }
   .vv-resizer {
     display: none;
@@ -1528,8 +1534,9 @@ body {
 .vv-bible-cols-container {
   flex-grow: 1;
   display: grid;
-  grid-template-columns: minmax(130px, 1.4fr) minmax(80px, 1fr) minmax(80px, 1fr);
+  grid-template-columns: minmax(110px, 1.3fr) minmax(64px, 1fr) minmax(64px, 1fr);
   min-height: 0;
+  min-width: 0;
   height: 100%;
   overflow: hidden;
   border-top: 1px solid #1e293b;
@@ -1540,6 +1547,7 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
   height: 100%;
   overflow: hidden;
   border-right: 1px solid #1e293b;
@@ -1638,6 +1646,7 @@ body {
   flex-grow: 1;
   overflow-y: auto;
   min-height: 0;
+  min-width: 0;
   padding: 4px;
 }
 
@@ -1681,14 +1690,14 @@ body {
 /* Number Grid for Chapters & Verses - Auto adjust columns based on width resize */
 .vv-nums-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(28px, 1fr));
   gap: 4px;
   padding: 6px;
   align-content: start;
 }
 
 .vv-num-btn {
-  aspect-ratio: 1;
+  height: 32px;
   min-width: 0;
   width: 100%;
   display: flex;
@@ -1703,7 +1712,9 @@ body {
   cursor: pointer;
   transition: all 0.12s;
   user-select: none;
-  min-height: 30px;
+  box-sizing: border-box;
+  padding: 0;
+  line-height: 1;
 }
 
 .vv-num-btn:hover {

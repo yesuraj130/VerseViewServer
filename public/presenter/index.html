@@ -52,25 +52,25 @@
       </div>
     </header>
 
-    <!-- 2. Primary Tabs Bar (VerseVIEW 10) -->
-    <nav class="vv-tabs-bar" id="vv-tabs-bar">
-      <div class="vv-tabs-left">
-        <button class="vv-tab-btn active" data-tab="songs" id="tab-btn-songs">
-          <span>🎵</span> Songs
-        </button>
-        <button class="vv-tab-btn" data-tab="bible" id="tab-btn-bible">
-          <span>📖</span> Bible
-        </button>
-        <button class="vv-tab-btn" data-tab="biblesearch" id="tab-btn-biblesearch">
-          <span>🔍</span> Bible Search
-        </button>
-      </div>
-    </nav>
-
-    <!-- 3. Main Workspace: Left Tab Browser + Center Presentation Slide Deck -->
+    <!-- 2. Main Workspace: Left Tab Browser + Center Presentation Slide Deck -->
     <main class="vv-workspace" id="vv-workspace">
       <!-- ================= Left Browser Pane ================= -->
       <aside class="vv-browser-pane" id="vv-browser-pane">
+        
+        <!-- Primary Tabs Bar (VerseVIEW 10) -->
+        <nav class="vv-tabs-bar" id="vv-tabs-bar">
+          <div class="vv-tabs-left">
+            <button class="vv-tab-btn active" data-tab="songs" id="tab-btn-songs">
+              <span>🎵</span> Songs
+            </button>
+            <button class="vv-tab-btn" data-tab="bible" id="tab-btn-bible">
+              <span>📖</span> Bible
+            </button>
+            <button class="vv-tab-btn" data-tab="biblesearch" id="tab-btn-biblesearch">
+              <span>🔍</span> Bible Search
+            </button>
+          </div>
+        </nav>
         
         <!-- Tab Panel 1: Songs -->
         <div class="vv-tab-panel active" id="panel-songs">
@@ -141,7 +141,6 @@
               <div class="vv-bcol-header">
                 <div class="vv-bcol-title-row">
                   <span class="vv-bcol-title">Chapter</span>
-                  <span class="vv-bcol-badge" id="bible-chapters-count"></span>
                 </div>
               </div>
               <div class="vv-bcol-list vv-nums-grid" id="bible-chapters-list">
@@ -154,7 +153,6 @@
               <div class="vv-bcol-header">
                 <div class="vv-bcol-title-row">
                   <span class="vv-bcol-title">Verse</span>
-                  <span class="vv-bcol-badge" id="bible-verses-count"></span>
                 </div>
               </div>
               <div class="vv-bcol-list vv-nums-grid" id="bible-verses-list">
