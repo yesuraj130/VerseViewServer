@@ -363,6 +363,7 @@ function initResizer()
       const deltaX = clientX - startPos;
       const newWidth = Math.min(Math.max(260, startDim + deltaX), 850);
       workspace.style.setProperty('--left-panel-width', `${newWidth}px`);
+      if (typeof updateSongDeckColumnWidth === 'function') updateSongDeckColumnWidth();
     }
   }
 
@@ -375,6 +376,8 @@ function initResizer()
       activeResizer = null;
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
+
+      if (typeof updateSongDeckColumnWidth === 'function') updateSongDeckColumnWidth();
 
       if (isMobileHorizontalDrag)
       {

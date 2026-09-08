@@ -125,6 +125,70 @@ async function selectSong(songId, autoPresent = false)
   }
 }
 
+let _measureCanvas = null;
+function measureMaxLineWidth(lines, font = '500 14px system-ui, -apple-system, sans-serif')
+{
+  if (!lines || lines.length === 0) return 0;
+  if (!_measureCanvas)
+  {
+    _measureCanvas = document.createElement('canvas');
+  }
+  const ctx = _measureCanvas.getContext('2d');
+  ctx.font = font;
+  let maxW = 0;
+  for (let i = 0; i < lines.length; i++)
+  {
+    const line = lines[i];
+    if (!line) continue;
+    const w = ctx.measureText(line).width;
+    if (w > maxW) maxW = w;
+  }
+  return Math.ceil(maxW);
+}
+
+function updateSongDeckColumnWidth()
+{
+  const targetContainer = document.getElementById('slide-deck-songs') || slideDeckContainer;
+  if (!targetContainer || !currentSongSlides || currentSongSlides.length === 0) return;
+
+  const allLines = [];
+  currentSongSlides.forEach(s =>
+  {
+    (s.lines || []).forEach(l =>
+    {
+      if (l && l.trim()) allLines.push(l.trim());
+    });
+  });
+
+  const maxLineWidth = measureMaxLineWidth(allLines, '500 14px system-ui, -apple-system, sans-serif');
+  const naturalColWidth = Math.max(220, Math.ceil(maxLineWidth * 1.06 + 46));
+
+  const clientWidth = targetContainer.clientWidth;
+  const availWidth = clientWidth > 40 ? (clientWidth - 40) : 800;
+
+  let colWidth;
+  let wrapText = false;
+
+  if (naturalColWidth * 2 + 12 <= availWidth)
+  {
+    colWidth = naturalColWidth;
+    wrapText = false;
+  }
+  else if (naturalColWidth <= availWidth)
+  {
+    colWidth = naturalColWidth;
+    wrapText = false;
+  }
+  else
+  {
+    colWidth = Math.max(180, availWidth);
+    wrapText = true;
+  }
+
+  targetContainer.style.setProperty('--song-deck-col-width', `${colWidth}px`);
+  targetContainer.classList.toggle('wrap-lines', wrapText);
+}
+
 function renderSlideDeck(song, slides)
 {
   const targetContainer = document.getElementById('slide-deck-songs') || slideDeckContainer;
@@ -136,17 +200,7 @@ function renderSlideDeck(song, slides)
     return;
   }
 
-  // Determine longest line across all slides to set the optimal grid column width
-  let maxChars = 0;
-  slides.forEach(s =>
-  {
-    (s.lines || []).forEach(l =>
-    {
-      if (l.length > maxChars) maxChars = l.length;
-    });
-  });
-  const colWidth = Math.max(260, Math.min(650, Math.round(maxChars * 8.8 + 44)));
-  targetContainer.style.setProperty('--song-deck-col-width', `${colWidth}px`);
+  updateSongDeckColumnWidth();
 
   slides.forEach((slide) =>
   {
@@ -260,16 +314,42 @@ function autoFitAllEditorTextareas()
 function updateEditorGridColumnWidth()
 {
   if (!editorSlidesList) return;
-  let maxChars = 0;
+  const allLines = [];
   editorSlideTexts.forEach(text =>
   {
     (text || '').split(/\r?\n/).forEach(l =>
     {
-      if (l.length > maxChars) maxChars = l.length;
+      if (l && l.trim()) allLines.push(l.trim());
     });
   });
-  const colWidth = Math.max(240, Math.min(600, Math.round(maxChars * 8.5 + 40)));
+
+  const maxLineWidth = measureMaxLineWidth(allLines, '13px system-ui, -apple-system, sans-serif');
+  const naturalColWidth = Math.max(220, Math.ceil(maxLineWidth * 1.06 + 44));
+
+  const clientWidth = editorSlidesList.clientWidth;
+  const availWidth = clientWidth > 24 ? (clientWidth - 24) : 800;
+
+  let colWidth;
+  let wrapText = false;
+
+  if (naturalColWidth * 2 + 12 <= availWidth)
+  {
+    colWidth = naturalColWidth;
+    wrapText = false;
+  }
+  else if (naturalColWidth <= availWidth)
+  {
+    colWidth = naturalColWidth;
+    wrapText = false;
+  }
+  else
+  {
+    colWidth = Math.max(180, availWidth);
+    wrapText = true;
+  }
+
   editorSlidesList.style.setProperty('--editor-deck-col-width', `${colWidth}px`);
+  editorSlidesList.classList.toggle('wrap-lines', wrapText);
 }
 
 function renderEditorSlides()
@@ -665,5 +745,25 @@ if (songSearchInput)
       songSearchInput.focus();
       loadSongs('');
     });
+  }
+}
+
+// Window and Container Resize Handlers
+window.addEventListener('resize', () =>
+{
+  updateSongDeckColumnWidth();
+  updateEditorGridColumnWidth();
+});
+
+if (typeof ResizeObserver !== 'undefined')
+{
+  const songsDeckEl = document.getElementById('slide-deck-songs');
+  if (songsDeckEl)
+  {
+    new ResizeObserver(() => updateSongDeckColumnWidth()).observe(songsDeckEl);
+  }
+  if (editorSlidesList)
+  {
+    new ResizeObserver(() => updateEditorGridColumnWidth()).observe(editorSlidesList);
   }
 }

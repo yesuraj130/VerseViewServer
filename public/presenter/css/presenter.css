@@ -706,7 +706,8 @@
 #slide-deck-songs
 {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--song-deck-col-width, 320px), 1fr));
+  grid-template-columns: repeat(auto-fill, var(--song-deck-col-width, 320px));
+  justify-content: start;
   align-items: stretch;
   align-content: start;
   gap: 12px;
@@ -724,6 +725,8 @@
 .slide-card
 {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   height: 100%;
   background-color: #1e293b;
   border: 1px solid #334155;
@@ -736,6 +739,7 @@
   justify-content: flex-start;
   position: relative;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .slide-card:hover
@@ -787,16 +791,34 @@
 
 .slide-card-content
 {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   font-size: 14px;
   font-weight: 500;
   color: var(--text-primary);
   line-height: 1.5;
   white-space: nowrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .slide-card-content div
 {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   white-space: nowrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+#slide-deck-songs.wrap-lines .slide-card-content,
+#slide-deck-songs.wrap-lines .slide-card-content div
+{
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* Modal Dialog */
@@ -955,7 +977,8 @@
 .editor-slides-container
 {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--editor-deck-col-width, 280px), 1fr));
+  grid-template-columns: repeat(auto-fill, var(--editor-deck-col-width, 280px));
+  justify-content: start;
   gap: 12px;
   max-height: 52vh;
   overflow-y: auto;
@@ -972,6 +995,7 @@
 .editor-slide-card
 {
   width: 100%;
+  max-width: 100%;
   height: 100%;
   background-color: #1e293b;
   border: 1px solid #334155;
@@ -1045,6 +1069,9 @@
 
 .editor-slide-textarea
 {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 38px;
   box-sizing: border-box;
   padding: 8px 10px;
@@ -1058,8 +1085,17 @@
   font-family: inherit;
   overflow: hidden;
   white-space: pre;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   transition: border-color 0.12s ease;
   field-sizing: content;
+}
+
+.editor-slides-container.wrap-lines .editor-slide-textarea
+{
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .editor-slide-textarea:focus
