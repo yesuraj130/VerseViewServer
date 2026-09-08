@@ -445,6 +445,7 @@
 
 .sc-text-main
 {
+  font-family: "Baloo Thambi 2", "Baloo Thambi", var(--font-display);
   font-size: 15px;
   line-height: 1.6;
   color: #f8fafc;
@@ -486,6 +487,7 @@
 
 .verse-text
 {
+  font-family: "Baloo Thambi 2", "Baloo Thambi", var(--font-display);
   font-size: 13px;
   line-height: 1.5;
   color: var(--text-primary);

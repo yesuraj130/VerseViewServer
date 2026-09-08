@@ -2,6 +2,70 @@
    Base Theme, CSS Variables, Reset & Common Components
    ========================================================================== */
 
+@import url('https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@400;500;600;700;800&family=Mukta+Malar:wght@400;500;600;700;800&family=Noto+Sans+Tamil:wght@400;600;700;800&display=swap');
+
+/* Font File 1: Baloo Thambi (Tamil Display Font) */
+@font-face {
+  font-family: 'Baloo Thambi';
+  src: url('/fonts/baloo-thambi.woff2') format('woff2'),
+       local('Baloo Thambi 2'),
+       local('Baloo Thambi');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Baloo Thambi 2';
+  src: url('/fonts/baloo-thambi.woff2') format('woff2'),
+       local('Baloo Thambi 2'),
+       local('Baloo Thambi');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Font File 2: Legacy font aliases mapped to Baloo Thambi */
+@font-face {
+  font-family: 'Tamil Bible';
+  src: local('Baloo Thambi 2'),
+       local('Baloo Thambi'),
+       url('/fonts/baloo-thambi.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Mukta Malar';
+  src: url('/fonts/baloo-thambi.woff2') format('woff2'),
+       local('Baloo Thambi 2'),
+       local('Baloo Thambi');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Tamil-Ananthi';
+  src: url('/fonts/baloo-thambi.woff2') format('woff2'),
+       local('Baloo Thambi 2'),
+       local('Baloo Thambi');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Latha';
+  src: url('/fonts/baloo-thambi.woff2') format('woff2'),
+       local('Baloo Thambi 2'),
+       local('Baloo Thambi');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root
 {
   --bg-primary: #0a0f1d;
@@ -27,7 +91,7 @@
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.35);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Mukta Malar", "Latha", sans-serif;
+  --font-display: "Baloo Thambi 2", "Baloo Thambi", "Mukta Malar", "Noto Sans Tamil", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 *

@@ -32,8 +32,26 @@ function renderDisplayState(state)
   }
 
   // Render text lines
-  const lines = Array.isArray(state.lines) ? state.lines : (state.rawSlide ? state.rawSlide.split('<BR>') : []);
+  const rawLines = Array.isArray(state.lines) ? state.lines : (state.rawSlide ? state.rawSlide.split('<BR>') : []);
+  const lines = rawLines.map((l) =>
+  {
+    if (typeof window.baminiToUnicode === 'function' && typeof window.isBaminiText === 'function')
+    {
+      return window.isBaminiText(l, state.font) ? window.baminiToUnicode(l) : l;
+    }
+    return l;
+  });
   linesContainer.innerHTML = '';
+
+  // Apply font family: use Baloo Thambi for all
+  if (state.font && state.font !== 'Tamil Bible' && state.font !== 'Tamil-Ananthi' && state.font !== 'Latha' && state.font !== 'Mukta Malar' && state.font !== 'Baloo Thambi' && state.font !== 'Baloo Thambi 2')
+  {
+    linesContainer.style.fontFamily = `"${state.font}", 'Baloo Thambi 2', 'Baloo Thambi', 'Mukta Malar', var(--font-display)`;
+  }
+  else
+  {
+    linesContainer.style.fontFamily = `'Baloo Thambi 2', 'Baloo Thambi', 'Mukta Malar', 'Noto Sans Tamil', var(--font-display)`;
+  }
 
   if (lines.length === 0)
   {

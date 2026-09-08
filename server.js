@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { Server } from 'socket.io';
+import { isBaminiText, baminiToUnicode } from './lib/bamini.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -296,9 +297,10 @@ io.on('connection', (socket) =>
   socket.on('action:present', (payload) =>
   {
     if (!payload) return;
-    const lines = Array.isArray(payload.lines)
+    const rawLines = Array.isArray(payload.lines)
       ? payload.lines
       : (payload.rawSlide ? payload.rawSlide.split('<BR>') : []);
+    const lines = rawLines.map(l => (isBaminiText(l, payload.font) ? baminiToUnicode(l) : l));
 
     currentState = {
       ...currentState,
@@ -311,6 +313,8 @@ io.on('connection', (socket) =>
       slideIndex: Number(payload.slideIndex) || 1,
       totalSlides: Number(payload.totalSlides) || 1,
       songId: payload.songId !== undefined ? payload.songId : null,
+      font: payload.font || '',
+      font2: payload.font2 || '',
       verseInfo: payload.verseInfo || null,
       updatedAt: Date.now()
     };
@@ -404,9 +408,10 @@ app.post('/api/state', (req, res) =>
   const payload = req.body;
   if (!payload) return res.status(400).json({ error: 'Missing body' });
   
-  const lines = Array.isArray(payload.lines)
+  const rawLines = Array.isArray(payload.lines)
     ? payload.lines
     : (payload.rawSlide ? payload.rawSlide.split('<BR>') : []);
+  const lines = rawLines.map(l => (isBaminiText(l, payload.font) ? baminiToUnicode(l) : l));
 
   currentState = {
     ...currentState,
@@ -420,7 +425,7 @@ app.post('/api/state', (req, res) =>
   res.json({ success: true, state: currentState });
 });
 
-function extractFirstLine(lyrics)
+function extractFirstLine(lyrics, font = '')
 {
   if (!lyrics) return '';
   const slides = lyrics.split('<slide>');
@@ -429,7 +434,11 @@ function extractFirstLine(lyrics)
     const clean = s.trim();
     if (!clean) continue;
     const lines = clean.split(/<BR>|\r?\n/i).map(l => l.replace(/<[^>]*>/g, '').trim()).filter(Boolean);
-    if (lines.length > 0) return lines[0];
+    if (lines.length > 0)
+    {
+      const first = lines[0];
+      return isBaminiText(first, font) ? baminiToUnicode(first) : first;
+    }
   }
   return '';
 }
@@ -505,7 +514,7 @@ app.get('/api/songs', (req, res) =>
         key: r.key || '',
         notes: r.notes || '',
         tags: r.tags || '',
-        firstLine: extractFirstLine(r.lyrics),
+        firstLine: extractFirstLine(r.lyrics, r.font),
         slideCount: slides.length
       };
     });
@@ -532,7 +541,10 @@ app.get('/api/songs/:id', (req, res) =>
       return res.status(404).json({ error: 'Song not found' });
     }
 
-    const rawSlides = (song.lyrics || '').split('<slide>');
+    const needsConversion = isBaminiText(song.lyrics, song.font);
+    const convertedLyrics = needsConversion ? baminiToUnicode(song.lyrics) : song.lyrics;
+
+    const rawSlides = (convertedLyrics || '').split('<slide>');
     const slides = [];
     rawSlides.forEach((s) =>
     {
@@ -553,7 +565,9 @@ app.get('/api/songs/:id', (req, res) =>
 
     res.json({
       ...song,
-      firstLine: extractFirstLine(song.lyrics),
+      lyrics: convertedLyrics,
+      rawLyrics: song.lyrics,
+      firstLine: extractFirstLine(song.lyrics, song.font),
       slides,
       slideCount: slides.length
     });

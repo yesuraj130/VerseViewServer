@@ -35,6 +35,16 @@ async function loadSongs(q = '')
   }
 }
 
+function getSongFontFamily(fontName)
+{
+  const f = (fontName || '').trim();
+  if (!f || f === 'Tamil Bible' || f === 'Tamil-Ananthi' || f === 'Latha' || f === 'Mukta Malar' || f === 'Baloo Thambi' || f === 'Baloo Thambi 2')
+  {
+    return `'Baloo Thambi 2', 'Baloo Thambi', 'Mukta Malar', 'Noto Sans Tamil', var(--font-display)`;
+  }
+  return `"${f}", 'Baloo Thambi 2', 'Baloo Thambi', 'Mukta Malar', var(--font-display)`;
+}
+
 function renderSongList(songs)
 {
   if (!songListContainer) return;
@@ -55,12 +65,16 @@ function renderSongList(songs)
       item.classList.add('selected');
     }
 
-    const previewLine = song.firstLine ? escapeHtml(song.firstLine) : '&nbsp;';
+    // Only slides are decoded - titles and song names are preserved as-is
+    const displayName = song.name;
+    let previewLine = song.firstLine ? escapeHtml(song.firstLine) : '&nbsp;';
+
+    const songFontFamily = getSongFontFamily(song.font);
 
     item.innerHTML = `
       <div class="song-item-info">
-        <div class="song-item-name">${escapeHtml(song.name)}</div>
-        <div class="song-item-preview">${previewLine}</div>
+        <div class="song-item-name" style="font-family: ${songFontFamily};">${escapeHtml(displayName)}</div>
+        <div class="song-item-preview" style="font-family: ${songFontFamily};">${previewLine}</div>
       </div>
     `;
 
@@ -97,7 +111,11 @@ async function selectSong(songId, autoPresent = false)
     activeSongSlideIndex = 1;
     currentPresentationType = 'song';
 
-    if (activeSongTitle) activeSongTitle.textContent = song.name;
+    if (activeSongTitle)
+    {
+      activeSongTitle.textContent = song.name;
+      activeSongTitle.style.fontFamily = getSongFontFamily(song.font);
+    }
     if (activeSlideCountIndicator)
     {
       activeSlideCountIndicator.textContent = `${currentSongSlides.length} slides`;
@@ -126,7 +144,7 @@ async function selectSong(songId, autoPresent = false)
 }
 
 let _measureCanvas = null;
-function measureMaxLineWidth(lines, font = '500 14px system-ui, -apple-system, sans-serif')
+function measureMaxLineWidth(lines, font = '500 14px "Baloo Thambi 2", "Baloo Thambi", "Mukta Malar", system-ui, -apple-system, sans-serif')
 {
   if (!lines || lines.length === 0) return 0;
   if (!_measureCanvas)
@@ -160,7 +178,8 @@ function updateSongDeckColumnWidth()
     });
   });
 
-  const maxLineWidth = measureMaxLineWidth(allLines, '500 14px system-ui, -apple-system, sans-serif');
+  const songFontFam = currentSong ? getSongFontFamily(currentSong.font) : 'var(--font-display)';
+  const maxLineWidth = measureMaxLineWidth(allLines, `500 14px ${songFontFam}`);
   const naturalColWidth = Math.max(220, Math.ceil(maxLineWidth * 1.06 + 46));
 
   const clientWidth = targetContainer.clientWidth;
@@ -202,6 +221,8 @@ function renderSlideDeck(song, slides)
 
   updateSongDeckColumnWidth();
 
+  const songFontFamily = getSongFontFamily(song ? song.font : '');
+
   slides.forEach((slide) =>
   {
     const card = document.createElement('div');
@@ -211,21 +232,30 @@ function renderSlideDeck(song, slides)
     const isLive = liveState && Number(liveState.songId) === Number(song.id) && Number(liveState.slideIndex) === Number(slide.slideIndex) && liveState.status === 'live';
     if (isLive) card.classList.add('active-live');
 
-    const linesHtml = slide.lines.map(line => `<div>${escapeHtml(line)}</div>`).join('');
+    const lines = (slide.lines || []).map((l) =>
+    {
+      if (typeof window.baminiToUnicode === 'function' && typeof window.isBaminiText === 'function')
+      {
+        return window.isBaminiText(l, song ? song.font : '') ? window.baminiToUnicode(l) : l;
+      }
+      return l;
+    });
+
+    const linesHtml = lines.map(line => `<div>${escapeHtml(line)}</div>`).join('');
 
     card.innerHTML = `
       <div class="slide-card-header">
         <span class="slide-card-num">Slide ${slide.slideIndex}</span>
         <span class="slide-card-badge" style="${isLive ? 'display: inline-block;' : 'display: none;'}">LIVE</span>
       </div>
-      <div class="slide-card-content">
+      <div class="slide-card-content" style="font-family: ${songFontFamily};">
         ${linesHtml}
       </div>
     `;
 
     card.addEventListener('click', () =>
     {
-      presentSlide(song, slide.slideIndex, slide);
+      presentSlide(song, slide.slideIndex, { ...slide, lines });
     });
 
     targetContainer.appendChild(card);
@@ -245,6 +275,8 @@ function presentSlide(song, slideIndex, slideObj)
     slideIndex: slideIndex,
     totalSlides: total,
     songId: song.id,
+    font: song.font || 'Baloo Thambi 2',
+    font2: song.font2 || '',
     verseInfo: null
   };
 

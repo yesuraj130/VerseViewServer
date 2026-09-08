@@ -105,6 +105,7 @@
 
 .live-title
 {
+  font-family: var(--font-display);
   font-size: 13px;
   font-weight: 700;
   color: #ffffff;
@@ -115,6 +116,7 @@
 
 .live-sub
 {
+  font-family: var(--font-display);
   font-size: 11px;
   color: #94a3b8;
   white-space: nowrap;
@@ -513,6 +515,7 @@
 
 .song-item-name
 {
+  font-family: var(--font-display);
   font-size: 13px;
   font-weight: 600;
   color: #ffffff;
@@ -523,6 +526,7 @@
 
 .song-item-preview
 {
+  font-family: var(--font-display);
   font-size: 11px;
   color: #94a3b8;
   white-space: nowrap;
@@ -667,6 +671,7 @@
 
 .deck-title
 {
+  font-family: var(--font-display);
   font-size: 16px;
   font-weight: 800;
   color: #ffffff;
@@ -791,6 +796,7 @@
 
 .slide-card-content
 {
+  font-family: var(--font-display);
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -908,6 +914,7 @@
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   color: #ffffff;
+  font-family: var(--font-display);
   font-size: 13px;
   outline: none;
 }
@@ -927,7 +934,7 @@
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   color: #ffffff;
-  font-family: monospace;
+  font-family: var(--font-display);
   font-size: 13px;
   line-height: 1.5;
   resize: vertical;
@@ -1082,7 +1089,7 @@
   font-size: 13px;
   line-height: 1.45;
   outline: none;
-  font-family: inherit;
+  font-family: var(--font-display);
   overflow: hidden;
   white-space: pre;
   overflow-wrap: anywhere;
