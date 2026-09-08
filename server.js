@@ -349,6 +349,29 @@ io.on('connection', (socket) =>
 // ---------------------------------------------------------------------------
 app.use(express.json());
 
+// API: Keep-Alive Heartbeat (Prevents idle spin-down)
+app.get('/api/keepalive', (req, res) =>
+{
+  const clientType = req.query.client || 'client';
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('en-US', { hour12: false }) + '.' + String(now.getMilliseconds()).padStart(3, '0');
+  
+  let ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+  if (typeof ip === 'string')
+  {
+    ip = ip.split(',')[0].trim();
+    if (ip.startsWith('::ffff:')) ip = ip.slice(7);
+  }
+
+  // Explicit log output displayed in Render.com Dashboard > Logs
+  console.log(`[KeepAlive] 🟢 Inbound heartbeat from ${clientType} (${ip}) at ${timeStr} — Render idle timer reset, connection closed.`);
+
+  res.setHeader('Connection', 'close');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.status(204).end();
+});
+
 // API: App Configuration
 app.get('/api/config', (req, res) =>
 {
@@ -870,6 +893,6 @@ server.listen(PORT, '0.0.0.0', () =>
 {
   console.log(`Verse View Server running at http://0.0.0.0:${PORT}`);
   console.log(`Using songs database: ${songsDbFileName}`);
-  console.log(`Presenter Console: http://0.0.0.0:${PORT}/presenter/`);
-  console.log(`Display Output:    http://0.0.0.0:${PORT}/display/`);
+  console.log(`Presenter Console available at: http://0.0.0.0:${PORT}/presenter/`);
+  console.log(`Display Output available at:    http://0.0.0.0:${PORT}/display/`);
 });
