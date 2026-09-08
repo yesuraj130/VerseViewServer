@@ -506,6 +506,60 @@
   opacity: 1;
 }
 
+/* Compact Bible Book Item Styling */
+.book-item
+{
+  padding: 4px 8px !important;
+  min-height: 28px !important;
+  margin: 1px 0 !important;
+  border-radius: 4px !important;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background-color 0.12s ease;
+  user-select: none;
+}
+
+.book-item:hover
+{
+  background-color: #1e293b;
+}
+
+.book-item.active
+{
+  background-color: #0284c7;
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(2, 132, 199, 0.3);
+}
+
+.book-num
+{
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  min-width: 22px;
+  display: inline-block;
+}
+
+.book-item.active .book-num
+{
+  color: #e0f2fe;
+}
+
+.book-name
+{
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.book-item.active .book-name
+{
+  color: #ffffff;
+}
+
 /* Center Stage Deck */
 .deck-pane
 {
@@ -812,4 +866,570 @@
 .btn-helper:hover
 {
   background-color: var(--bg-card-hover);
+}
+
+/* Hide mobile pane switcher by default on desktop */
+.mobile-pane-switcher
+{
+  display: none;
+}
+
+/* ==========================================================================
+   Mobile & Smartphone Optimization Rules (e.g. Poco F5, Portrait & Landscape)
+   ========================================================================== */
+@media (max-width: 768px)
+{
+  .presenter-app
+  {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  /* Compact 2-tier Header Layout */
+  .presenter-header
+  {
+    height: auto;
+    padding: 8px 10px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    background-color: #080d1a;
+  }
+
+  .header-left
+  {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .header-logo
+  {
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .logo-main
+  {
+    font-size: 15px;
+    font-weight: 800;
+  }
+
+  .live-pill
+  {
+    min-width: 0;
+    max-width: 200px;
+    padding: 4px 8px;
+    gap: 6px;
+    flex-shrink: 1;
+    border-radius: 6px;
+  }
+
+  .live-pill-meta
+  {
+    min-width: 0;
+  }
+
+  .live-title
+  {
+    font-size: 11px;
+    line-height: 1.2;
+  }
+
+  .live-sub
+  {
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .live-badge
+  {
+    font-size: 9px;
+    padding: 2px 5px;
+  }
+
+  .header-controls
+  {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .ctrl-btn
+  {
+    padding: 10px 8px;
+    font-size: 13px;
+    font-weight: 700;
+    border-radius: 8px;
+    justify-content: center;
+    min-height: 44px; /* Finger touch target */
+    touch-action: manipulation;
+  }
+
+  .ctrl-btn#btn-prev-slide
+  {
+    flex: 2;
+    background-color: #1e293b;
+    border-color: #3b82f6;
+    color: #ffffff;
+  }
+
+  .ctrl-btn#btn-next-slide
+  {
+    flex: 2;
+    background-color: #0284c7;
+    border-color: #38bdf8;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.4);
+  }
+
+  .btn-clear#btn-clear
+  {
+    flex: 1.4;
+    background-color: #450a0a;
+    border-color: #991b1b;
+    color: #fca5a5;
+  }
+
+  .ctrl-btn#btn-home
+  {
+    flex: 0.8;
+    padding: 0 8px;
+  }
+
+  /* Navigation Tabs Bar */
+  .tabs-bar
+  {
+    height: 40px;
+    padding: 0 4px;
+    background-color: #0b1120;
+  }
+
+  .tabs-left
+  {
+    justify-content: space-around;
+  }
+
+  .tab-btn
+  {
+    flex: 1;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 8px 4px;
+    min-height: 36px;
+    touch-action: manipulation;
+  }
+
+  /* Mobile Pane View Switcher (Library / Slides Deck / Both) */
+  .mobile-pane-switcher
+  {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    background-color: #0f172a;
+    border-bottom: 1px solid #1e293b;
+    flex-shrink: 0;
+  }
+
+  .mobile-pane-btn
+  {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #94a3b8;
+    background-color: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: all 0.15s ease;
+  }
+
+  .mobile-pane-btn.active
+  {
+    background-color: #0284c7;
+    color: #ffffff;
+    border-color: #38bdf8;
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35);
+  }
+
+  /* Presenter Workspace Layout Modes */
+  .presenter-workspace
+  {
+    height: calc(100dvh - 150px);
+    height: calc(100vh - 150px);
+    overflow: hidden;
+  }
+
+  .workspace-tab-view.active
+  {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .resizer-handle
+  {
+    display: none !important;
+  }
+
+  /* Mobile Modes Switch Behavior */
+  .workspace-tab-view.mobile-mode-browser .browser-pane
+  {
+    display: flex !important;
+    width: 100% !important;
+    height: 100% !important;
+    flex: 1 1 auto;
+  }
+
+  .workspace-tab-view.mobile-mode-browser .deck-pane
+  {
+    display: none !important;
+  }
+
+  .workspace-tab-view.mobile-mode-deck .browser-pane
+  {
+    display: none !important;
+  }
+
+  .workspace-tab-view.mobile-mode-deck .deck-pane
+  {
+    display: flex !important;
+    width: 100% !important;
+    height: 100% !important;
+    flex: 1 1 auto;
+  }
+
+  .workspace-tab-view.mobile-mode-both .browser-pane
+  {
+    display: flex !important;
+    width: 100% !important;
+    height: var(--mobile-browser-pane-height, 42%) !important;
+    min-height: 80px !important;
+    max-height: 75vh !important;
+    flex-shrink: 0 !important;
+  }
+
+  .workspace-tab-view.mobile-mode-both .resizer-handle
+  {
+    display: flex !important;
+    width: 100% !important;
+    height: 14px !important;
+    cursor: row-resize !important;
+    background-color: #1e293b !important;
+    border-top: 1px solid #334155 !important;
+    border-bottom: 1px solid #334155 !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    touch-action: none !important;
+    user-select: none;
+    z-index: 30;
+  }
+
+  .workspace-tab-view.mobile-mode-both .resizer-handle::after
+  {
+    content: '';
+    width: 36px;
+    height: 4px;
+    background-color: #64748b;
+    border-radius: 2px;
+  }
+
+  .workspace-tab-view.mobile-mode-both .resizer-handle:hover,
+  .workspace-tab-view.mobile-mode-both .resizer-handle.dragging
+  {
+    background-color: #0284c7 !important;
+  }
+
+  .workspace-tab-view.mobile-mode-both .resizer-handle:hover::after,
+  .workspace-tab-view.mobile-mode-both .resizer-handle.dragging::after
+  {
+    background-color: #ffffff !important;
+  }
+
+  .workspace-tab-view.mobile-mode-both .deck-pane
+  {
+    display: flex !important;
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 80px !important;
+    height: auto !important;
+  }
+
+  /* In Both mode for Bible tab, hide scripture lookup header, version dropdown, quick jump box, and recent strip to save maximum vertical space */
+  .workspace-tab-view.mobile-mode-both#workspace-bible .panel-header,
+  .workspace-tab-view.mobile-mode-both#workspace-bible .quick-ref-box,
+  .workspace-tab-view.mobile-mode-both#workspace-bible .recent-strip
+  {
+    display: none !important;
+  }
+
+  .workspace-tab-view.mobile-mode-both#workspace-bible .bible-cols-container
+  {
+    height: 100% !important;
+    flex: 1 1 auto !important;
+  }
+
+  /* Category Filter Chips Horizontal Touch Scroll */
+  .cat-filter-chips
+  {
+    display: flex !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 4px 2px 6px 2px !important;
+  }
+
+  .cat-filter-chips::-webkit-scrollbar
+  {
+    display: none;
+  }
+
+  .chip
+  {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    font-size: 11px !important;
+    padding: 6px 12px !important;
+    border-radius: 12px !important;
+    touch-action: manipulation;
+  }
+
+  /* Song Item Touch Optimization */
+  .song-item
+  {
+    padding: 10px 12px;
+    min-height: 52px;
+  }
+
+  .song-item-name
+  {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .song-actions
+  {
+    opacity: 0.95 !important;
+  }
+
+  .btn-icon-tiny
+  {
+    padding: 6px 8px;
+    font-size: 14px;
+    touch-action: manipulation;
+  }
+
+  /* Slide Deck Cards on Mobile */
+  .deck-header
+  {
+    padding: 8px 12px;
+  }
+
+  .deck-title
+  {
+    font-size: 14px;
+  }
+
+  .slide-deck
+  {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .slide-card
+  {
+    padding: 12px 14px;
+    min-height: 72px;
+    touch-action: manipulation;
+  }
+
+  .slide-card-content
+  {
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  /* Modal Windows on Mobile */
+  .modal-content
+  {
+    max-width: 95vw;
+    max-height: 92dvh;
+    margin: auto;
+  }
+
+  .modal-body
+  {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .input-text, .textarea-lyrics
+  {
+    font-size: 15px; /* Prevents auto-zoom on mobile focus */
+  }
+}
+
+/* ==========================================================================
+   Header Collapse Rules (Maximized Screen Real Estate)
+   ========================================================================== */
+.presenter-header
+{
+  transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease, padding 0.2s ease, margin 0.2s ease;
+  max-height: 180px;
+  overflow: hidden;
+}
+
+.tabs-bar
+{
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+}
+
+.tabs-right
+{
+  display: flex;
+  align-items: center;
+  padding-right: 8px;
+}
+
+.btn-collapse-toggle
+{
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  touch-action: manipulation;
+}
+
+.btn-collapse-toggle:hover
+{
+  background-color: #334155;
+  color: #ffffff;
+  border-color: #475569;
+}
+
+.btn-collapse-toggle.collapsed
+{
+  background-color: #0284c7 !important;
+  color: #ffffff !important;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.4);
+}
+
+/* Collapsed Restore Bar Styling */
+.collapsed-restore-bar
+{
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  height: 36px;
+  padding: 0 10px;
+  background-color: #0b1120;
+  border-bottom: 1px solid #1e293b;
+  flex-shrink: 0;
+  z-index: 100;
+}
+
+.btn-restore-controls
+{
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #38bdf8;
+  background-color: #0f172a;
+  border: 1px solid #0284c7;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.restore-bar-quick-actions
+{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-mini-ctrl
+{
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  background-color: #1e293b;
+  color: #ffffff;
+  border: 1px solid #3b82f6;
+  border-radius: 6px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.btn-mini-clear
+{
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  background-color: #450a0a;
+  color: #fca5a5;
+  border: 1px solid #991b1b;
+  border-radius: 6px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* When Header Collapsed: Hide Top Header, Tabs Bar, and Mobile Pane Switcher */
+.presenter-app.header-collapsed .presenter-header,
+.presenter-app.header-collapsed .tabs-bar,
+.presenter-app.header-collapsed .mobile-pane-switcher
+{
+  display: none !important;
+}
+
+.presenter-app.header-collapsed .collapsed-restore-bar
+{
+  display: flex !important;
+}
+
+.presenter-app.header-collapsed .presenter-workspace
+{
+  height: calc(100vh - 36px) !important;
+  height: calc(100dvh - 36px) !important;
+}
+
+@media (max-width: 768px)
+{
+  .presenter-app.header-collapsed .presenter-workspace
+  {
+    height: calc(100vh - 36px) !important;
+    height: calc(100dvh - 36px) !important;
+  }
+
+  .tabs-right .collapse-text
+  {
+    display: none;
+  }
 }

@@ -131,8 +131,125 @@ window.addEventListener('keydown', (e) =>
 // ---------------------------------------------------------------------------
 // 2. Tab Navigation System
 // ---------------------------------------------------------------------------
+let currentMobilePaneMode = 'browser';
+window.currentMobilePaneMode = 'browser';
+
+function setMobilePaneMode(mode)
+{
+  if (!['browser', 'deck', 'both'].includes(mode)) return;
+  currentMobilePaneMode = mode;
+  window.currentMobilePaneMode = mode;
+
+  const switcherBtns = document.querySelectorAll('.mobile-pane-btn');
+  switcherBtns.forEach(b => b.classList.toggle('active', b.getAttribute('data-mode') === mode));
+
+  const workspaceViews = document.querySelectorAll('.workspace-tab-view');
+  workspaceViews.forEach(v => {
+    v.classList.remove('mobile-mode-browser', 'mobile-mode-deck', 'mobile-mode-both');
+    v.classList.add(`mobile-mode-${mode}`);
+  });
+
+  try
+  {
+    localStorage.setItem('presenter_mobile_pane_mode', mode);
+  }
+  catch (e) {}
+}
+
+function initMobilePaneSwitcher()
+{
+  const switcherBtns = document.querySelectorAll('.mobile-pane-btn');
+  switcherBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mode = btn.getAttribute('data-mode');
+      setMobilePaneMode(mode);
+    });
+  });
+
+  let initialMode = 'browser';
+  try
+  {
+    const savedMode = localStorage.getItem('presenter_mobile_pane_mode');
+    if (savedMode && ['browser', 'deck', 'both'].includes(savedMode))
+    {
+      initialMode = savedMode;
+    }
+  }
+  catch (e) {}
+
+  setMobilePaneMode(initialMode);
+}
+
+// ---------------------------------------------------------------------------
+// Header Collapse Toggle System
+// ---------------------------------------------------------------------------
+function updateCollapseButtons(collapsed)
+{
+  const toggleBtns = document.querySelectorAll('.btn-collapse-toggle');
+  toggleBtns.forEach(btn => {
+    const iconSpan = btn.querySelector('.collapse-icon');
+    const textSpan = btn.querySelector('.collapse-text');
+    if (collapsed)
+    {
+      btn.classList.add('collapsed');
+      btn.setAttribute('title', 'Expand Top Bar Controls');
+      if (iconSpan) iconSpan.textContent = '▼';
+      if (textSpan) textSpan.textContent = 'Expand';
+    }
+    else
+    {
+      btn.classList.remove('collapsed');
+      btn.setAttribute('title', 'Collapse Top Bar Controls');
+      if (iconSpan) iconSpan.textContent = '▲';
+      if (textSpan) textSpan.textContent = 'Top Bar';
+    }
+  });
+}
+
+function initHeaderCollapseToggle()
+{
+  const toggleBtns = document.querySelectorAll('.btn-collapse-toggle');
+  const appContainer = document.querySelector('.presenter-app');
+  if (!appContainer) return;
+
+  try
+  {
+    const isCollapsed = localStorage.getItem('presenter_header_collapsed') === 'true';
+    if (isCollapsed)
+    {
+      appContainer.classList.add('header-collapsed');
+      updateCollapseButtons(true);
+    }
+  }
+  catch (e) {}
+
+  toggleBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const collapsed = appContainer.classList.toggle('header-collapsed');
+      updateCollapseButtons(collapsed);
+      try
+      {
+        localStorage.setItem('presenter_header_collapsed', collapsed ? 'true' : 'false');
+      }
+      catch (e) {}
+    });
+  });
+
+  const miniPrev = document.getElementById('btn-mini-prev');
+  const miniNext = document.getElementById('btn-mini-next');
+  const miniClear = document.getElementById('btn-mini-clear');
+
+  if (miniPrev && btnPrevSlide) miniPrev.addEventListener('click', () => btnPrevSlide.click());
+  if (miniNext && btnNextSlide) miniNext.addEventListener('click', () => btnNextSlide.click());
+  if (miniClear && btnClear) miniClear.addEventListener('click', () => btnClear.click());
+}
+
 function initTabNavigation()
 {
+  initMobilePaneSwitcher();
+  initHeaderCollapseToggle();
+
   tabButtons.forEach((btn) =>
   {
     btn.addEventListener('click', () =>
@@ -145,7 +262,7 @@ function initTabNavigation()
   try
   {
     const savedTab = localStorage.getItem('presenter_active_tab');
-    if (savedTab && ['songs', 'bible', 'search'].includes(savedTab))
+    if (savedTab && ['songs', 'bible', 'biblesearch', 'search'].includes(savedTab))
     {
       switchTab(savedTab);
     }
@@ -170,7 +287,7 @@ function switchTab(tabId)
 }
 
 // ---------------------------------------------------------------------------
-// 3. Draggable Workspace Resizer Splitter
+// 3. Draggable Workspace Resizer Splitter (Desktop & Mobile Both Splitbar)
 // ---------------------------------------------------------------------------
 function initResizer()
 {
@@ -184,36 +301,72 @@ function initResizer()
     workspace.style.setProperty('--left-panel-width', `${savedWidth}px`);
   }
 
-  let isDragging = false;
-  let activeResizer = null;
-  let startX = 0;
-  let startWidth = 0;
-
-  resizers.forEach((resizer) =>
+  const savedMobileHeight = localStorage.getItem('presenter_mobile_browser_height');
+  if (savedMobileHeight)
   {
-    resizer.addEventListener('mousedown', (e) =>
-    {
-      isDragging = true;
-      activeResizer = resizer;
-      resizer.classList.add('dragging');
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-      startX = e.clientX;
-      const currentWidth = parseInt(getComputedStyle(workspace).getPropertyValue('--left-panel-width') || '420', 10);
-      startWidth = currentWidth || 420;
-      e.preventDefault();
-    });
-  });
+    workspace.style.setProperty('--mobile-browser-pane-height', savedMobileHeight);
+  }
 
-  window.addEventListener('mousemove', (e) =>
+  let isDragging = false;
+  let isMobileHorizontalDrag = false;
+  let activeResizer = null;
+  let startPos = 0;
+  let startDim = 0;
+  let containerDim = 0;
+
+  function onDragStart(e)
+  {
+    const resizer = e.currentTarget;
+    const parentTab = resizer.closest('.workspace-tab-view');
+    isMobileHorizontalDrag = parentTab ? parentTab.classList.contains('mobile-mode-both') : false;
+
+    isDragging = true;
+    activeResizer = resizer;
+    resizer.classList.add('dragging');
+    document.body.style.userSelect = 'none';
+
+    if (isMobileHorizontalDrag)
+    {
+      document.body.style.cursor = 'row-resize';
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      startPos = clientY;
+      const browserPane = parentTab.querySelector('.browser-pane');
+      startDim = browserPane ? browserPane.getBoundingClientRect().height : 180;
+      containerDim = parentTab.getBoundingClientRect().height;
+    }
+    else
+    {
+      document.body.style.cursor = 'col-resize';
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      startPos = clientX;
+      const currentWidth = parseInt(getComputedStyle(workspace).getPropertyValue('--left-panel-width') || '420', 10);
+      startDim = currentWidth || 420;
+    }
+  }
+
+  function onDragMove(e)
   {
     if (!isDragging) return;
-    const delta = e.clientX - startX;
-    const newWidth = Math.min(Math.max(260, startWidth + delta), 850);
-    workspace.style.setProperty('--left-panel-width', `${newWidth}px`);
-  });
 
-  window.addEventListener('mouseup', () =>
+    if (isMobileHorizontalDrag)
+    {
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const deltaY = clientY - startPos;
+      const minH = 80;
+      const maxH = containerDim > 0 ? containerDim - 80 : 500;
+      const newHeight = Math.min(Math.max(minH, startDim + deltaY), maxH);
+      workspace.style.setProperty('--mobile-browser-pane-height', `${newHeight}px`);
+    }
+    else
+    {
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const deltaX = clientX - startPos;
+      const newWidth = Math.min(Math.max(260, startDim + deltaX), 850);
+      workspace.style.setProperty('--left-panel-width', `${newWidth}px`);
+    }
+  }
+
+  function onDragEnd()
   {
     if (isDragging)
     {
@@ -222,11 +375,29 @@ function initResizer()
       activeResizer = null;
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
-      const finalWidth = parseInt(workspace.style.getPropertyValue('--left-panel-width'), 10);
-      if (finalWidth)
+
+      if (isMobileHorizontalDrag)
       {
-        localStorage.setItem('presenter_left_panel_width', finalWidth);
+        const finalHeight = workspace.style.getPropertyValue('--mobile-browser-pane-height');
+        if (finalHeight) localStorage.setItem('presenter_mobile_browser_height', finalHeight);
+      }
+      else
+      {
+        const finalWidth = parseInt(workspace.style.getPropertyValue('--left-panel-width'), 10);
+        if (finalWidth) localStorage.setItem('presenter_left_panel_width', finalWidth);
       }
     }
+  }
+
+  resizers.forEach((resizer) =>
+  {
+    resizer.addEventListener('mousedown', onDragStart);
+    resizer.addEventListener('touchstart', onDragStart, { passive: true });
   });
+
+  window.addEventListener('mousemove', onDragMove);
+  window.addEventListener('touchmove', onDragMove, { passive: true });
+  window.addEventListener('mouseup', onDragEnd);
+  window.addEventListener('touchend', onDragEnd);
+  window.addEventListener('touchcancel', onDragEnd);
 }

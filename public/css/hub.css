@@ -230,3 +230,34 @@
   border-color: #38bdf8;
   color: #ffffff;
 }
+
+@media (max-width: 600px)
+{
+  .hub-container
+  {
+    padding: 16px 12px;
+  }
+
+  .hub-header
+  {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .hub-brand
+  {
+    gap: 10px;
+  }
+
+  .hub-title
+  {
+    font-size: 20px;
+  }
+
+  .hub-card
+  {
+    padding: 20px 16px;
+  }
+}

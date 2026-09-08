@@ -84,6 +84,13 @@ async function performBibleSearch()
         card.addEventListener('click', async () =>
         {
           displaySearchVerseDeck(r);
+          if (window.innerWidth <= 768 && typeof setMobilePaneMode === 'function')
+          {
+            if (window.currentMobilePaneMode !== 'both')
+            {
+              setMobilePaneMode('deck');
+            }
+          }
           if (typeof presentBibleVerse === 'function')
           {
             presentBibleVerse(selectedVersionId, r.bookName, {

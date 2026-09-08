@@ -18,7 +18,11 @@ const io = new Server(server, {
   }
 });
 
-const PORT = 3000;
+// External hosting platforms (such as Render.com, Railway, Heroku) supply process.env.PORT.
+// In the Google AI Studio container sandbox, port 3000 is used by the internal proxy.
+const PORT = (process.env.APPLET_ID || process.env.DEFAULT_APP_PORT)
+  ? 3000
+  : (process.env.PORT || 3000);
 const APP_TITLE = process.env.APP_TITLE || 'Verse View Server';
 const APP_CONFIG = {
   appName: APP_TITLE,

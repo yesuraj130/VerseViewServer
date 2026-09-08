@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
   <title>Verse View Server — Presenter Console</title>
   <link rel="stylesheet" href="/css/base.css">
   <link rel="stylesheet" href="/presenter/css/presenter.css">
@@ -47,7 +47,35 @@
         <button class="tab-btn" data-tab="bible" id="tab-btn-bible"><span>📖</span> Bible</button>
         <button class="tab-btn" data-tab="biblesearch" id="tab-btn-biblesearch"><span>🔍</span> Bible Search</button>
       </div>
+      <div class="tabs-right">
+        <button class="btn-collapse-toggle" id="btn-collapse-toggle-tabs" title="Collapse / Expand Top Bar">
+          <span class="collapse-icon">▲</span>
+          <span class="collapse-text">Top Bar</span>
+        </button>
+      </div>
     </nav>
+
+    <!-- Mobile Pane View Switcher (Active on Mobile screens <= 768px) -->
+    <div class="mobile-pane-switcher" id="mobile-pane-switcher">
+      <button class="mobile-pane-btn active" data-mode="browser" id="btn-mobile-mode-browser"><span>📁</span> Library</button>
+      <button class="mobile-pane-btn" data-mode="deck" id="btn-mobile-mode-deck"><span>📺</span> Slides</button>
+      <button class="mobile-pane-btn" data-mode="both" id="btn-mobile-mode-both"><span>📑</span> Both</button>
+      <button class="mobile-pane-btn btn-collapse-toggle" id="btn-collapse-toggle-mobile" title="Collapse / Expand Header" style="flex: 0 0 auto; padding: 8px 12px; background: #334155; border-color: #475569;">
+        <span class="collapse-icon">▲</span>
+      </button>
+    </div>
+
+    <!-- Collapsed Restore Bar (Active when Header & Tabs are Collapsed) -->
+    <div class="collapsed-restore-bar" id="collapsed-restore-bar">
+      <button class="btn-collapse-toggle btn-restore-controls" id="btn-collapse-toggle-restore" title="Expand Navigation & Header Bars">
+        <span>▼ Expand Navigation Bars</span>
+      </button>
+      <div class="restore-bar-quick-actions">
+        <button class="btn-mini-ctrl" id="btn-mini-prev" title="Previous Slide">⏮️ Prev</button>
+        <button class="btn-mini-ctrl" id="btn-mini-next" title="Next Slide">Next ⏭️</button>
+        <button class="btn-mini-clear" id="btn-mini-clear" title="Clear">✕ Clear</button>
+      </div>
+    </div>
 
     <!-- Main Workspace with 3 Separate Tab Views -->
     <main class="presenter-workspace" id="presenter-workspace">
@@ -125,9 +153,6 @@
                     <button type="button" class="testament-btn" data-testament="ot" title="Old Testament (1-39)">OT</button>
                     <button type="button" class="testament-btn" data-testament="nt" title="New Testament (40-66)">NT</button>
                   </div>
-                </div>
-                <div class="bible-col-search-wrap">
-                  <input type="text" id="bible-book-filter" class="bible-col-search-input" placeholder="Filter book...">
                 </div>
               </div>
               <div class="bible-col-list books-scroll" id="bible-books-list"></div>

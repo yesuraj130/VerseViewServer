@@ -191,6 +191,14 @@ async function selectSong(songId, autoPresent = false)
 
     renderSlideDeck(currentSong, currentSongSlides);
 
+    if (window.innerWidth <= 768 && typeof setMobilePaneMode === 'function')
+    {
+      if (window.currentMobilePaneMode !== 'both')
+      {
+        setMobilePaneMode('deck');
+      }
+    }
+
     if (autoPresent && currentSongSlides.length > 0)
     {
       presentSlide(song, 1, currentSongSlides[0]);

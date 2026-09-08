@@ -317,7 +317,7 @@ function renderBibleVersesList(verseNumbers)
 
     btn.addEventListener('click', () =>
     {
-      selectBibleVerse(v, false);
+      selectBibleVerse(v, false, true);
     });
 
     bibleVersesList.appendChild(btn);
@@ -388,10 +388,18 @@ function renderChapterVersesDeck(verses, bookName, chNum)
   });
 }
 
-function selectBibleVerse(verseNum, doPresent = true)
+function selectBibleVerse(verseNum, doPresent = false, userInitiated = false)
 {
   selectedVerseNum = Number(verseNum);
   if (typeof saveLastBrowsedBible === 'function') saveLastBrowsedBible();
+
+  if (userInitiated && window.innerWidth <= 768 && typeof setMobilePaneMode === 'function')
+  {
+    if (window.currentMobilePaneMode !== 'both')
+    {
+      setMobilePaneMode('deck');
+    }
+  }
 
   if (bibleVersesList)
   {
@@ -408,7 +416,7 @@ function selectBibleVerse(verseNum, doPresent = true)
   {
     targetContainer.querySelectorAll('.slide-card-vertical').forEach(c => c.classList.remove('active'));
     targetCard.classList.add('active');
-    smoothScrollToElement(targetContainer, targetCard, 200);
+    smoothScrollToElement(targetContainer, targetCard, 200, true);
   }
 
   if (doPresent)

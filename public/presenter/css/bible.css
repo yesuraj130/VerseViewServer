@@ -455,3 +455,53 @@
   line-height: 1.5;
   color: var(--text-primary);
 }
+
+/* Mobile & Smartphone Bible Layout Tweaks */
+@media (max-width: 768px)
+{
+  .bible-cols-container
+  {
+    grid-template-columns: 1.35fr 0.8fr 0.8fr;
+  }
+
+  .nums-grid
+  {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .num-btn
+  {
+    height: 38px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+  }
+
+  .book-item
+  {
+    padding: 10px 6px !important;
+    font-size: 12px !important;
+  }
+
+  .quick-ref-box
+  {
+    padding: 6px 8px;
+  }
+
+  .quick-ref-input
+  {
+    font-size: 14px; /* Prevents mobile input auto-zoom */
+  }
+
+  .recent-strip
+  {
+    padding: 4px 8px;
+  }
+
+  .testament-btn
+  {
+    padding: 3px 6px;
+    font-size: 9px;
+  }
+}

@@ -163,10 +163,9 @@ function insertAtCursor(textarea, text)
 }
 
 /**
- * Smoothly scrolls a container to center an element with a fixed duration (default ~220ms),
- * irrespective of how far away the target element is.
+ * Smoothly scrolls a container to align an element to top (or center) with a fixed duration (default ~220ms).
  */
-function smoothScrollToElement(container, targetEl, duration = 220)
+function smoothScrollToElement(container, targetEl, duration = 220, alignToTop = true)
 {
   if (!container || !targetEl) return;
 
@@ -174,11 +173,22 @@ function smoothScrollToElement(container, targetEl, duration = 220)
   const targetRect = targetEl.getBoundingClientRect();
 
   const startScrollTop = container.scrollTop;
-  // Calculate relative target offset to center the element
-  const targetOffsetTop = (targetRect.top - containerRect.top) + startScrollTop - (container.clientHeight / 2) + (targetEl.clientHeight / 2);
-  const distance = targetOffsetTop - startScrollTop;
+  let targetOffsetTop = 0;
 
-  if (Math.abs(distance) < 5) return;
+  if (alignToTop)
+  {
+    // Align target element to top of container (with 6px offset)
+    targetOffsetTop = (targetRect.top - containerRect.top) + startScrollTop - 6;
+  }
+  else
+  {
+    // Center target element
+    targetOffsetTop = (targetRect.top - containerRect.top) + startScrollTop - (container.clientHeight / 2) + (targetEl.clientHeight / 2);
+  }
+
+  const distance = Math.max(0, targetOffsetTop) - startScrollTop;
+
+  if (Math.abs(distance) < 2) return;
 
   const startTime = performance.now();
 
