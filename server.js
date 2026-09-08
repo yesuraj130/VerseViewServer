@@ -347,12 +347,26 @@ io.on('connection', (socket) =>
 // ---------------------------------------------------------------------------
 // 5. Express Middlewares & REST API
 // ---------------------------------------------------------------------------
+// Allow CORS to all origins, methods, and headers
+app.use((req, res, next) =>
+{
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  if (req.method === 'OPTIONS')
+  {
+    return res.sendStatus(204);
+  }
+  next();
+});
+
 app.use(express.json());
 
 // API: Keep-Alive Heartbeat (Prevents idle spin-down)
 app.get('/api/keepalive', (req, res) =>
 {
   const clientType = req.query.client || 'client';
+  const tabId = req.query.tab ? `#${req.query.tab}` : '';
   const now = new Date();
   const timeStr = now.toLocaleTimeString('en-US', { hour12: false }) + '.' + String(now.getMilliseconds()).padStart(3, '0');
   
@@ -362,9 +376,10 @@ app.get('/api/keepalive', (req, res) =>
     ip = ip.split(',')[0].trim();
     if (ip.startsWith('::ffff:')) ip = ip.slice(7);
   }
+  const port = req.socket.remotePort || '';
+  const addressWithPort = port ? `${ip}:${port}` : ip;
 
-  // Explicit log output displayed in Render.com Dashboard > Logs
-  console.log(`[KeepAlive] 🟢 Inbound heartbeat from ${clientType} (${ip}) at ${timeStr} — Render idle timer reset, connection closed.`);
+  console.log(`[KeepAlive] 🟢 Inbound heartbeat from ${clientType}${tabId} (${addressWithPort}) at ${timeStr} — Render idle timer reset, connection closed.`);
 
   res.setHeader('Connection', 'close');
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
@@ -405,6 +420,33 @@ app.post('/api/state', (req, res) =>
   res.json({ success: true, state: currentState });
 });
 
+function extractFirstLine(lyrics)
+{
+  if (!lyrics) return '';
+  const slides = lyrics.split('<slide>');
+  for (const s of slides)
+  {
+    const clean = s.trim();
+    if (!clean) continue;
+    const lines = clean.split(/<BR>|\r?\n/i).map(l => l.replace(/<[^>]*>/g, '').trim()).filter(Boolean);
+    if (lines.length > 0) return lines[0];
+  }
+  return '';
+}
+
+function buildSearchPattern(query)
+{
+  if (!query) return '%';
+  let str = String(query).trim();
+  // Support both * and % as multi-character wildcards, and ? / _ as single-character wildcards
+  str = str.replace(/\s*[\*%]\s*/g, '%');
+  str = str.replace(/[\?_]/g, '_');
+  str = str.replace(/%+/g, '%');
+  if (!str.startsWith('%')) str = '%' + str;
+  if (!str.endsWith('%')) str = str + '%';
+  return str;
+}
+
 // API: Songs (songs.db / sm.db)
 app.get('/api/songs', (req, res) =>
 {
@@ -412,16 +454,16 @@ app.get('/api/songs', (req, res) =>
   {
     const q = req.query.q ? String(req.query.q).trim() : '';
     const cat = req.query.cat ? String(req.query.cat).trim() : '';
-    const limit = Math.min(Number(req.query.limit) || 100, 200);
+    const limit = req.query.limit ? Math.min(Number(req.query.limit) || 5000, 10000) : 5000;
 
-    let sql = 'SELECT id, name, cat, lyrics, lyrics2 FROM sm';
+    let sql = 'SELECT id, name, title2, cat, font, font2, key, notes, tags, lyrics, lyrics2 FROM sm';
     const params = [];
     const conditions = [];
 
     if (q)
     {
-      conditions.push('(name LIKE ? OR lyrics LIKE ? OR lyrics2 LIKE ?)');
-      const term = `%${q}%`;
+      const term = buildSearchPattern(q);
+      conditions.push('(name LIKE ? OR title2 LIKE ? OR tags LIKE ?)');
       params.push(term, term, term);
     }
     if (cat && cat !== 'All')
@@ -434,21 +476,36 @@ app.get('/api/songs', (req, res) =>
     {
       sql += ' WHERE ' + conditions.join(' AND ');
     }
-    sql += ' ORDER BY id ASC LIMIT ?';
-    params.push(limit);
+
+    if (q)
+    {
+      const term = buildSearchPattern(q);
+      sql += ' ORDER BY CASE WHEN name LIKE ? THEN 1 WHEN title2 LIKE ? THEN 2 WHEN tags LIKE ? THEN 3 ELSE 4 END, name COLLATE NOCASE ASC LIMIT ?';
+      params.push(term, term, term, limit);
+    }
+    else
+    {
+      sql += ' ORDER BY name COLLATE NOCASE ASC LIMIT ?';
+      params.push(limit);
+    }
 
     const stmt = smDb.prepare(sql);
     const rows = stmt.all(...params);
 
     const songs = rows.map((r) =>
     {
-      const slides = r.lyrics ? r.lyrics.split('<slide>') : [];
+      const slides = r.lyrics ? r.lyrics.split('<slide>').filter(s => s.trim().length > 0) : [];
       return {
         id: r.id,
         name: r.name,
+        title2: r.title2 || '',
         cat: r.cat || 'General',
-        lyrics: r.lyrics,
-        lyrics2: r.lyrics2 || '',
+        font: r.font || '',
+        font2: r.font2 || '',
+        key: r.key || '',
+        notes: r.notes || '',
+        tags: r.tags || '',
+        firstLine: extractFirstLine(r.lyrics),
         slideCount: slides.length
       };
     });
@@ -467,7 +524,7 @@ app.get('/api/songs/:id', (req, res) =>
   try
   {
     const songId = Number(req.params.id);
-    const stmt = smDb.prepare('SELECT id, name, cat, lyrics, lyrics2 FROM sm WHERE id = ?');
+    const stmt = smDb.prepare('SELECT id, name, title2, cat, font, font2, key, notes, tags, lyrics, lyrics2 FROM sm WHERE id = ?');
     const song = stmt.get(songId);
 
     if (!song)
@@ -475,17 +532,28 @@ app.get('/api/songs/:id', (req, res) =>
       return res.status(404).json({ error: 'Song not found' });
     }
 
-    const slides = (song.lyrics || '').split('<slide>').map((s, idx) =>
+    const rawSlides = (song.lyrics || '').split('<slide>');
+    const slides = [];
+    rawSlides.forEach((s) =>
     {
-      return {
-        slideIndex: idx + 1,
-        rawSlide: s,
-        lines: s.split('<BR>').map(l => l.trim()).filter(Boolean)
-      };
+      const clean = s.trim();
+      if (!clean) return; // Skip trailing or blank slide delimiters
+      const lines = clean.split(/<BR>|\r?\n/i).map(l => l.replace(/<[^>]*>/g, '').trim());
+      while (lines.length > 0 && !lines[0]) lines.shift();
+      while (lines.length > 0 && !lines[lines.length - 1]) lines.pop();
+      if (lines.length > 0)
+      {
+        slides.push({
+          slideIndex: slides.length + 1,
+          rawSlide: s,
+          lines: lines
+        });
+      }
     });
 
     res.json({
       ...song,
+      firstLine: extractFirstLine(song.lyrics),
       slides,
       slideCount: slides.length
     });
@@ -500,19 +568,27 @@ app.post('/api/songs', (req, res) =>
 {
   try
   {
-    const { name, cat, lyrics, lyrics2 } = req.body;
+    const { name, title2, cat, font, tags, lyrics } = req.body;
     if (!name || !lyrics)
     {
       return res.status(400).json({ error: 'Name and lyrics are required' });
     }
 
     const stmt = smDb.prepare(
-      'INSERT INTO sm (name, cat, lyrics, lyrics2) VALUES (?, ?, ?, ?)'
+      'INSERT INTO sm (name, title2, cat, font, tags, lyrics, lyrics2) VALUES (?, ?, ?, ?, ?, ?, ?)'
     );
-    const result = stmt.run(name.trim(), (cat || 'General').trim(), lyrics.trim(), (lyrics2 || '').trim());
+    const result = stmt.run(
+      name.trim(),
+      (title2 || '').trim(),
+      (cat || 'General').trim(),
+      (font || '').trim(),
+      (tags || '').trim(),
+      lyrics.trim(),
+      ''
+    );
     const newId = Number(result.lastInsertRowid);
 
-    const created = smDb.prepare('SELECT id, name, cat, lyrics, lyrics2 FROM sm WHERE id = ?').get(newId);
+    const created = smDb.prepare('SELECT id, name, title2, cat, font, font2, key, notes, tags, lyrics, lyrics2 FROM sm WHERE id = ?').get(newId);
     res.status(201).json(created);
   }
   catch (err)
@@ -526,18 +602,45 @@ app.put('/api/songs/:id', (req, res) =>
   try
   {
     const songId = Number(req.params.id);
-    const { name, cat, lyrics, lyrics2 } = req.body;
-    if (!name || !lyrics)
+    const existing = smDb.prepare('SELECT * FROM sm WHERE id = ?').get(songId);
+    if (!existing)
     {
-      return res.status(400).json({ error: 'Name and lyrics are required' });
+      return res.status(404).json({ error: 'Song not found' });
     }
 
-    const stmt = smDb.prepare(
-      'UPDATE sm SET name = ?, cat = ?, lyrics = ?, lyrics2 = ? WHERE id = ?'
-    );
-    stmt.run(name.trim(), (cat || 'General').trim(), lyrics.trim(), (lyrics2 || '').trim(), songId);
+    // Only update fields explicitly provided in req.body. Hidden / unedited fields remain completely untouched.
+    const allowedFields = ['name', 'title2', 'cat', 'font', 'font2', 'tags', 'lyrics', 'lyrics2', 'key', 'notes', 'yvideo', 'bkgndfname', 'copy', 'subcat', 'slideseq'];
+    const fieldsToUpdate = {};
 
-    const updated = smDb.prepare('SELECT id, name, cat, lyrics, lyrics2 FROM sm WHERE id = ?').get(songId);
+    for (const field of allowedFields)
+    {
+      if (req.body[field] !== undefined)
+      {
+        fieldsToUpdate[field] = typeof req.body[field] === 'string' ? req.body[field].trim() : req.body[field];
+      }
+    }
+
+    if (fieldsToUpdate.name === '')
+    {
+      return res.status(400).json({ error: 'Song title cannot be empty' });
+    }
+
+    const setClauses = [];
+    const params = [];
+    for (const [key, val] of Object.entries(fieldsToUpdate))
+    {
+      setClauses.push(`${key} = ?`);
+      params.push(val);
+    }
+
+    if (setClauses.length > 0)
+    {
+      params.push(songId);
+      const sql = `UPDATE sm SET ${setClauses.join(', ')} WHERE id = ?`;
+      smDb.prepare(sql).run(...params);
+    }
+
+    const updated = smDb.prepare('SELECT id, name, title2, cat, font, font2, key, notes, tags, lyrics, lyrics2 FROM sm WHERE id = ?').get(songId);
     res.json(updated);
   }
   catch (err)

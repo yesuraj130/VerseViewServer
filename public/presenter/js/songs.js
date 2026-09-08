@@ -2,62 +2,12 @@
 // Presenter Console — Songs Management & Slide Deck Controller
 // ===========================================================================
 
-let selectedCategory = 'All';
-
-async function loadCategories()
-{
-  try
-  {
-    const res = await fetch('/api/categories');
-    const categories = await res.json();
-    renderCategoryChips(categories);
-  }
-  catch (err)
-  {
-    console.error('Error loading categories:', err);
-  }
-}
-
-function renderCategoryChips(categories)
-{
-  if (!categoryChips) return;
-  categoryChips.innerHTML = '<span class="chip active" data-cat="All">All</span>';
-  categories.forEach((cat) =>
-  {
-    const chip = document.createElement('span');
-    chip.className = 'chip';
-    chip.setAttribute('data-cat', cat);
-    chip.textContent = cat;
-    chip.addEventListener('click', () =>
-    {
-      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-      chip.classList.add('active');
-      selectedCategory = cat;
-      loadSongs(songSearchInput ? songSearchInput.value : '', selectedCategory);
-    });
-    categoryChips.appendChild(chip);
-  });
-
-  const allChip = categoryChips.querySelector('[data-cat="All"]');
-  if (allChip)
-  {
-    allChip.addEventListener('click', () =>
-    {
-      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-      allChip.classList.add('active');
-      selectedCategory = 'All';
-      loadSongs(songSearchInput ? songSearchInput.value : '', 'All');
-    });
-  }
-}
-
-async function loadSongs(q = '', cat = 'All')
+async function loadSongs(q = '')
 {
   try
   {
     let url = `/api/songs?`;
-    if (q) url += `q=${encodeURIComponent(q)}&`;
-    if (cat && cat !== 'All') url += `cat=${encodeURIComponent(cat)}`;
+    if (q) url += `q=${encodeURIComponent(q)}`;
 
     const res = await fetch(url);
     const songs = await res.json();
@@ -105,44 +55,20 @@ function renderSongList(songs)
       item.classList.add('selected');
     }
 
+    const previewLine = song.firstLine ? escapeHtml(song.firstLine) : '&nbsp;';
+
     item.innerHTML = `
       <div class="song-item-info">
         <div class="song-item-name">${escapeHtml(song.name)}</div>
-        <div class="song-item-meta">
-          <span>${escapeHtml(song.cat || 'General')}</span>
-          <span>•</span>
-          <span>${song.slideCount} slides</span>
-        </div>
-      </div>
-      <div class="song-actions" style="display: flex; gap: 4px; align-items: center;">
-        <button class="btn-icon-tiny btn-edit-song" title="Edit Song" data-id="${song.id}">✏️</button>
-        <button class="btn-icon-tiny btn-delete-song" title="Delete Song" data-id="${song.id}">🗑️</button>
+        <div class="song-item-preview">${previewLine}</div>
       </div>
     `;
 
-    item.addEventListener('click', (e) =>
+    item.addEventListener('click', () =>
     {
-      if (e.target.closest('.btn-edit-song') || e.target.closest('.btn-delete-song')) return;
       document.querySelectorAll('.song-item').forEach(i => i.classList.remove('selected'));
       item.classList.add('selected');
       selectSong(song.id);
-    });
-
-    const editBtn = item.querySelector('.btn-edit-song');
-    editBtn.addEventListener('click', (e) =>
-    {
-      e.stopPropagation();
-      openEditSongModal(song.id);
-    });
-
-    const delBtn = item.querySelector('.btn-delete-song');
-    delBtn.addEventListener('click', (e) =>
-    {
-      e.stopPropagation();
-      if (confirm(`Delete song "${song.name}"?`))
-      {
-        deleteSong(song.id);
-      }
     });
 
     songListContainer.appendChild(item);
@@ -172,17 +98,6 @@ async function selectSong(songId, autoPresent = false)
     currentPresentationType = 'song';
 
     if (activeSongTitle) activeSongTitle.textContent = song.name;
-    if (deckTypeBadge)
-    {
-      deckTypeBadge.textContent = 'SONG';
-      deckTypeBadge.style.color = '#38bdf8';
-      deckTypeBadge.style.borderColor = 'rgba(56, 189, 248, 0.4)';
-    }
-    if (activeSongCatBadge)
-    {
-      activeSongCatBadge.textContent = song.cat || 'General';
-      activeSongCatBadge.style.display = 'inline-block';
-    }
     if (activeSlideCountIndicator)
     {
       activeSlideCountIndicator.textContent = `${currentSongSlides.length} slides`;
@@ -221,6 +136,18 @@ function renderSlideDeck(song, slides)
     return;
   }
 
+  // Determine longest line across all slides to set the optimal grid column width
+  let maxChars = 0;
+  slides.forEach(s =>
+  {
+    (s.lines || []).forEach(l =>
+    {
+      if (l.length > maxChars) maxChars = l.length;
+    });
+  });
+  const colWidth = Math.max(260, Math.min(650, Math.round(maxChars * 8.8 + 44)));
+  targetContainer.style.setProperty('--song-deck-col-width', `${colWidth}px`);
+
   slides.forEach((slide) =>
   {
     const card = document.createElement('div');
@@ -234,8 +161,8 @@ function renderSlideDeck(song, slides)
 
     card.innerHTML = `
       <div class="slide-card-header">
-        <span class="slide-card-num">Slide ${slide.slideIndex} of ${slides.length}</span>
-        ${isLive ? '<span class="slide-card-badge">LIVE</span>' : ''}
+        <span class="slide-card-num">Slide ${slide.slideIndex}</span>
+        <span class="slide-card-badge" style="${isLive ? 'display: inline-block;' : 'display: none;'}">LIVE</span>
       </div>
       <div class="slide-card-content">
         ${linesHtml}
@@ -284,18 +211,264 @@ function presentSlide(song, slideIndex, slideObj)
 // ---------------------------------------------------------------------------
 // Song Add / Edit / Delete Modal & Event Listeners
 // ---------------------------------------------------------------------------
+let editorSlideTexts = []; // Array of string contents (lines with standard newlines)
+
+function lyricsToSlideTexts(lyricsStr)
+{
+  if (!lyricsStr || !lyricsStr.trim()) return [''];
+  const rawParts = lyricsStr.split('<slide>');
+  const list = rawParts.map(part =>
+  {
+    // Replace <BR> (case-insensitive) with newline
+    return part.replace(/<br\s*\/?>/gi, '\n').trim();
+  }).filter((text, idx) => idx === 0 || text.length > 0);
+  return list.length > 0 ? list : [''];
+}
+
+function slideTextsToLyrics(slideArr)
+{
+  return slideArr
+    .map(txt => txt.trim())
+    .filter(Boolean)
+    .map(txt =>
+    {
+      const lines = txt.split(/\r?\n/).map(l => l.trim());
+      while (lines.length > 0 && !lines[0]) lines.shift();
+      while (lines.length > 0 && !lines[lines.length - 1]) lines.pop();
+      return lines.join('<BR>');
+    })
+    .filter(Boolean)
+    .join('<slide>');
+}
+
+function autoFitTextarea(textarea)
+{
+  if (!textarea) return;
+  textarea.style.height = 'auto';
+  const fittedH = Math.max(42, textarea.scrollHeight);
+  textarea.style.height = `${fittedH}px`;
+  textarea.style.overflowY = 'hidden';
+}
+
+function autoFitAllEditorTextareas()
+{
+  if (!editorSlidesList) return;
+  const textareas = editorSlidesList.querySelectorAll('.editor-slide-textarea');
+  textareas.forEach(ta => autoFitTextarea(ta));
+}
+
+function updateEditorGridColumnWidth()
+{
+  if (!editorSlidesList) return;
+  let maxChars = 0;
+  editorSlideTexts.forEach(text =>
+  {
+    (text || '').split(/\r?\n/).forEach(l =>
+    {
+      if (l.length > maxChars) maxChars = l.length;
+    });
+  });
+  const colWidth = Math.max(240, Math.min(600, Math.round(maxChars * 8.5 + 40)));
+  editorSlidesList.style.setProperty('--editor-deck-col-width', `${colWidth}px`);
+}
+
+function renderEditorSlides()
+{
+  if (!editorSlidesList) return;
+  editorSlidesList.innerHTML = '';
+
+  if (editorSlideTexts.length === 0)
+  {
+    editorSlideTexts = [''];
+  }
+
+  if (modalSlidesCounter)
+  {
+    modalSlidesCounter.textContent = `${editorSlideTexts.length} ${editorSlideTexts.length === 1 ? 'slide' : 'slides'}`;
+  }
+
+  updateEditorGridColumnWidth();
+
+  editorSlideTexts.forEach((text, index) =>
+  {
+    const card = document.createElement('div');
+    card.className = 'editor-slide-card';
+    card.setAttribute('data-index', index);
+
+    card.innerHTML = `
+      <div class="editor-slide-header">
+        <span class="editor-slide-badge">Slide ${index + 1} of ${editorSlideTexts.length}</span>
+        <div class="editor-slide-actions">
+          <button type="button" class="btn-card-tool btn-move-up" title="Move Up" ${index === 0 ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : ''}>↑</button>
+          <button type="button" class="btn-card-tool btn-move-down" title="Move Down" ${index === editorSlideTexts.length - 1 ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : ''}>↓</button>
+          <button type="button" class="btn-card-tool btn-delete-card" title="Delete Slide" ${editorSlideTexts.length <= 1 ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : ''}>&times;</button>
+        </div>
+      </div>
+      <textarea class="editor-slide-textarea" placeholder="Type slide lines here...">${escapeHtml(text)}</textarea>
+    `;
+
+    const textarea = card.querySelector('.editor-slide-textarea');
+    autoFitTextarea(textarea);
+
+    textarea.addEventListener('input', () =>
+    {
+      editorSlideTexts[index] = textarea.value;
+      autoFitTextarea(textarea);
+      updateEditorGridColumnWidth();
+    });
+
+    const btnUp = card.querySelector('.btn-move-up');
+    if (btnUp && index > 0)
+    {
+      btnUp.addEventListener('click', () =>
+      {
+        syncEditorSlideTextsFromDom();
+        const tmp = editorSlideTexts[index - 1];
+        editorSlideTexts[index - 1] = editorSlideTexts[index];
+        editorSlideTexts[index] = tmp;
+        renderEditorSlides();
+      });
+    }
+
+    const btnDown = card.querySelector('.btn-move-down');
+    if (btnDown && index < editorSlideTexts.length - 1)
+    {
+      btnDown.addEventListener('click', () =>
+      {
+        syncEditorSlideTextsFromDom();
+        const tmp = editorSlideTexts[index + 1];
+        editorSlideTexts[index + 1] = editorSlideTexts[index];
+        editorSlideTexts[index] = tmp;
+        renderEditorSlides();
+      });
+    }
+
+    const btnDel = card.querySelector('.btn-delete-card');
+    if (btnDel && editorSlideTexts.length > 1)
+    {
+      btnDel.addEventListener('click', () =>
+      {
+        syncEditorSlideTextsFromDom();
+        editorSlideTexts.splice(index, 1);
+        renderEditorSlides();
+      });
+    }
+
+    editorSlidesList.appendChild(card);
+  });
+}
+
+function syncEditorSlideTextsFromDom()
+{
+  if (!editorSlidesList) return;
+  const textareas = editorSlidesList.querySelectorAll('.editor-slide-textarea');
+  textareas.forEach((ta, idx) =>
+  {
+    if (idx < editorSlideTexts.length)
+    {
+      editorSlideTexts[idx] = ta.value;
+    }
+  });
+}
+
+if (btnAddEmptySlide)
+{
+  btnAddEmptySlide.addEventListener('click', () =>
+  {
+    syncEditorSlideTextsFromDom();
+    editorSlideTexts.push('');
+    renderEditorSlides();
+    // Scroll to bottom and focus new slide
+    setTimeout(() =>
+    {
+      if (editorSlidesList)
+      {
+        editorSlidesList.scrollTop = editorSlidesList.scrollHeight;
+        const textareas = editorSlidesList.querySelectorAll('.editor-slide-textarea');
+        if (textareas.length > 0)
+        {
+          textareas[textareas.length - 1].focus();
+        }
+      }
+    }, 50);
+  });
+}
+
+// Generate Slides (Bulk Edit) handling
+if (btnGenerateSlides)
+{
+  btnGenerateSlides.addEventListener('click', () =>
+  {
+    syncEditorSlideTextsFromDom();
+    // Formats all slides in a single textbox separated by two blank lines (\n\n\n)
+    const combined = editorSlideTexts
+      .map(s => s.trim())
+      .filter(Boolean)
+      .join('\n\n\n');
+    if (bulkSlidesTextarea)
+    {
+      bulkSlidesTextarea.value = combined;
+    }
+    if (bulkSlidesModal)
+    {
+      bulkSlidesModal.style.display = 'flex';
+      setTimeout(() => { if (bulkSlidesTextarea) bulkSlidesTextarea.focus(); }, 50);
+    }
+  });
+}
+
+function closeBulkModal()
+{
+  if (bulkSlidesModal) bulkSlidesModal.style.display = 'none';
+}
+
+if (btnCloseBulkModal) btnCloseBulkModal.addEventListener('click', closeBulkModal);
+if (btnCancelBulkModal) btnCancelBulkModal.addEventListener('click', closeBulkModal);
+
+if (btnApplyBulkSlides)
+{
+  btnApplyBulkSlides.addEventListener('click', () =>
+  {
+    if (bulkSlidesTextarea)
+    {
+      const raw = bulkSlidesTextarea.value || '';
+      // Delimited by two or more blank lines (two empty lines between slides)
+      // Single blank lines remain within the same slide
+      const sections = raw.split(/\r?\n(?:\s*\r?\n){2,}/);
+      const parsed = sections
+        .map(sec => sec.trim())
+        .filter(Boolean);
+
+      editorSlideTexts = parsed.length > 0 ? parsed : [''];
+      renderEditorSlides();
+    }
+    closeBulkModal();
+  });
+}
+
 if (btnOpenAddSong)
 {
   btnOpenAddSong.addEventListener('click', () =>
   {
     modalSongId.value = '';
     modalSongTitle.textContent = 'Add New Song';
-    modalInputTitle.value = '';
-    modalInputCat.value = '';
-    modalInputLyrics.value = '';
-    modalInputLyrics2.value = '';
+    if (modalInputTitle) modalInputTitle.value = '';
+    if (modalInputTitle2) modalInputTitle2.value = '';
+    if (modalInputCat) modalInputCat.value = '';
+    if (modalInputFont) modalInputFont.value = '';
+    if (modalInputTags) modalInputTags.value = '';
+    if (modalInputLyrics2) modalInputLyrics2.value = '';
+    editorSlideTexts = [''];
+    renderEditorSlides();
+    if (btnDeleteModalSong) btnDeleteModalSong.style.display = 'none';
     songModal.style.display = 'flex';
-    modalInputTitle.focus();
+    requestAnimationFrame(() => {
+      autoFitAllEditorTextareas();
+    });
+    setTimeout(() => {
+      autoFitAllEditorTextareas();
+    }, 50);
+    if (modalInputTitle) modalInputTitle.focus();
   });
 }
 
@@ -315,35 +488,43 @@ function closeSongModal()
 if (btnCloseSongModal) btnCloseSongModal.addEventListener('click', closeSongModal);
 if (btnCancelSongModal) btnCancelSongModal.addEventListener('click', closeSongModal);
 
-if (btnInsertSlide) btnInsertSlide.addEventListener('click', () => insertAtCursor(modalInputLyrics, '<slide>'));
-if (btnInsertBr) btnInsertBr.addEventListener('click', () => insertAtCursor(modalInputLyrics, '<BR>'));
-if (btnAutoFormatStanzas)
-{
-  btnAutoFormatStanzas.addEventListener('click', () =>
-  {
-    const val = modalInputLyrics.value;
-    modalInputLyrics.value = val.replace(/\n\s*\n/g, '<slide>\n').replace(/\n/g, '<BR>\n');
-  });
-}
-
 if (btnSaveSong)
 {
   btnSaveSong.addEventListener('click', async () =>
   {
-    const title = modalInputTitle.value.trim();
-    const cat = modalInputCat.value.trim() || 'General';
-    const lyrics = modalInputLyrics.value.trim();
-    const lyrics2 = modalInputLyrics2.value.trim();
-    const songId = modalSongId.value;
+    syncEditorSlideTextsFromDom();
+    const title = modalInputTitle ? modalInputTitle.value.trim() : '';
+    const title2 = modalInputTitle2 ? modalInputTitle2.value.trim() : '';
+    const cat = modalInputCat ? modalInputCat.value.trim() || 'General' : 'General';
+    const font = modalInputFont ? modalInputFont.value.trim() : '';
+    const tags = modalInputTags ? modalInputTags.value.trim() : '';
+    const songId = modalSongId ? modalSongId.value : '';
+
+    const lyrics = slideTextsToLyrics(editorSlideTexts);
 
     if (!title)
     {
       alert('Please enter a song title.');
-      modalInputTitle.focus();
+      if (modalInputTitle) modalInputTitle.focus();
       return;
     }
 
-    const payload = { name: title, cat, lyrics, lyrics2 };
+    if (!lyrics)
+    {
+      alert('Please enter at least one slide of lyrics.');
+      return;
+    }
+
+    // Only submit changed and supported fields. Hidden / unedited fields remain untouched in DB.
+    const payload = {
+      name: title,
+      title2,
+      cat,
+      font,
+      tags,
+      lyrics
+    };
+
     try
     {
       let res;
@@ -372,8 +553,7 @@ if (btnSaveSong)
 
       const saved = await res.json();
       closeSongModal();
-      await loadCategories();
-      await loadSongs(songSearchInput ? songSearchInput.value : '', selectedCategory);
+      await loadSongs(songSearchInput ? songSearchInput.value : '');
       selectSong(saved.id);
     }
     catch (err)
@@ -392,11 +572,35 @@ async function openEditSongModal(songId)
     const song = await res.json();
     modalSongId.value = song.id;
     modalSongTitle.textContent = 'Edit Song';
-    modalInputTitle.value = song.name;
-    modalInputCat.value = song.cat || '';
-    modalInputLyrics.value = song.lyrics || '';
-    modalInputLyrics2.value = song.lyrics2 || '';
+    if (modalInputTitle) modalInputTitle.value = song.name || '';
+    if (modalInputTitle2) modalInputTitle2.value = song.title2 || '';
+    if (modalInputCat) modalInputCat.value = song.cat || '';
+    if (modalInputFont) modalInputFont.value = song.font || '';
+    if (modalInputTags) modalInputTags.value = song.tags || '';
+
+    editorSlideTexts = lyricsToSlideTexts(song.lyrics || '');
+    renderEditorSlides();
+
+    if (btnDeleteModalSong)
+    {
+      btnDeleteModalSong.style.display = 'inline-flex';
+      btnDeleteModalSong.onclick = async () =>
+      {
+        if (confirm(`Are you sure you want to delete song "${song.name}"? This action cannot be undone.`))
+        {
+          await deleteSong(song.id);
+          closeSongModal();
+        }
+      };
+    }
+
     songModal.style.display = 'flex';
+    requestAnimationFrame(() => {
+      autoFitAllEditorTextareas();
+    });
+    setTimeout(() => {
+      autoFitAllEditorTextareas();
+    }, 50);
   }
   catch (err)
   {
@@ -411,7 +615,7 @@ async function deleteSong(songId)
     const res = await fetch(`/api/songs/${songId}`, { method: 'DELETE' });
     if (res.ok)
     {
-      if (currentSong && currentSong.id === songId)
+      if (currentSong && Number(currentSong.id) === Number(songId))
       {
         currentSong = null;
         if (slideDeckContainer)
@@ -419,10 +623,9 @@ async function deleteSong(songId)
           slideDeckContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 48px;">Select a song from the library on the left.</div>';
         }
         if (activeSongTitle) activeSongTitle.textContent = 'Select a Song';
-        if (activeSongCatBadge) activeSongCatBadge.style.display = 'none';
+        if (btnDeckEditSong) btnDeckEditSong.style.display = 'none';
       }
-      await loadCategories();
-      await loadSongs(songSearchInput ? songSearchInput.value : '', selectedCategory);
+      await loadSongs(songSearchInput ? songSearchInput.value : '');
     }
   }
   catch (err)
@@ -431,16 +634,36 @@ async function deleteSong(songId)
   }
 }
 
-// Debounced Song Search
+// Debounced Song Search & Clear Button
 let searchDebounce = null;
 if (songSearchInput)
 {
+  const updateClearBtn = () =>
+  {
+    if (btnClearSongSearch)
+    {
+      btnClearSongSearch.style.display = songSearchInput.value ? 'flex' : 'none';
+    }
+  };
+
   songSearchInput.addEventListener('input', () =>
   {
+    updateClearBtn();
     clearTimeout(searchDebounce);
     searchDebounce = setTimeout(() =>
     {
-      loadSongs(songSearchInput.value, selectedCategory);
+      loadSongs(songSearchInput.value);
     }, 200);
   });
+
+  if (btnClearSongSearch)
+  {
+    btnClearSongSearch.addEventListener('click', () =>
+    {
+      songSearchInput.value = '';
+      updateClearBtn();
+      songSearchInput.focus();
+      loadSongs('');
+    });
+  }
 }

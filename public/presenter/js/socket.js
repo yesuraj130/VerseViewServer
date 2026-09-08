@@ -153,7 +153,10 @@ function highlightActiveInDecks(state)
   {
     const sIndex = Number(card.getAttribute('data-slide-index'));
     const isThisSong = isLive && currentSong && Number(state.songId) === Number(currentSong.id);
-    card.classList.toggle('active-live', isThisSong && sIndex === Number(state.slideIndex));
+    const active = isThisSong && sIndex === Number(state.slideIndex);
+    card.classList.toggle('active-live', active);
+    const badge = card.querySelector('.slide-card-badge');
+    if (badge) badge.style.display = active ? 'inline-block' : 'none';
   });
 
   // Green highlight for Song items list in left panel

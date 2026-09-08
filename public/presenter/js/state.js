@@ -85,6 +85,7 @@ const tabPanels = document.querySelectorAll('.tab-panel');
 
 const songListContainer = document.getElementById('song-list-container');
 const songSearchInput = document.getElementById('song-search-input');
+const btnClearSongSearch = document.getElementById('btn-clear-song-search');
 const categoryChips = document.getElementById('category-chips');
 
 const selectVersion = document.getElementById('select-version');
@@ -126,16 +127,27 @@ const songModal = document.getElementById('song-modal');
 const modalSongTitle = document.getElementById('modal-song-title');
 const modalSongId = document.getElementById('modal-song-id');
 const modalInputTitle = document.getElementById('modal-input-title');
+const modalInputTitle2 = document.getElementById('modal-input-title2');
 const modalInputCat = document.getElementById('modal-input-cat');
-const modalInputLyrics = document.getElementById('modal-input-lyrics');
+const modalInputFont = document.getElementById('modal-input-font');
+const modalInputTags = document.getElementById('modal-input-tags');
 const modalInputLyrics2 = document.getElementById('modal-input-lyrics2');
+const editorSlidesList = document.getElementById('editor-slides-list');
+const modalSlidesCounter = document.getElementById('modal-slides-counter');
+const btnGenerateSlides = document.getElementById('btn-generate-slides');
+const btnAddEmptySlide = document.getElementById('btn-add-empty-slide');
 const btnOpenAddSong = document.getElementById('btn-open-add-song');
 const btnCloseSongModal = document.getElementById('btn-close-song-modal');
 const btnCancelSongModal = document.getElementById('btn-cancel-song-modal');
 const btnSaveSong = document.getElementById('btn-save-song');
-const btnInsertSlide = document.getElementById('btn-insert-slide');
-const btnInsertBr = document.getElementById('btn-insert-br');
-const btnAutoFormatStanzas = document.getElementById('btn-auto-format-stanzas');
+const btnDeleteModalSong = document.getElementById('btn-delete-modal-song');
+
+// Generate Slides (Bulk Edit) Modal References
+const bulkSlidesModal = document.getElementById('bulk-slides-modal');
+const bulkSlidesTextarea = document.getElementById('bulk-slides-textarea');
+const btnCloseBulkModal = document.getElementById('btn-close-bulk-modal');
+const btnCancelBulkModal = document.getElementById('btn-cancel-bulk-modal');
+const btnApplyBulkSlides = document.getElementById('btn-apply-bulk-slides');
 
 // ---------------------------------------------------------------------------
 // Common Utility Functions

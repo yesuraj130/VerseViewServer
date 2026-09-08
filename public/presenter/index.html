@@ -89,9 +89,9 @@
           </div>
 
           <div class="search-box">
-            <input type="text" id="song-search-input" class="input-search" placeholder="Search title, lyrics, or number...">
-            <div class="cat-filter-chips" id="category-chips">
-              <span class="chip active" data-cat="All">All</span>
+            <div class="search-input-wrapper">
+              <input type="text" id="song-search-input" class="input-search" placeholder="Search title, tags, or number...">
+              <button type="button" id="btn-clear-song-search" class="btn-search-clear" title="Clear search" style="display: none;">&times;</button>
             </div>
           </div>
 
@@ -105,10 +105,6 @@
         <section class="deck-pane" id="deck-pane-songs">
           <div class="deck-header">
             <div class="deck-meta">
-              <div class="deck-badges">
-                <span class="badge-type" id="deck-type-badge-songs" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);">SONG</span>
-                <span class="badge-cat" id="active-song-cat-badge">Hymns</span>
-              </div>
               <h2 class="deck-title" id="active-song-title">Select a Song</h2>
             </div>
 
@@ -179,10 +175,6 @@
         <section class="deck-pane" id="deck-pane-bible">
           <div class="deck-header">
             <div class="deck-meta">
-              <div class="deck-badges">
-                <span class="badge-type" style="color: #10b981; border-color: rgba(16, 185, 129, 0.4);">BIBLE</span>
-                <span class="badge-cat" id="active-bible-ver-badge">Bible</span>
-              </div>
               <h2 class="deck-title" id="active-bible-title">John Chapter 3</h2>
             </div>
 
@@ -248,38 +240,91 @@
 
   <!-- Add / Edit Song Modal -->
   <div class="modal-backdrop" id="song-modal" style="display: none;">
-    <div class="modal-content">
+    <div class="modal-content song-editor-modal-content">
       <div class="modal-header">
         <h3 id="modal-song-title">Add New Song</h3>
         <button id="btn-close-song-modal" class="btn-icon-tiny" style="font-size: 20px; color: #fff;">&times;</button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body song-editor-modal-body">
         <input type="hidden" id="modal-song-id">
-        <div class="form-group">
-          <label class="form-label" for="modal-input-title">Song Title</label>
-          <input type="text" id="modal-input-title" class="input-text" placeholder="e.g. Amazing Grace">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="modal-input-cat">Category</label>
-          <input type="text" id="modal-input-cat" class="input-text" placeholder="e.g. Hymns, Worship, Tamil, Praise">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="modal-input-lyrics">Lyrics (Delimited by <code>&lt;slide&gt;</code> for slides and <code>&lt;BR&gt;</code> for lines)</label>
-          <div class="delimiter-helper-bar" style="margin-bottom: 6px;">
-            <button type="button" class="btn-helper" id="btn-insert-slide">+ &lt;slide&gt;</button>
-            <button type="button" class="btn-helper" id="btn-insert-br">+ &lt;BR&gt;</button>
-            <button type="button" class="btn-helper" id="btn-auto-format-stanzas">Convert Blank Lines to &lt;slide&gt;</button>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
+          <div class="form-group">
+            <label class="form-label" for="modal-input-title">Song Title</label>
+            <input type="text" id="modal-input-title" class="input-text" placeholder="e.g. Amazing Grace or English / Romanized title">
           </div>
-          <textarea id="modal-input-lyrics" class="textarea-lyrics" placeholder="Line 1<BR>Line 2<slide>Next slide line 1<BR>Next slide line 2"></textarea>
+          <div class="form-group">
+            <label class="form-label" for="modal-input-title2">Alternative / Secondary Title</label>
+            <input type="text" id="modal-input-title2" class="input-text" placeholder="e.g. Vernacular script title or alternate title">
+          </div>
         </div>
-        <div class="form-group">
-          <label class="form-label" for="modal-input-lyrics2">Secondary Lyrics / Author / Chords (Optional)</label>
-          <input type="text" id="modal-input-lyrics2" class="input-text" placeholder="e.g. Traditional or Tamil transliteration">
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 8px;">
+          <div class="form-group">
+            <label class="form-label" for="modal-input-cat">Category</label>
+            <input type="text" id="modal-input-cat" class="input-text" placeholder="e.g. Hymns, Worship, Sunday School">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="modal-input-font">Font Name</label>
+            <input type="text" id="modal-input-font" class="input-text" list="font-list-options" placeholder="e.g. Arial, Baloo Thambi, Latha">
+            <datalist id="font-list-options">
+              <option value="Arial">
+              <option value="Baloo Thambi">
+              <option value="Baloo Chettan">
+              <option value="Latha">
+              <option value="Calibri">
+              <option value="Times New Roman">
+              <option value="MeeraInimai Tamil">
+              <option value="Tamil Bible">
+              <option value="Tamil-Ananthi">
+              <option value="BAMINI-Tamil50">
+              <option value="AnjaliOldLipi">
+            </datalist>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="modal-input-tags">Searchable Tags</label>
+            <input type="text" id="modal-input-tags" class="input-text" placeholder="e.g. PRAISE, EASTER, COMMUNION">
+          </div>
+        </div>
+
+        <div class="form-group" style="flex-grow: 1; display: flex; flex-direction: column;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label class="form-label" style="margin-bottom: 0;">Song Slides (<span id="modal-slides-counter">0 slides</span>)</label>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="btn-helper" id="btn-generate-slides">📝 Generate Slides</button>
+              <button type="button" class="btn-helper" id="btn-add-empty-slide">+ Add Slide</button>
+            </div>
+          </div>
+
+          <!-- Slide Deck view in edit modal -->
+          <div class="editor-slides-container" id="editor-slides-list"></div>
         </div>
       </div>
       <div class="modal-footer">
+        <button type="button" class="btn-danger" id="btn-delete-modal-song" style="display: none; margin-right: auto; padding: 6px 14px; background: #dc2626; color: #fff; border: 1px solid #ef4444; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500;">🗑️ Delete Song</button>
         <button type="button" class="btn-secondary" id="btn-cancel-song-modal">Cancel</button>
         <button type="button" class="btn-primary" id="btn-save-song">Save Song</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generate Slides (Bulk Edit) Modal -->
+  <div class="modal-backdrop" id="bulk-slides-modal" style="display: none; z-index: 1050;">
+    <div class="modal-content" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3>Generate Slides (Bulk Edit)</h3>
+        <button id="btn-close-bulk-modal" class="btn-icon-tiny" style="font-size: 20px; color: #fff;">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="font-size: 12px; color: #94a3b8; line-height: 1.4;">
+          Enter or edit lyrics below. Each slide is separated by <strong>two blank lines (two empty lines)</strong>. Single blank lines remain within the same slide.
+        </div>
+        <div class="form-group">
+          <textarea id="bulk-slides-textarea" class="textarea-lyrics" style="min-height: 280px; font-size: 13px; line-height: 1.5;" placeholder="Slide 1 line 1&#10;Slide 1 line 2&#10;&#10;&#10;Slide 2 line 1&#10;Slide 2 line 2"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="btn-cancel-bulk-modal">Cancel</button>
+        <button type="button" class="btn-primary" id="btn-apply-bulk-slides">Apply Slides</button>
       </div>
     </div>
   </div>

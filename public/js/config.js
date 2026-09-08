@@ -31,12 +31,15 @@ if (typeof window !== 'undefined')
     else if (path.includes('/display')) clientName = 'display';
     else clientName = 'hub';
 
+    // Unique 4-character session ID per browser tab to distinguish multiple tabs on same machine
+    const tabId = Math.random().toString(36).substring(2, 6);
+
     function sendHeartbeat()
     {
       try
       {
-        // Bust cache and force standalone connection with unique timestamp
-        fetch(`/api/keepalive?client=${encodeURIComponent(clientName)}&t=${Date.now()}`, {
+        // Bust cache and force standalone connection with unique timestamp and tab ID
+        fetch(`/api/keepalive?client=${encodeURIComponent(clientName)}&tab=${tabId}&t=${Date.now()}`, {
           method: 'GET',
           cache: 'no-store',
           keepalive: false
