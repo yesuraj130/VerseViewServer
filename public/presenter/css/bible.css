@@ -83,7 +83,7 @@
 {
   flex-grow: 1;
   display: grid;
-  grid-template-columns: minmax(110px, 1.3fr) minmax(64px, 1fr) minmax(64px, 1fr);
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
   min-height: 0;
   min-width: 0;
   height: 100%;
@@ -202,60 +202,94 @@
   padding: 4px;
 }
 
-/* Books List item */
-.book-item
+/* Books Grid (Multi-Column Boxed Layout) */
+.books-grid
 {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 4px;
+  padding: 4px;
+  align-content: start;
+}
+
+.book-btn
+{
+  height: 28px;
+  min-height: 28px;
+  min-width: 0;
+  width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 5px 6px;
+  justify-content: flex-start;
   font-size: 11px;
+  font-weight: 700;
   color: #cbd5e1;
+  background: #1e293b;
+  border: 1px solid #334155;
   border-radius: 4px;
   cursor: pointer;
-  margin-bottom: 2px;
   transition: all 0.12s;
   user-select: none;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 0 0 4px !important;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-align: left;
 }
 
-.book-item:hover
+.book-btn span
 {
-  background: #1e293b;
-  color: #ffffff;
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  line-height: 1.3;
+  text-align: left;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
-.book-item.active
+.book-btn:hover
+{
+  background: #334155;
+  color: #ffffff;
+  border-color: #475569;
+}
+
+.book-btn.active
 {
   background: #0284c7;
+  border-color: #38bdf8;
   color: #ffffff;
   font-weight: 700;
+  box-shadow: 0 0 8px rgba(2, 132, 199, 0.4);
 }
 
-.book-item.is-live-active
+.book-btn.is-live-active
 {
   outline: 2px solid #10b981;
   outline-offset: -1px;
   box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
 }
 
-.book-item.active.is-live-active
+.book-btn.active.is-live-active
 {
   background: #0284c7;
+  border-color: #38bdf8;
   outline: 2px solid #10b981;
+  outline-offset: -1px;
   box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
 }
 
-.book-item .book-num
+/* Backward compatibility for legacy book-item list */
+.book-item
 {
-  font-size: 9px;
-  color: #64748b;
-  margin-right: 5px;
-  min-width: 14px;
-}
-
-.book-item.active .book-num
-{
-  color: #e0f2fe;
+  user-select: none;
 }
 
 /* Responsive Number Grid for Chapters & Verses */
@@ -270,7 +304,8 @@
 
 .num-btn
 {
-  height: 30px;
+  height: 28px;
+  min-height: 28px;
   min-width: 0;
   width: 100%;
   display: flex;
@@ -287,7 +322,7 @@
   user-select: none;
   box-sizing: border-box;
   padding: 0;
-  line-height: 1;
+  line-height: 1.3;
 }
 
 .num-btn:hover
@@ -461,7 +496,14 @@
 {
   .bible-cols-container
   {
-    grid-template-columns: 1.35fr 0.8fr 0.8fr;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .books-grid
+  {
+    grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)) !important;
+    gap: 4px;
+    padding: 4px;
   }
 
   .nums-grid
@@ -471,17 +513,12 @@
     padding: 4px;
   }
 
-  .num-btn
+  .num-btn,
+  .book-btn
   {
     height: 38px !important;
-    font-size: 13px !important;
-    font-weight: 700 !important;
-  }
-
-  .book-item
-  {
-    padding: 10px 6px !important;
     font-size: 12px !important;
+    font-weight: 700 !important;
   }
 
   .quick-ref-box

@@ -123,6 +123,56 @@ async function loadBibleBooks(versionId, targetBookNum = null, targetChapter = n
   }
 }
 
+const STANDARD_ENGLISH_BOOK_ABBR = {
+  1: 'Gen', 2: 'Exo', 3: 'Lev', 4: 'Num', 5: 'Deu', 6: 'Jos', 7: 'Jdg', 8: 'Rut', 9: '1Sa', 10: '2Sa',
+  11: '1Ki', 12: '2Ki', 13: '1Ch', 14: '2Ch', 15: 'Ezr', 16: 'Neh', 17: 'Est', 18: 'Job', 19: 'Psa', 20: 'Pro',
+  21: 'Ecc', 22: 'Sng', 23: 'Isa', 24: 'Jer', 25: 'Lam', 26: 'Eze', 27: 'Dan', 28: 'Hos', 29: 'Joe', 30: 'Amo',
+  31: 'Oba', 32: 'Jon', 33: 'Mic', 34: 'Nah', 35: 'Hab', 36: 'Zep', 37: 'Hag', 38: 'Zec', 39: 'Mal',
+  40: 'Mat', 41: 'Mrk', 42: 'Luk', 43: 'Jhn', 44: 'Act', 45: 'Rom', 46: '1Co', 47: '2Co', 48: 'Gal', 49: 'Eph',
+  50: 'Php', 51: 'Col', 52: '1Th', 53: '2Th', 54: '1Ti', 55: '2Ti', 56: 'Tit', 57: 'Phm', 58: 'Heb', 59: 'Jas',
+  60: '1Pe', 61: '2Pe', 62: '1Jn', 63: '2Jn', 64: '3Jn', 65: 'Jud', 66: 'Rev'
+};
+
+function getShortBookName(name, bookNum)
+{
+  if (!name) return '';
+  const num = Number(bookNum);
+  const trimmed = name.trim();
+
+  // If standard English book name:
+  if (STANDARD_ENGLISH_BOOK_ABBR[num] && /^[1-3]?\s*[A-Za-z\s]+$/.test(trimmed))
+  {
+    return STANDARD_ENGLISH_BOOK_ABBR[num];
+  }
+
+  // Use Intl.Segmenter for Indic / Unicode scripts to preserve combining characters accurately
+  if (typeof Intl !== 'undefined' && Intl.Segmenter)
+  {
+    try
+    {
+      const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+      const numMatch = trimmed.match(/^([1-3]|I{1,3})\s*(.*)$/i);
+      if (numMatch && numMatch[2])
+      {
+        const prefix = numMatch[1];
+        const restSegments = Array.from(segmenter.segment(numMatch[2].trim())).map(s => s.segment);
+        return prefix + restSegments.slice(0, 3).join('');
+      }
+      const segments = Array.from(segmenter.segment(trimmed)).map(s => s.segment);
+      return segments.slice(0, 4).join('');
+    }
+    catch (e) {}
+  }
+
+  // Fallback for environments without Intl.Segmenter
+  const numMatch = trimmed.match(/^([1-3]|I{1,3})\s*(.*)$/i);
+  if (numMatch && numMatch[2])
+  {
+    return numMatch[1] + numMatch[2].slice(0, 3);
+  }
+  return trimmed.slice(0, 4);
+}
+
 function renderBibleBooksList()
 {
   if (!bibleBooksList) return;
@@ -151,33 +201,30 @@ function renderBibleBooksList()
 
   if (list.length === 0)
   {
-    bibleBooksList.innerHTML = '<div style="padding: 14px; font-size: 11px; color: var(--text-muted); text-align: center;">No matching books</div>';
+    bibleBooksList.innerHTML = '<div style="grid-column: 1/-1; padding: 14px; font-size: 11px; color: var(--text-muted); text-align: center;">No matching books</div>';
     return;
   }
 
   list.forEach((b) =>
   {
-    const item = document.createElement('div');
-    item.className = 'book-item';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'book-btn book-item';
     if (Number(b.bookNum) === Number(selectedBookNum))
     {
-      item.classList.add('active');
+      btn.classList.add('active');
     }
-    item.setAttribute('data-book-num', b.bookNum);
+    btn.setAttribute('data-book-num', b.bookNum);
+    btn.title = `${b.bookNum}. ${b.name}`;
 
-    item.innerHTML = `
-      <div style="display: flex; align-items: center; min-width: 0;">
-        <span class="book-num">${b.bookNum}</span>
-        <span class="book-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(b.name)}</span>
-      </div>
-    `;
+    btn.innerHTML = `<span>${escapeHtml(b.name.trim())}</span>`;
 
-    item.addEventListener('click', () =>
+    btn.addEventListener('click', () =>
     {
       selectBibleBook(b.bookNum, b.name);
     });
 
-    bibleBooksList.appendChild(item);
+    bibleBooksList.appendChild(btn);
   });
 
   if (typeof highlightActiveInDecks === 'function' && liveState)
