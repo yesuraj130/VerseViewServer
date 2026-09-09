@@ -279,6 +279,11 @@ function switchTab(tabId)
   const workspaceViews = document.querySelectorAll('.workspace-tab-view');
   workspaceViews.forEach(v => v.classList.toggle('active', v.id === `workspace-${tabId}`));
 
+  if (tabId === 'songs' && typeof updateVirtualSongList === 'function')
+  {
+    updateVirtualSongList(true);
+  }
+
   try
   {
     localStorage.setItem('presenter_active_tab', tabId);

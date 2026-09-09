@@ -110,6 +110,7 @@ const slideDeckSearch = document.getElementById('slide-deck-search');
 const slideDeckContainer = slideDeckSongs || document.getElementById('slide-deck-container');
 
 const activeSongTitle = document.getElementById('active-song-title');
+const songUnicodeDeckBadge = document.getElementById('song-unicode-deck-badge');
 const activeSongCatBadge = document.getElementById('active-song-cat-badge');
 const deckTypeBadge = document.getElementById('deck-type-badge-songs') || document.getElementById('deck-type-badge');
 const activeSlideCountIndicator = document.getElementById('active-slide-count-indicator');

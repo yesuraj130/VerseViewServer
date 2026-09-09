@@ -1,179 +1,374 @@
 /**
- * Client-Side Bamini to Unicode Tamil Converter for VerseView
+ * Client-Side Bamini / Tamil Bible to Unicode Tamil Converter for VerseView
+ * 
+ * Replicated from sskjames/tamilunicodeconverter (Kandupidi / Tamil Lexicon engine)
+ * with Tag Shielding and church typist quirk normalization.
  */
 (function(window) {
   function isTamilBibleFont(fontName) {
-    if (!fontName || typeof fontName !== 'string') return false;
-    return fontName.trim().toLowerCase() === 'tamil bible';
+    if (!fontName || typeof fontName !== "string") return false;
+    const f = fontName.trim().toLowerCase();
+    return f === "tamil bible" || f.includes("bamini") || f.includes("tamilbible") || f.includes("tamil_bible");
   }
 
   function isBaminiText(text, fontName) {
     if (!isTamilBibleFont(fontName)) return false;
-    if (!text || typeof text !== 'string') return false;
-    if (/[\u0B80-\u0BFF]/.test(text)) return false; // Already Tamil Unicode
+    if (!text || typeof text !== "string") return false;
+    if (/[\u0B80-\u0BFF]/.test(text)) return false;
     return true;
   }
 
-  function baminiToUnicode(text) {
-    if (!text || typeof text !== 'string') return '';
-    if (/[\u0B80-\u0BFF]/.test(text)) return text;
+  const SSKJAMES_RULES = [
+    [/sp/g, "ளி"],
+    [/hp/g, "ரி"],
+    [/hP/g, "ரீ"],
+    [/uP/g, "ரீ"],
+    [/u;/g, "ர்"],
+    [/h;/g, "ர்"],
+    [/H/g, "ர்"],
+    [/\+/g, "10"],
+    [/nfs/g, "கௌ"],
+    [/Nfh/g, "கோ"],
+    [/nfh/g, "கொ"],
+    [/fh/g, "கா"],
+    [/fp/g, "கி"],
+    [/fP/g, "கீ"],
+    [/F/g, "கு"],
+    [/\$/g, "கூ"],
+    [/nf/g, "கெ"],
+    [/Nf/g, "கே"],
+    [/if/g, "கை"],
+    [/f;/g, "க்"],
+    [/f/g, "க"],
+    [/nqs/g, "ஙௌ"],
+    [/Nqh/g, "ஙோ"],
+    [/nqh/g, "ஙொ"],
+    [/qh/g, "ஙா"],
+    [/qp/g, "ஙி"],
+    [/qP/g, "ஙீ"],
+    [/nq/g, "ஙெ"],
+    [/Nq/g, "ஙே"],
+    [/iq/g, "ஙை"],
+    [/q;/g, "ங்"],
+    [/q/g, "ங"],
+    [/nrs/g, "சௌ"],
+    [/Nrh/g, "சோ"],
+    [/nrh/g, "சொ"],
+    [/rh/g, "சா"],
+    [/rp/g, "சி"],
+    [/rP/g, "சீ"],
+    [/R/g, "சு"],
+    [/#/g, "சூ"],
+    [/nr/g, "செ"],
+    [/Nr/g, "சே"],
+    [/ir/g, "சை"],
+    [/r;/g, "ச்"],
+    [/r/g, "ச"],
+    [/n\[s/g, "ஜௌ"],
+    [/N\[h/g, "ஜோ"],
+    [/n\[h/g, "ஜொ"],
+    [/\[h/g, "ஜா"],
+    [/\[p/g, "ஜி"],
+    [/\[P/g, "ஜீ"],
+    [/\[\{/g, "ஜு"],
+    [/\[_/g, "ஜூ"],
+    [/n\[/g, "ஜெ"],
+    [/N\[/g, "ஜே"],
+    [/i\[/g, "ஜை"],
+    [/\[\;/g, "ஜ்"],
+    [/\[/g, "ஜ"],
+    [/nQs/g, "ஞௌ"],
+    [/NQh/g, "ஞோ"],
+    [/nQh/g, "ஞொ"],
+    [/Qh/g, "ஞா"],
+    [/Qp/g, "ஞி"],
+    [/QP/g, "ஞீ"],
+    [/nQ/g, "ஞெ"],
+    [/NQ/g, "ஞே"],
+    [/iQ/g, "ஞை"],
+    [/Q;/g, "ஞ்"],
+    [/Q/g, "ஞ"],
+    [/nls/g, "டௌ"],
+    [/Nlh/g, "டோ"],
+    [/nlh/g, "டொ"],
+    [/lp/g, "டி"],
+    [/lP/g, "டீ"],
+    [/lh/g, "டா"],
+    [/b/g, "டி"],
+    [/B/g, "டீ"],
+    [/L/g, "டு"],
+    [/\^/g, "டூ"],
+    [/nl/g, "டெ"],
+    [/Nl/g, "டே"],
+    [/il/g, "டை"],
+    [/l;/g, "ட்"],
+    [/l/g, "ட"],
+    [/nzs/g, "ணௌ"],
+    [/Nzh/g, "ணோ"],
+    [/nzh/g, "ணொ"],
+    [/zh/g, "ணா"],
+    [/zp/g, "ணி"],
+    [/zP/g, "ணீ"],
+    [/Zh/g, "ணூ"],
+    [/Z}/g, "ணூ"],
+    [/nz/g, "ணெ"],
+    [/Nz/g, "ணே"],
+    [/iz/g, "ணை"],
+    [/z;/g, "ண்"],
+    [/Z/g, "ணு"],
+    [/z/g, "ண"],
+    [/njs/g, "தௌ"],
+    [/Njh/g, "தோ"],
+    [/njh/g, "தொ"],
+    [/jh/g, "தா"],
+    [/jp/g, "தி"],
+    [/jP/g, "தீ"],
+    [/Jh/g, "தூ"],
+    [/Jh/g, "தூ"],
+    [/J}/g, "தூ"],
+    [/J/g, "து"],
+    [/nj/g, "தெ"],
+    [/Nj/g, "தே"],
+    [/ij/g, "தை"],
+    [/j;/g, "த்"],
+    [/j/g, "த"],
+    [/nes/g, "நௌ"],
+    [/Neh/g, "நோ"],
+    [/neh/g, "நொ"],
+    [/eh/g, "நா"],
+    [/ep/g, "நி"],
+    [/eP/g, "நீ"],
+    [/E}/g, "நூ"],
+    [/Eh/g, "நூ"],
+    [/E/g, "நு"],
+    [/ne/g, "நெ"],
+    [/Ne/g, "நே"],
+    [/ie/g, "நை"],
+    [/e;/g, "ந்"],
+    [/e/g, "ந"],
+    [/nds/g, "னௌ"],
+    [/Ndh/g, "னோ"],
+    [/ndh/g, "னொ"],
+    [/dh/g, "னா"],
+    [/dp/g, "னி"],
+    [/dP/g, "னீ"],
+    [/D}/g, "னூ"],
+    [/Dh/g, "னூ"],
+    [/D/g, "னு"],
+    [/nd/g, "னெ"],
+    [/Nd/g, "னே"],
+    [/id/g, "னை"],
+    [/d;/g, "ன்"],
+    [/d/g, "ன"],
+    [/ngs/g, "பௌ"],
+    [/Ngh/g, "போ"],
+    [/ngh/g, "பொ"],
+    [/gh/g, "பா"],
+    [/gp/g, "பி"],
+    [/gP/g, "பீ"],
+    [/G/g, "பு"],
+    [/ng/g, "பெ"],
+    [/Ng/g, "பே"],
+    [/ig/g, "பை"],
+    [/g;/g, "ப்"],
+    [/g/g, "ப"],
+    [/nks/g, "மௌ"],
+    [/Nkh/g, "மோ"],
+    [/nkh/g, "மொ"],
+    [/kh/g, "மா"],
+    [/kp/g, "மி"],
+    [/kP/g, "மீ"],
+    [/K/g, "மு"],
+    [/%/g, "மூ"],
+    [/nk/g, "மெ"],
+    [/Nk/g, "மே"],
+    [/ik/g, "மை"],
+    [/k;/g, "ம்"],
+    [/k/g, "ம"],
+    [/nas/g, "யௌ"],
+    [/Nah/g, "யோ"],
+    [/nah/g, "யொ"],
+    [/ah/g, "யா"],
+    [/ap/g, "யி"],
+    [/aP/g, "யீ"],
+    [/A/g, "யு"],
+    [/A+/g, "யூ"],
+    [/na/g, "யெ"],
+    [/Na/g, "யே"],
+    [/ia/g, "யை"],
+    [/a;/g, "ய்"],
+    [/a/g, "ய"],
+    [/nus/g, "ரௌ"],
+    [/Nuh/g, "ரோ"],
+    [/nuh/g, "ரொ"],
+    [/uh/g, "ரா"],
+    [/up/g, "ரி"],
+    [/U/g, "ரு"],
+    [/&/g, "ரூ"],
+    [/nu/g, "ரெ"],
+    [/Nu/g, "ரே"],
+    [/iu/g, "ரை"],
+    [/u/g, "ர"],
+    [/nys/g, "லௌ"],
+    [/Nyh/g, "லோ"],
+    [/nyh/g, "லொ"],
+    [/yh/g, "லா"],
+    [/yp/g, "லி"],
+    [/yP/g, "லீ"],
+    [/Yh/g, "லூ"],
+    [/Y}/g, "லூ"],
+    [/Y/g, "லு"],
+    [/ny/g, "லெ"],
+    [/Ny/g, "லே"],
+    [/iy/g, "லை"],
+    [/y;/g, "ல்"],
+    [/y/g, "ல"],
+    [/nss/g, "ளௌ"],
+    [/Nsh/g, "ளோ"],
+    [/nsh/g, "ளொ"],
+    [/sh/g, "ளா"],
+    [/sP/g, "ளீ"],
+    [/Sh/g, "ளூ"],
+    [/S/g, "ளு"],
+    [/ns/g, "ளெ"],
+    [/Ns/g, "ளே"],
+    [/is/g, "ளை"],
+    [/s;/g, "ள்"],
+    [/s/g, "ள"],
+    [/ntt/g, "வௌ"],
+    [/Nth/g, "வோ"],
+    [/nth/g, "வொ"],
+    [/th/g, "வா"],
+    [/tp/g, "வி"],
+    [/tP/g, "வீ"],
+    [/nt/g, "வெ"],
+    [/Nt/g, "வே"],
+    [/it/g, "வை"],
+    [/t;/g, "வ்"],
+    [/t/g, "வ"],
+    [/noo/g, "ழௌ"],
+    [/Noh/g, "ழோ"],
+    [/noh/g, "ழொ"],
+    [/oh/g, "ழா"],
+    [/op/g, "ழி"],
+    [/oP/g, "ழீ"],
+    [/\*/g, "ழூ"],
+    [/O/g, "ழு"],
+    [/no/g, "ழெ"],
+    [/No/g, "ழே"],
+    [/io/g, "ழை"],
+    [/o;/g, "ழ்"],
+    [/o/g, "ழ"],
+    [/nws/g, "றௌ"],
+    [/Nwh/g, "றோ"],
+    [/nwh/g, "றொ"],
+    [/wh/g, "றா"],
+    [/wp/g, "றி"],
+    [/wP/g, "றீ"],
+    [/Wh/g, "றூ"],
+    [/W}/g, "றூ"],
+    [/W/g, "று"],
+    [/nw/g, "றெ"],
+    [/Nw/g, "றே"],
+    [/iw/g, "றை"],
+    [/w;/g, "ற்"],
+    [/w/g, "ற"],
+    [/n``/g, "ஹௌ"],
+    [/N`h/g, "ஹோ"],
+    [/n`h/g, "ஹொ"],
+    [/`h/g, "ஹா"],
+    [/`p/g, "ஹி"],
+    [/`P/g, "ஹீ"],
+    [/n`/g, "ஹெ"],
+    [/N`/g, "ஹே"],
+    [/i`/g, "ஹை"],
+    [/`;/g, "ஹ்"],
+    [/`/g, "ஹ"],
+    [/n\\s/g, "ஷௌ"],
+    [/N\\h/g, "ஷோ"],
+    [/n\\h/g, "ஷொ"],
+    [/\\h/g, "ஷா"],
+    [/\\p/g, "ஷி"],
+    [/\\P/g, "ஷீ"],
+    [/n\\/g, "ஷெ"],
+    [/N\\/g, "ஷே"],
+    [/i\\/g, "ஷை"],
+    [/\\;/g, "ஷ்"],
+    [/\\/g, "ஷ"],
+    [/n]s/g, "ஸௌ"],
+    [/N]h/g, "ஸோ"],
+    [/n]h/g, "ஸொ"],
+    [/]h/g, "ஸா"],
+    [/]p/g, "ஸி"],
+    [/]P/g, "ஸீ"],
+    [/n]/g, "ஸெ"],
+    [/N]/g, "ஸே"],
+    [/i]/g, "ஸை"],
+    [/];/g, "ஸ்"],
+    [/]/g, "ஸ"],
+    [/m/g, "அ"],
+    [/M/g, "ஆ"],
+    [/</g, "ஈ"],
+    [/c/g, "உ"],
+    [/C/g, "ஊ"],
+    [/v/g, "எ"],
+    [/V/g, "ஏ"],
+    [/I/g, "ஐ"],
+    [/xs/g, "ஔ"],
+    [/x/g, "ஒ"],
+    [/X/g, "ஓ"],
+    [/\//g, "ஃ"],
+    [/,/g, "இ"],
+    [/=/g, "ஸ்ரீ"],
+    [/>/g, ","],
+    [/T/g, "வு"],
+    [/வு10/g, "வூ"],
+    [/G\+/g, "பூ"],
+    [/பு10/g, "பூ"],
+    [/A\+/g, "யூ"],
+    [/யு10/g, "யூ"],
+  ];
 
-    const segments = text.split(/(<BR>|<br\s*\/?>|<slide>|\n)/i);
+  function convertLine(text) {
+    if (!text) return text;
+    let s = text;
 
-    const converted = segments.map(function(segment) {
-      if (/^<BR>$/i.test(segment) || /^<br\s*\/?>$/i.test(segment) || /^<slide>$/i.test(segment) || segment === '\n') {
-        return segment;
-      }
+    s = s.replaceAll("\\\\;", "\\;");
+    s = s.replaceAll("\\\\", "\\");
+    s = s.replaceAll("!;", "];");
+    s = s.replaceAll("![", "];");
+    s = s.replaceAll("NT", "Nt");
+    s = s.replaceAll("nT", "nt");
+    s = s.replaceAll("iT", "it");
 
-      let s = segment;
+    for (let i = 0; i < SSKJAMES_RULES.length; i++) {
+      const [regex, replacement] = SSKJAMES_RULES[i];
+      s = s.replace(regex, replacement);
+    }
 
-      s = s.replaceAll('my;NyY}ah', 'அல்லேலூயா');
-      s = s.replaceAll('my;NyY+ah', 'அல்லேலூயா');
-      s = s.replaceAll('my;NyYah', 'அல்லேலூயா');
-      s = s.replaceAll('my;NyYh', 'அல்லேலூ');
-      s = s.replaceAll(',NaRTf;F', 'இயேசுவுக்கு');
-      s = s.replaceAll(',naRTf;F', 'இயேசுவுக்கு');
-      s = s.replaceAll(',NaRt', 'இயேசுவ');
-      s = s.replaceAll(',naRt', 'இயேசுவ');
-      s = s.replaceAll(',NaRNt', 'இயேசுவே');
-      s = s.replaceAll(',naRNt', 'இயேசுவே');
-      s = s.replaceAll(',NaR', 'இயேசு');
-      s = s.replaceAll(',naR', 'இயேசு');
-      s = s.replaceAll('];Njhj;jhp', 'ஸ்தோத்தரி');
-      s = s.replaceAll('];Njhj;jpuk;', 'ஸ்தோத்திரம்');
-      s = s.replaceAll('];Njhj;jpu', 'ஸ்தோத்திர');
-
-      s = s.replaceAll('h;', 'ர்');
-      s = s.replaceAll('hp', 'ரி');
-      s = s.replaceAll('hP', 'ரீ');
-      s = s.replaceAll('u;', 'ர்');
-      s = s.replaceAll('up', 'ரி');
-      s = s.replaceAll('uP', 'ரீ');
-      s = s.replaceAll('H;', 'ழ்');
-      s = s.replaceAll('Hp', 'ழி');
-      s = s.replaceAll('HP', 'ழீ');
-      s = s.replaceAll('];', 'ஸ்');
-      s = s.replaceAll('];N', 'ஸ்தே');
-      s = s.replaceAll('];n', 'ஸ்தெ');
-      s = s.replaceAll('];j', 'ஸ்த');
-
-      const replacements = [
-        ['$', 'ஸ்ரீ'],
-        ['{', 'ஃ'],
-        ['~', 'ஃ'],
-
-        ['nfh', 'கொ'], ['nrh', 'சொ'], ['ngh', 'பொ'], ['neh', 'நொ'], ['njh', 'தொ'],
-        ['nkh', 'மொ'], ['nth', 'வொ'], ['nuh', 'ரொ'], ['nyh', 'லொ'], ['nwh', 'றொ'],
-        ['ndh', 'னொ'], ['nqh', 'ஙொ'], ['nQh', 'ஞொ'], ['nlh', 'டொ'], ['nzh', 'ணொ'],
-        ['noh', 'ழொ'], ['nsh', 'ளொ'], ['n]h', 'ஜொ'], ['n[h', 'ஜொ'], ['n&h', 'ஹொ'], ['n*h', 'ஷொ'],
-
-        ['Nfh', 'கோ'], ['Nrh', 'சோ'], ['Ngh', 'போ'], ['Neh', 'நோ'], ['Njh', 'தோ'],
-        ['Nkh', 'மோ'], ['Nth', 'வோ'], ['Nuh', 'ரோ'], ['Nyh', 'லோ'], ['Nwh', 'றோ'],
-        ['Ndh', 'னோ'], ['Nqh', 'ஙே'], ['NQh', 'ஞோ'], ['Nlh', 'டோ'], ['Nzh', 'ணோ'],
-        ['Noh', 'ழோ'], ['Nsh', 'ளோ'], ['N]h', 'ஜோ'], ['N[h', 'ஜோ'], ['N&h', 'ஹோ'], ['N*h', 'ஷோ'],
-        ['Nah', 'யோ'],
-
-        ['nfs;', 'கௌ'], ['nrs;', 'சௌ'], ['ngs;', 'பௌ'], ['nes;', 'நௌ'], ['njs;', 'தௌ'],
-        ['nks;', 'மௌ'], ['nts;', 'வௌ'], ['nus;', 'ரௌ'], ['nys;', 'லௌ'], ['nws;', 'றௌ'],
-        ['nds;', 'னௌ'], ['nls;', 'டௌ'], ['nzs;', 'ணௌ'], ['nos;', 'ழௌ'], ['nss;', 'ளௌ'],
-        ['nfs', 'கௌ'], ['nrs', 'சௌ'], ['ngs', 'பௌ'], ['nes', 'நௌ'], ['njs', 'தௌ'],
-        ['nks', 'மௌ'], ['nts', 'வௌ'], ['nus', 'ரௌ'], ['nys', 'லௌ'], ['nws', 'றௌ'],
-        ['nds', 'னௌ'], ['nls', 'டௌ'], ['nzs', 'ணௌ'], ['nos', 'ழௌ'], ['nss', 'ளௌ'],
-
-        ['nf', 'கெ'], ['nr', 'செ'], ['ng', 'பெ'], ['ne', 'நெ'], ['nj', 'தெ'],
-        ['nk', 'மெ'], ['nt', 'வெ'], ['nu', 'ரெ'], ['ny', 'லெ'], ['nw', 'றெ'],
-        ['nd', 'னெ'], ['nq', 'ஙெ'], ['nQ', 'ஞெ'], ['nl', 'டெ'], ['nz', 'ணெ'],
-        ['no', 'ழெ'], ['ns', 'ளெ'], ['na', 'யெ'], ['n]', 'ஜெ'], ['n[', 'ஜெ'], ['n&', 'ஹெ'], ['n*', 'ஷெ'],
-
-        ['Nf', 'கே'], ['Nr', 'சே'], ['Ng', 'பே'], ['Ne', 'நே'], ['Nj', 'தே'],
-        ['Nk', 'மே'], ['Nt', 'வே'], ['Nu', 'ரே'], ['Ny', 'லே'], ['Nw', 'றே'],
-        ['Nd', 'னே'], ['Nq', 'ஙே'], ['NQ', 'ஞே'], ['Nl', 'டே'], ['Nz', 'ணே'],
-        ['No', 'ழே'], ['Ns', 'ளே'], ['Na', 'யே'], ['N]', 'ஜே'], ['N[', 'ஜே'], ['N&', 'ஹே'], ['N*', 'ஷே'],
-
-        ['if', 'கை'], ['ir', 'சை'], ['ig', 'பை'], ['ie', 'நை'], ['ij', 'தை'],
-        ['ik', 'மை'], ['it', 'வை'], ['iu', 'ரை'], ['ih', 'ரை'], ['iy', 'லை'], ['iw', 'றை'],
-        ['id', 'னை'], ['iq', 'ஙை'], ['iQ', 'ஞை'], ['il', 'டை'], ['iz', 'ணை'],
-        ['io', 'ழை'], ['is', 'ளை'], ['ia', 'யை'], ['i]', 'ஜை'], ['i[', 'ஜை'], ['i&', 'ஹை'], ['i*', 'ஷை'],
-
-        ['f;', 'க்'], ['q;', 'ங்'], ['r;', 'ச்'], ['Q;', 'ஞ்'], ['l;', 'ட்'],
-        ['z;', 'ண்'], ['j;', 'த்'], ['e;', 'ந்'], ['g;', 'ப்'], ['k;', 'ம்'],
-        ['a;', 'ய்'], ['y;', 'ல்'], ['t;', 'வ்'],
-        ['o;', 'ழ்'], ['s;', 'ள்'], ['w;', 'ற்'], ['d;', 'ன்'],
-        ['];', 'ஸ்'], ['[;', 'ஜ்'], ['*;', 'ஷ்'], ['&;', 'ஹ்'], ['#;', 'க்ஷ்'], ['%;', 'க்ஷ்'],
-
-        ['F', 'கு'], ['T', 'கூ'],
-        ['R+', 'சூ'], ['R{', 'சூ'], ['R', 'சு'],
-        ['L+', 'டூ'], ['^', 'டூ'], ['L', 'டு'],
-        ['Z+', 'ணூ'], ['Z', 'ணு'],
-        ['J+', 'தூ'], ['J}', 'தூ'], ['Jh', 'தூ'], ['J', 'து'],
-        ['E+', 'நூ'], ['E', 'நு'],
-        ['G+', 'பூ'], ['g+', 'பூ'], ['G', 'பு'],
-        ['K+', 'மூ'], ['k+', 'மூ'], ['%', 'மூ'], ['K', 'மு'],
-        ['A+', 'யூ'], ['a+', 'யூ'], ['A', 'யு'],
-        ['U+', 'ரூ'], ['u+', 'ரூ'], ['&', 'ரூ'], ['U', 'ரு'],
-        ['Y}', 'லூ'], ['Y+', 'லூ'], ['Yh', 'லூ'], ['Y', 'லு'],
-        ['T+', 'வூ'], ['T', 'வு'],
-        ['O+', 'ழூ'], ['O', 'ழு'],
-        ['S+', 'ளூ'], ['S}', 'ளூ'], ['Sh', 'ளூ'], ['S', 'ளு'],
-        ['W+', 'றூ'], ['Wh', 'றூ'], ['W', 'று'],
-        ['D+', 'னூ'], ['D', 'னு'],
-        [']+', 'ஜூ'], ['[+', 'ஜூ'],
-
-        ['fp', 'கி'], ['fP', 'கீ'],
-        ['qp', 'ஙி'], ['qP', 'ஙீ'],
-        ['rp', 'சி'], ['rP', 'சீ'],
-        ['Qp', 'ஞி'], ['QP', 'ஞீ'],
-        ['lp', 'டி'], ['lP', 'டீ'],
-        ['b', 'டி'],  ['B', 'டீ'],
-        ['zp', 'ணி'], ['zP', 'ணீ'],
-        ['jp', 'தி'], ['jP', 'தீ'],
-        ['ep', 'நி'], ['eP', 'நீ'],
-        ['gp', 'பி'], ['gP', 'பீ'],
-        ['kp', 'மி'], ['kP', 'மீ'],
-        ['ap', 'யி'], ['aP', 'யீ'],
-        ['yp', 'லி'], ['yP', 'லீ'],
-        ['tp', 'வி'], ['tP', 'வீ'],
-        ['op', 'ழி'], ['oP', 'ழீ'],
-        ['sp', 'ளி'], ['sP', 'ளீ'],
-        ['wp', 'றி'], ['wP', 'றீ'],
-        ['dp', 'னி'], ['dP', 'னீ'],
-        [']p', 'ஜி'], [']P', 'ஜீ'], ['[p', 'ஜி'], ['[P', 'ஜீ'],
-        ['&p', 'ஹி'], ['&P', 'ஹீ'],
-        ['*p', 'ஷி'], ['*P', 'ஷீ'],
-
-        ['fh', 'கா'], ['qh', 'ஙா'], ['rh', 'சா'], ['Qh', 'ஞா'], ['lh', 'டா'],
-        ['zh', 'ணா'], ['jh', 'தா'], ['eh', 'நா'], ['gh', 'பா'], ['kh', 'மா'],
-        ['ah', 'யா'], ['uh', 'ரா'], ['yh', 'லா'], ['th', 'வா'], ['oh', 'ழா'],
-        ['sh', 'ளா'], ['wh', 'றா'], ['dh', 'னா'],
-        [']h', 'ஜா'], ['[h', 'ஜா'], ['&h', 'ஹா'], ['*h', 'ஷா'],
-
-        ['xs;', 'ஔ'], ['xs', 'ஔ'],
-        ['m', 'அ'], ['M', 'ஆ'], [',', 'இ'], ['<', 'ஈ'],
-        ['c', 'உ'], ['C', 'ஊ'], ['v', 'எ'], ['V', 'ஏ'],
-        ['I', 'ஐ'], ['x', 'ஒ'], ['X', 'ஓ'],
-
-        ['f', 'க'], ['q', 'ங'], ['r', 'ச'], ['Q', 'ஞ'], ['l', 'ட'],
-        ['z', 'ண'], ['j', 'த'], ['e', 'ந'], ['g', 'ப'], ['k', 'ம'],
-        ['a', 'ய'], ['u', 'ர'], ['y', 'ல'], ['t', 'வ'], ['o', 'ழ'],
-        ['s', 'ள'], ['w', 'ற'], ['d', 'ன'],
-        ['H', 'ர்'],
-        [']', 'ஜ'], ['[', 'ஜ'], ['*', 'ஷ'],
-
-        ['>', ','],
-      ];
-
-      for (let i = 0; i < replacements.length; i++) {
-        const item = replacements[i];
-        s = s.replaceAll(item[0], item[1]);
-      }
-
-      return s;
-    });
-
-    return converted.join('');
+    return s;
   }
 
-  window.isTamilBibleFont = isTamilBibleFont;
-  window.isBaminiText = isBaminiText;
+  function baminiToUnicode(text) {
+    if (!text || typeof text !== "string") return "";
+    if (/[\u0B80-\u0BFF]/.test(text)) return text;
+
+    const segments = text.split(/(<[^>]+>|\r?\n)/g);
+
+    return segments.map(function(segment) {
+      if ((segment.startsWith("<") && segment.endsWith(">")) || segment === "\n" || segment === "\r\n") {
+        return segment;
+      }
+      return convertLine(segment);
+    }).join("");
+  }
+
+  window.Bamini = {
+    isTamilBibleFont: isTamilBibleFont,
+    isBaminiText: isBaminiText,
+    baminiToUnicode: baminiToUnicode
+  };
+
   window.baminiToUnicode = baminiToUnicode;
-})(typeof window !== 'undefined' ? window : globalThis);
+  window.isBaminiText = isBaminiText;
+})(window);

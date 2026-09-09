@@ -85,6 +85,59 @@ const smDb = new DatabaseSync(smDbPath);
 // 2. Bible Versions Manager & Read-Only SQLite Database Connections
 // ---------------------------------------------------------------------------
 const bibleDbCache = new Map();
+const bibleStructureCache = new Map();
+
+const STANDARD_BIBLE_CHAPTER_COUNTS = [
+  50, 40, 27, 36, 34, 24, 21, 4, 31, 24, 22, 25, 29, 36, 10, 13, 10, 42, 150, 31,
+  12, 8, 66, 52, 5, 48, 12, 14, 3, 9, 1, 4, 7, 3, 3, 3, 2, 14, 4, 28,
+  16, 24, 21, 28, 16, 16, 13, 6, 6, 4, 4, 5, 3, 6, 4, 3, 1, 13, 5, 5,
+  3, 5, 1, 1, 1, 22
+];
+
+function getBibleStructure(versionId)
+{
+  if (bibleStructureCache.has(versionId))
+  {
+    return bibleStructureCache.get(versionId);
+  }
+
+  const db = getBibleDb(versionId);
+  if (!db) return null;
+
+  try
+  {
+    const rows = db.prepare(
+      'SELECT bookNum, chNum, COUNT(verseNum) as verseCount FROM words GROUP BY bookNum, chNum ORDER BY bookNum, chNum'
+    ).all();
+
+    const bookMap = new Map();
+    for (const r of rows)
+    {
+      if (!bookMap.has(r.bookNum))
+      {
+        bookMap.set(r.bookNum, []);
+      }
+      bookMap.get(r.bookNum).push(r.verseCount);
+    }
+
+    const structure = new Map();
+    for (const [bNum, vCounts] of bookMap.entries())
+    {
+      structure.set(bNum, {
+        chapterCount: vCounts.length,
+        verseCounts: vCounts
+      });
+    }
+
+    bibleStructureCache.set(versionId, structure);
+    return structure;
+  }
+  catch (err)
+  {
+    console.error(`Error calculating Bible structure for ${versionId}:`, err);
+    return null;
+  }
+}
 
 function getVersionMetadata()
 {
@@ -504,6 +557,7 @@ app.get('/api/songs', (req, res) =>
     const songs = rows.map((r) =>
     {
       const slides = r.lyrics ? r.lyrics.split('<slide>').filter(s => s.trim().length > 0) : [];
+      const isConverted = isBaminiText(r.lyrics, r.font);
       return {
         id: r.id,
         name: r.name,
@@ -515,7 +569,8 @@ app.get('/api/songs', (req, res) =>
         notes: r.notes || '',
         tags: r.tags || '',
         firstLine: extractFirstLine(r.lyrics, r.font),
-        slideCount: slides.length
+        slideCount: slides.length,
+        isConverted: Boolean(isConverted)
       };
     });
 
@@ -569,7 +624,8 @@ app.get('/api/songs/:id', (req, res) =>
       rawLyrics: song.lyrics,
       firstLine: extractFirstLine(song.lyrics, song.font),
       slides,
-      slideCount: slides.length
+      slideCount: slides.length,
+      isConverted: Boolean(needsConversion)
     });
   }
   catch (err)
@@ -715,12 +771,25 @@ app.get('/api/bible/:version/books', (req, res) =>
     const versionId = req.params.version;
     const versions = getVersionMetadata();
     const ver = versions.find(v => v.id === versionId || v.file === versionId || v.dbFile === versionId);
+    const structure = getBibleStructure(versionId);
 
     if (ver && ver.books && ver.books.length > 0)
     {
+      const books = ver.books.map((b, idx) =>
+      {
+        const bNum = idx + 1;
+        const struct = structure ? structure.get(bNum) : null;
+        return {
+          bookNum: bNum,
+          name: b,
+          chapterCount: struct ? struct.chapterCount : (STANDARD_BIBLE_CHAPTER_COUNTS[idx] || 1),
+          verseCounts: struct ? struct.verseCounts : []
+        };
+      });
+
       return res.json({
         version: ver,
-        books: ver.books.map((b, idx) => ({ bookNum: idx + 1, name: b }))
+        books
       });
     }
 
@@ -731,10 +800,16 @@ app.get('/api/bible/:version/books', (req, res) =>
     }
 
     const rows = db.prepare('SELECT DISTINCT bookNum FROM words ORDER BY bookNum').all();
-    const books = rows.map(r => ({
-      bookNum: r.bookNum,
-      name: `Book ${r.bookNum}`
-    }));
+    const books = rows.map(r =>
+    {
+      const struct = structure ? structure.get(r.bookNum) : null;
+      return {
+        bookNum: r.bookNum,
+        name: `Book ${r.bookNum}`,
+        chapterCount: struct ? struct.chapterCount : (STANDARD_BIBLE_CHAPTER_COUNTS[r.bookNum - 1] || 1),
+        verseCounts: struct ? struct.verseCounts : []
+      };
+    });
 
     res.json({
       version: ver || { id: versionId, name: versionId },
@@ -755,17 +830,11 @@ app.get('/api/bible/:version/chapters', (req, res) =>
     const bookNum = Number(req.query.bookNum);
     if (!bookNum) return res.status(400).json({ error: 'bookNum query param required' });
 
-    const db = getBibleDb(versionId);
-    if (!db)
-    {
-      return res.status(404).json({ error: `Bible database for '${versionId}' not found.` });
-    }
+    const structure = getBibleStructure(versionId);
+    const struct = structure ? structure.get(bookNum) : null;
+    const chapterCount = struct ? struct.chapterCount : (STANDARD_BIBLE_CHAPTER_COUNTS[bookNum - 1] || 1);
 
-    const rows = db.prepare(
-      'SELECT DISTINCT chNum FROM words WHERE bookNum = ? ORDER BY chNum'
-    ).all(bookNum);
-
-    const chapters = rows.map(r => r.chNum);
+    const chapters = Array.from({ length: chapterCount }, (_, i) => i + 1);
     res.json(chapters);
   }
   catch (err)
@@ -786,17 +855,24 @@ app.get('/api/bible/:version/verses', (req, res) =>
       return res.status(400).json({ error: 'bookNum and chNum required' });
     }
 
-    const db = getBibleDb(versionId);
-    if (!db)
+    const structure = getBibleStructure(versionId);
+    const struct = structure ? structure.get(bookNum) : null;
+    let verseCount = (struct && struct.verseCounts && struct.verseCounts[chNum - 1]) || 0;
+
+    if (!verseCount)
     {
-      return res.status(404).json({ error: `Bible database for '${versionId}' not found.` });
+      const db = getBibleDb(versionId);
+      if (db)
+      {
+        const rows = db.prepare(
+          'SELECT DISTINCT verseNum FROM words WHERE bookNum = ? AND chNum = ? ORDER BY verseNum'
+        ).all(bookNum, chNum);
+        return res.json(rows.map(r => r.verseNum));
+      }
+      verseCount = 30;
     }
 
-    const rows = db.prepare(
-      'SELECT DISTINCT verseNum FROM words WHERE bookNum = ? AND chNum = ? ORDER BY verseNum'
-    ).all(bookNum, chNum);
-
-    const verses = rows.map(r => r.verseNum);
+    const verses = Array.from({ length: verseCount }, (_, i) => i + 1);
     res.json(verses);
   }
   catch (err)

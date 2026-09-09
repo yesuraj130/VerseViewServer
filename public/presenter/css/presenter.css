@@ -460,19 +460,37 @@
   flex-grow: 1;
   overflow-y: auto;
   padding: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.song-virtual-spacer
+{
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.song-virtual-items
+{
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  will-change: transform;
 }
 
 .song-item
 {
-  padding: 8px 10px;
+  height: 50px;
+  margin-bottom: 4px;
+  box-sizing: border-box;
+  padding: 6px 10px;
   background-color: #1e293b;
   border: 1px solid #334155;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -522,6 +540,32 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+}
+
+.song-name-text
+{
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.song-unicode-tag
+{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 4px;
+  padding: 1px 4px;
+  margin-left: 6px;
+  line-height: 1.2;
+  cursor: help;
+  vertical-align: middle;
+  flex-shrink: 0;
 }
 
 .song-item-preview
@@ -669,6 +713,14 @@
   color: #cbd5e1;
 }
 
+.deck-title-row
+{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .deck-title
 {
   font-family: var(--font-display);
@@ -679,6 +731,23 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.badge-unicode-deck
+{
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-sans, system-ui, sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 4px;
+  padding: 2px 8px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  line-height: 1.3;
 }
 
 .deck-actions
@@ -1456,8 +1525,9 @@
   /* Song Item Touch Optimization */
   .song-item
   {
-    padding: 10px 12px;
-    min-height: 52px;
+    padding: 8px 12px;
+    height: 54px;
+    margin-bottom: 4px;
   }
 
   .song-item-name

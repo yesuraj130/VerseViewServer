@@ -45,52 +45,167 @@ function getSongFontFamily(fontName)
   return `"${f}", 'Baloo Thambi 2', 'Baloo Thambi', 'Mukta Malar', var(--font-display)`;
 }
 
-function renderSongList(songs)
+let allLoadedSongs = [];
+let songVirtualSpacer = null;
+let songVirtualItems = null;
+let virtualScrollRaf = null;
+let lastRenderedStart = -1;
+let lastRenderedEnd = -1;
+
+function getSongRowHeight()
 {
-  if (!songListContainer) return;
-  songListContainer.innerHTML = '';
-  if (!songs || songs.length === 0)
+  return window.innerWidth <= 900 ? 58 : 54;
+}
+
+function createSongItemElement(song)
+{
+  const item = document.createElement('div');
+  item.className = 'song-item';
+  item.setAttribute('data-id', song.id);
+  if (currentSong && Number(currentSong.id) === Number(song.id))
   {
-    songListContainer.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px;">No songs found. Click "+ Add Song" above.</div>';
+    item.classList.add('selected');
+  }
+  if (liveState && liveState.status === 'live' && liveState.type === 'song' && Number(liveState.songId) === Number(song.id))
+  {
+    item.classList.add('is-live-active');
+  }
+
+  const isConverted = Boolean(
+    song.isConverted ||
+    (typeof window.isBaminiText === 'function' && window.isBaminiText(song.firstLine || '', song.font))
+  );
+
+  // Only slides are decoded - titles and song names are preserved as-is
+  const displayName = song.name;
+  let previewLine = song.firstLine ? escapeHtml(song.firstLine) : '&nbsp;';
+  const songFontFamily = getSongFontFamily(song.font);
+
+  item.innerHTML = `
+    <div class="song-item-info">
+      <div class="song-item-name" style="font-family: ${songFontFamily};">
+        <span class="song-name-text">${escapeHtml(displayName)}</span>
+        ${isConverted ? '<span class="song-unicode-tag" title="Converted to Unicode">🔤</span>' : ''}
+      </div>
+      <div class="song-item-preview" style="font-family: ${songFontFamily};">${previewLine}</div>
+    </div>
+  `;
+
+  item.addEventListener('click', () =>
+  {
+    if (songVirtualItems)
+    {
+      songVirtualItems.querySelectorAll('.song-item').forEach(i => i.classList.remove('selected'));
+    }
+    item.classList.add('selected');
+    selectSong(song.id);
+  });
+
+  return item;
+}
+
+function updateVirtualSongList(force = false)
+{
+  if (!songListContainer || !allLoadedSongs || allLoadedSongs.length === 0) return;
+
+  if (!songVirtualSpacer || !songVirtualItems || !songVirtualSpacer.parentNode)
+  {
+    songListContainer.innerHTML = '';
+    songVirtualSpacer = document.createElement('div');
+    songVirtualSpacer.className = 'song-virtual-spacer';
+    songVirtualItems = document.createElement('div');
+    songVirtualItems.className = 'song-virtual-items';
+    songVirtualSpacer.appendChild(songVirtualItems);
+    songListContainer.appendChild(songVirtualSpacer);
+    lastRenderedStart = -1;
+    lastRenderedEnd = -1;
+  }
+
+  const rowHeight = getSongRowHeight();
+  const totalHeight = allLoadedSongs.length * rowHeight;
+  songVirtualSpacer.style.height = `${totalHeight}px`;
+
+  const scrollTop = songListContainer.scrollTop || 0;
+  const clientHeight = songListContainer.clientHeight || 500;
+  const overscan = 6;
+
+  let startIndex = Math.floor(scrollTop / rowHeight) - overscan;
+  let endIndex = Math.ceil((scrollTop + clientHeight) / rowHeight) + overscan;
+
+  if (startIndex < 0) startIndex = 0;
+  if (endIndex >= allLoadedSongs.length) endIndex = allLoadedSongs.length - 1;
+
+  if (!force && startIndex === lastRenderedStart && endIndex === lastRenderedEnd)
+  {
     return;
   }
 
-  songs.forEach((song) =>
+  lastRenderedStart = startIndex;
+  lastRenderedEnd = endIndex;
+
+  const offsetY = startIndex * rowHeight;
+  songVirtualItems.style.transform = `translateY(${offsetY}px)`;
+
+  const fragment = document.createDocumentFragment();
+  for (let i = startIndex; i <= endIndex; i++)
   {
-    const item = document.createElement('div');
-    item.className = 'song-item';
-    item.setAttribute('data-id', song.id);
-    if (currentSong && Number(currentSong.id) === Number(song.id))
+    fragment.appendChild(createSongItemElement(allLoadedSongs[i]));
+  }
+  songVirtualItems.replaceChildren(fragment);
+}
+
+function scrollToSong(songId, center = false)
+{
+  if (!songListContainer || !allLoadedSongs || allLoadedSongs.length === 0) return;
+  const idx = allLoadedSongs.findIndex(s => Number(s.id) === Number(songId));
+  if (idx < 0) return;
+
+  const rowHeight = getSongRowHeight();
+  const itemTop = idx * rowHeight;
+  const clientHeight = songListContainer.clientHeight || 500;
+
+  if (center || itemTop < songListContainer.scrollTop || (itemTop + rowHeight) > (songListContainer.scrollTop + clientHeight))
+  {
+    const targetScroll = Math.max(0, itemTop - Math.floor(clientHeight / 2) + Math.floor(rowHeight / 2));
+    songListContainer.scrollTop = targetScroll;
+    updateVirtualSongList(true);
+  }
+}
+
+function renderSongList(songs)
+{
+  if (!songListContainer) return;
+  allLoadedSongs = songs || [];
+  lastRenderedStart = -1;
+  lastRenderedEnd = -1;
+  songListContainer.scrollTop = 0;
+
+  if (allLoadedSongs.length === 0)
+  {
+    songListContainer.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px;">No songs found. Click "+ Add Song" above.</div>';
+    songVirtualSpacer = null;
+    songVirtualItems = null;
+    return;
+  }
+
+  updateVirtualSongList(true);
+}
+
+if (songListContainer)
+{
+  songListContainer.addEventListener('scroll', () =>
+  {
+    if (virtualScrollRaf) return;
+    virtualScrollRaf = requestAnimationFrame(() =>
     {
-      item.classList.add('selected');
-    }
-
-    // Only slides are decoded - titles and song names are preserved as-is
-    const displayName = song.name;
-    let previewLine = song.firstLine ? escapeHtml(song.firstLine) : '&nbsp;';
-
-    const songFontFamily = getSongFontFamily(song.font);
-
-    item.innerHTML = `
-      <div class="song-item-info">
-        <div class="song-item-name" style="font-family: ${songFontFamily};">${escapeHtml(displayName)}</div>
-        <div class="song-item-preview" style="font-family: ${songFontFamily};">${previewLine}</div>
-      </div>
-    `;
-
-    item.addEventListener('click', () =>
-    {
-      document.querySelectorAll('.song-item').forEach(i => i.classList.remove('selected'));
-      item.classList.add('selected');
-      selectSong(song.id);
+      virtualScrollRaf = null;
+      updateVirtualSongList();
     });
+  }, { passive: true });
 
-    songListContainer.appendChild(item);
-  });
-
-  if (typeof highlightActiveInDecks === 'function' && liveState)
+  if (typeof ResizeObserver !== 'undefined')
   {
-    highlightActiveInDecks(liveState);
+    new ResizeObserver(() => updateVirtualSongList(true)).observe(songListContainer);
   }
 }
 
@@ -101,6 +216,17 @@ async function selectSong(songId, autoPresent = false)
     localStorage.setItem('last_browsed_song_id', songId);
   }
   catch (e) {}
+
+  if (songVirtualItems)
+  {
+    songVirtualItems.querySelectorAll('.song-item').forEach((i) =>
+    {
+      const isSel = Number(i.getAttribute('data-id')) === Number(songId);
+      i.classList.toggle('selected', isSel);
+    });
+  }
+
+  scrollToSong(songId, false);
 
   try
   {
@@ -115,6 +241,14 @@ async function selectSong(songId, autoPresent = false)
     {
       activeSongTitle.textContent = song.name;
       activeSongTitle.style.fontFamily = getSongFontFamily(song.font);
+    }
+    if (songUnicodeDeckBadge)
+    {
+      const isConverted = Boolean(
+        song.isConverted ||
+        (typeof window.isBaminiText === 'function' && window.isBaminiText(song.lyrics || song.rawLyrics || '', song.font))
+      );
+      songUnicodeDeckBadge.style.display = isConverted ? 'inline-flex' : 'none';
     }
     if (activeSlideCountIndicator)
     {
