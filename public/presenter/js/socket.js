@@ -15,16 +15,29 @@ function showStatusTooltip(message, isOnline)
     document.body.appendChild(tooltip);
   }
 
-  // Anchor tooltip directly below the server status dot
+  tooltip.textContent = message;
+  tooltip.className = `server-status-tooltip visible ${isOnline ? 'online' : 'offline'}`;
+
+  // Anchor tooltip directly below the server status dot with viewport boundary awareness
   if (serverStatusDot)
   {
     const rect = serverStatusDot.getBoundingClientRect();
-    tooltip.style.left = `${Math.max(12, rect.left + rect.width / 2 - 60)}px`;
-    tooltip.style.top = `${rect.bottom + 8}px`;
-  }
+    const dotCenterX = rect.left + (rect.width / 2);
+    const tooltipWidth = tooltip.offsetWidth || 150;
+    const padding = 10;
 
-  tooltip.textContent = message;
-  tooltip.className = `server-status-tooltip visible ${isOnline ? 'online' : 'offline'}`;
+    // Center tooltip under dot, clamped within window bounds
+    const desiredLeft = dotCenterX - (tooltipWidth / 2);
+    const maxLeft = Math.max(padding, window.innerWidth - tooltipWidth - padding);
+    const clampedLeft = Math.max(padding, Math.min(maxLeft, desiredLeft));
+
+    // Calculate the caret arrow's horizontal position relative to tooltip box
+    const arrowOffset = Math.max(12, Math.min(tooltipWidth - 12, dotCenterX - clampedLeft));
+
+    tooltip.style.left = `${Math.round(clampedLeft)}px`;
+    tooltip.style.top = `${Math.round(rect.bottom + 8)}px`;
+    tooltip.style.setProperty('--arrow-x', `${Math.round(arrowOffset)}px`);
+  }
 
   clearTimeout(statusTooltipTimeout);
   statusTooltipTimeout = setTimeout(() =>
@@ -39,6 +52,16 @@ if (serverStatusDot)
   {
     const isOnline = !serverStatusDot.classList.contains('disconnected');
     showStatusTooltip(isOnline ? '● Connected to Server' : '● Reconnecting to Server...', isOnline);
+  });
+
+  serverStatusDot.addEventListener('mouseleave', () =>
+  {
+    const tooltip = document.getElementById('server-status-tooltip');
+    if (tooltip)
+    {
+      tooltip.classList.remove('visible');
+      clearTimeout(statusTooltipTimeout);
+    }
   });
 }
 

@@ -536,11 +536,8 @@ function renderChapterVersesDeck(verses, bookName, chNum)
     if (Number(v.verseNum) === Number(selectedVerseNum)) card.classList.add('active');
 
     card.innerHTML = `
-      <div class="sc-header">
-        <span class="sc-index-badge">${escapeHtml(bookName)} ${v.chNum}:${v.verseNum}</span>
-        <span class="sc-live-pill" style="display: ${isLive ? 'inline-block' : 'none'};">LIVE</span>
-      </div>
-      <div class="sc-text-main">${escapeHtml(v.word)}</div>
+      <span class="sc-live-pill" style="display: ${isLive ? 'inline-block' : 'none'};">LIVE</span>
+      <div class="sc-text-main"><span class="sc-verse-num">${v.verseNum}</span>${escapeHtml(v.word)}</div>
     `;
 
     card.addEventListener('click', () =>

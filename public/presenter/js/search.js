@@ -128,13 +128,10 @@ function displaySearchVerseDeck(r)
     const card = document.createElement('div');
     card.className = 'slide-card-vertical active';
     card.innerHTML = `
-      <div class="sc-header">
-        <span class="sc-index-badge">${escapeHtml(r.reference)}</span>
-        <span class="sc-live-pill" style="display: inline-block;">LIVE</span>
-      </div>
-      <div class="sc-text-main" style="font-size: 16px; line-height: 1.6;">${escapeHtml(r.word)}</div>
-      <div style="margin-top: 12px; display: flex; gap: 8px;">
-        <button class="btn-secondary btn-sm btn-open-ch" style="padding: 4px 10px; font-size: 11px;">📖 Open Full Chapter in Bible Tab</button>
+      <span class="sc-live-pill" style="display: inline-block;">LIVE</span>
+      <div class="sc-text-main"><span class="sc-verse-num">${escapeHtml(r.reference)}</span>${escapeHtml(r.word)}</div>
+      <div style="margin-top: 6px; display: flex; gap: 8px;">
+        <button class="btn-secondary btn-sm btn-open-ch" style="padding: 3px 8px; font-size: 11px;">Open Full Chapter in Bible Tab</button>
       </div>
     `;
 

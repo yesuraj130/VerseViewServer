@@ -366,13 +366,13 @@
   box-sizing: border-box;
   background: #1e293b;
   border: 1px solid #334155;
-  border-radius: var(--radius-md);
-  padding: 14px 18px;
+  border-radius: var(--radius-sm);
+  padding: 4px 6px;
   cursor: pointer;
   transition: all 0.15s ease-in-out;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
   position: relative;
 }
 
@@ -397,59 +397,44 @@
   box-shadow: 0 0 16px rgba(16, 185, 129, 0.35);
 }
 
-.sc-header
+.sc-text-main
 {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding-bottom: 5px;
+  font-family: "Baloo Thambi 2", "Baloo Thambi", var(--font-display);
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: #f8fafc;
+  font-weight: 500;
 }
 
-.sc-index-badge
+.sc-verse-num
 {
-  font-size: 11px;
-  font-weight: 800;
-  color: #94a3b8;
-  background: #0f172a;
-  padding: 2px 7px;
-  border-radius: 4px;
-  border: 1px solid #334155;
-}
-
-.slide-card-vertical.active .sc-index-badge
-{
-  background: #0284c7;
-  color: #ffffff;
-  border-color: #38bdf8;
-}
-
-.slide-card-vertical.is-live .sc-index-badge
-{
-  background: #10b981;
-  color: #ffffff;
-  border-color: #059669;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 700;
+  color: inherit;
+  display: inline;
+  margin-right: 6px;
+  user-select: none;
 }
 
 .sc-live-pill
 {
-  font-size: 10px;
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-family: var(--font-sans, system-ui, sans-serif);
+  font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   background: #10b981;
   color: #ffffff;
-  padding: 1px 6px;
+  padding: 3px 8px;
   border-radius: 4px;
-}
-
-.sc-text-main
-{
-  font-family: "Baloo Thambi 2", "Baloo Thambi", var(--font-display);
-  font-size: 15px;
-  line-height: 1.6;
-  color: #f8fafc;
-  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  z-index: 2;
+  line-height: 1.2;
+  display: inline-block;
 }
 
 /* Bible Search Results Cards */

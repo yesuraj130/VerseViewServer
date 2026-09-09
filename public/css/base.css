@@ -158,9 +158,9 @@ body
 .server-status-tooltip
 {
   position: fixed;
-  background-color: #0f172a;
-  border: 1px solid #334155;
-  color: #ffffff;
+  background-color: #0b1329;
+  border: 1px solid #1e293b;
+  color: #f8fafc;
   padding: 5px 10px;
   border-radius: 6px;
   font-size: 11px;
@@ -168,13 +168,28 @@ body
   display: flex;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
-  z-index: 9999;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  z-index: 99999;
   opacity: 0;
   transform: translateY(-4px);
   pointer-events: none;
   transition: opacity 0.18s ease, transform 0.18s ease;
   white-space: nowrap;
+}
+
+.server-status-tooltip::before
+{
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: var(--arrow-x, 50%);
+  transform: translateX(-50%) rotate(45deg);
+  width: 8px;
+  height: 8px;
+  background-color: #0b1329;
+  border-left: 1px solid #1e293b;
+  border-top: 1px solid #1e293b;
+  pointer-events: none;
 }
 
 .server-status-tooltip.visible
@@ -187,12 +202,28 @@ body
 {
   border-color: #059669;
   color: #34d399;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 12px rgba(5, 150, 105, 0.25);
+}
+
+.server-status-tooltip.online::before
+{
+  border-left-color: #059669;
+  border-top-color: #059669;
+  background-color: #0b1329;
 }
 
 .server-status-tooltip.offline
 {
   border-color: #dc2626;
   color: #f87171;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 12px rgba(220, 38, 38, 0.25);
+}
+
+.server-status-tooltip.offline::before
+{
+  border-left-color: #dc2626;
+  border-top-color: #dc2626;
+  background-color: #0b1329;
 }
 
 /* Common Button Styles */

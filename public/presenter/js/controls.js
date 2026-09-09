@@ -107,110 +107,47 @@ if (liveIndicatorPill)
   liveIndicatorPill.addEventListener('click', jumpToLiveSlide);
 }
 
-// Global Keyboard Navigation Hotkeys
-window.addEventListener('keydown', (e) =>
-{
-  if (['input', 'textarea', 'select'].includes(e.target.tagName.toLowerCase())) return;
-
-  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ')
-  {
-    e.preventDefault();
-    triggerNext();
-  }
-  else if (e.key === 'ArrowLeft' || e.key === 'PageUp')
-  {
-    e.preventDefault();
-    triggerPrev();
-  }
-  else if (e.key === 'c' || e.key === 'C' || e.key === 'Escape')
-  {
-    triggerClear();
-  }
-});
-
 // ---------------------------------------------------------------------------
 // 2. Tab Navigation System
 // ---------------------------------------------------------------------------
-let currentMobilePaneMode = 'browser';
-window.currentMobilePaneMode = 'browser';
-
-function setMobilePaneMode(mode)
-{
-  if (!['browser', 'deck', 'both'].includes(mode)) return;
-  currentMobilePaneMode = mode;
-  window.currentMobilePaneMode = mode;
-
-  const switcherBtns = document.querySelectorAll('.mobile-pane-btn');
-  switcherBtns.forEach(b => b.classList.toggle('active', b.getAttribute('data-mode') === mode));
-
-  const workspaceViews = document.querySelectorAll('.workspace-tab-view');
-  workspaceViews.forEach(v => {
-    v.classList.remove('mobile-mode-browser', 'mobile-mode-deck', 'mobile-mode-both');
-    v.classList.add(`mobile-mode-${mode}`);
-  });
-
-  try
-  {
-    localStorage.setItem('presenter_mobile_pane_mode', mode);
-  }
-  catch (e) {}
-}
-
-function initMobilePaneSwitcher()
-{
-  const switcherBtns = document.querySelectorAll('.mobile-pane-btn');
-  switcherBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const mode = btn.getAttribute('data-mode');
-      setMobilePaneMode(mode);
-    });
-  });
-
-  let initialMode = 'browser';
-  try
-  {
-    const savedMode = localStorage.getItem('presenter_mobile_pane_mode');
-    if (savedMode && ['browser', 'deck', 'both'].includes(savedMode))
-    {
-      initialMode = savedMode;
-    }
-  }
-  catch (e) {}
-
-  setMobilePaneMode(initialMode);
-}
-
 // ---------------------------------------------------------------------------
 // Header Collapse Toggle System
 // ---------------------------------------------------------------------------
 function updateCollapseButtons(collapsed)
 {
-  const toggleBtns = document.querySelectorAll('.btn-collapse-toggle');
-  toggleBtns.forEach(btn => {
-    const iconSpan = btn.querySelector('.collapse-icon');
-    const textSpan = btn.querySelector('.collapse-text');
+  const toggleBtn = document.getElementById('btn-collapse-header');
+  if (toggleBtn)
+  {
     if (collapsed)
     {
-      btn.classList.add('collapsed');
-      btn.setAttribute('title', 'Expand Top Bar Controls');
-      if (iconSpan) iconSpan.textContent = '▼';
-      if (textSpan) textSpan.textContent = 'Expand';
+      toggleBtn.classList.add('collapsed');
+      toggleBtn.setAttribute('title', 'Expand Header & Tabs');
+      toggleBtn.setAttribute('aria-label', 'Expand Header & Tabs');
+      toggleBtn.innerHTML = `
+        <svg class="vv-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      `;
     }
     else
     {
-      btn.classList.remove('collapsed');
-      btn.setAttribute('title', 'Collapse Top Bar Controls');
-      if (iconSpan) iconSpan.textContent = '▲';
-      if (textSpan) textSpan.textContent = 'Top Bar';
+      toggleBtn.classList.remove('collapsed');
+      toggleBtn.setAttribute('title', 'Collapse Header & Tabs');
+      toggleBtn.setAttribute('aria-label', 'Collapse Header & Tabs');
+      toggleBtn.innerHTML = `
+        <svg class="vv-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="18 15 12 9 6 15"></polyline>
+        </svg>
+      `;
     }
-  });
+  }
 }
 
 function initHeaderCollapseToggle()
 {
-  const toggleBtns = document.querySelectorAll('.btn-collapse-toggle');
+  const toggleBtn = document.getElementById('btn-collapse-header');
   const appContainer = document.querySelector('.presenter-app');
-  if (!appContainer) return;
+  if (!appContainer || !toggleBtn) return;
 
   try
   {
@@ -223,31 +160,20 @@ function initHeaderCollapseToggle()
   }
   catch (e) {}
 
-  toggleBtns.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const collapsed = appContainer.classList.toggle('header-collapsed');
-      updateCollapseButtons(collapsed);
-      try
-      {
-        localStorage.setItem('presenter_header_collapsed', collapsed ? 'true' : 'false');
-      }
-      catch (e) {}
-    });
+  toggleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const collapsed = appContainer.classList.toggle('header-collapsed');
+    updateCollapseButtons(collapsed);
+    try
+    {
+      localStorage.setItem('presenter_header_collapsed', collapsed ? 'true' : 'false');
+    }
+    catch (e) {}
   });
-
-  const miniPrev = document.getElementById('btn-mini-prev');
-  const miniNext = document.getElementById('btn-mini-next');
-  const miniClear = document.getElementById('btn-mini-clear');
-
-  if (miniPrev && btnPrevSlide) miniPrev.addEventListener('click', () => btnPrevSlide.click());
-  if (miniNext && btnNextSlide) miniNext.addEventListener('click', () => btnNextSlide.click());
-  if (miniClear && btnClear) miniClear.addEventListener('click', () => btnClear.click());
 }
 
 function initTabNavigation()
 {
-  initMobilePaneSwitcher();
   initHeaderCollapseToggle();
 
   tabButtons.forEach((btn) =>
@@ -259,15 +185,18 @@ function initTabNavigation()
     });
   });
 
+  let initialTab = 'songs';
   try
   {
     const savedTab = localStorage.getItem('presenter_active_tab');
     if (savedTab && ['songs', 'bible', 'biblesearch', 'search'].includes(savedTab))
     {
-      switchTab(savedTab);
+      initialTab = savedTab;
     }
   }
   catch (e) {}
+
+  switchTab(initialTab);
 }
 
 function switchTab(tabId)
@@ -278,6 +207,18 @@ function switchTab(tabId)
   
   const workspaceViews = document.querySelectorAll('.workspace-tab-view');
   workspaceViews.forEach(v => v.classList.toggle('active', v.id === `workspace-${tabId}`));
+
+  const addSongBtn = document.getElementById('btn-open-add-song');
+  if (addSongBtn)
+  {
+    addSongBtn.style.display = (tabId === 'songs') ? '' : 'none';
+  }
+
+  const versionWrap = document.getElementById('wrap-select-version');
+  if (versionWrap)
+  {
+    versionWrap.style.display = (tabId === 'bible' || tabId === 'biblesearch') ? 'inline-flex' : 'none';
+  }
 
   if (tabId === 'songs' && typeof updateVirtualSongList === 'function')
   {
@@ -323,7 +264,7 @@ function initResizer()
   {
     const resizer = e.currentTarget;
     const parentTab = resizer.closest('.workspace-tab-view');
-    isMobileHorizontalDrag = parentTab ? parentTab.classList.contains('mobile-mode-both') : false;
+    isMobileHorizontalDrag = window.innerWidth <= 768;
 
     isDragging = true;
     activeResizer = resizer;

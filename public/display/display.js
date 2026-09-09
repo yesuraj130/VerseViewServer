@@ -221,12 +221,3 @@ if (btnToggleFs)
 }
 
 document.body.addEventListener('dblclick', toggleFullscreen);
-
-window.addEventListener('keydown', (e) =>
-{
-  if (e.key === 'f' || e.key === 'F')
-  {
-    e.preventDefault();
-    toggleFullscreen();
-  }
-});

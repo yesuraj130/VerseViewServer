@@ -85,7 +85,7 @@ function createSongItemElement(song)
     <div class="song-item-info">
       <div class="song-item-name" style="font-family: ${songFontFamily};">
         <span class="song-name-text">${escapeHtml(displayName)}</span>
-        ${isConverted ? '<span class="song-unicode-tag" title="Converted to Unicode">🔤</span>' : ''}
+        ${isConverted ? '<span class="song-unicode-tag" title="Converted to Unicode">Unicode</span>' : ''}
       </div>
       <div class="song-item-preview" style="font-family: ${songFontFamily};">${previewLine}</div>
     </div>
@@ -254,7 +254,7 @@ async function selectSong(songId, autoPresent = false)
     {
       activeSlideCountIndicator.textContent = `${currentSongSlides.length} slides`;
     }
-    if (btnDeckEditSong) btnDeckEditSong.style.display = 'inline-block';
+    if (btnDeckEditSong) btnDeckEditSong.style.display = 'inline-flex';
 
     renderSlideDeck(currentSong, currentSongSlides);
 
@@ -390,10 +390,7 @@ function renderSlideDeck(song, slides)
     const linesHtml = lines.map(line => `<div>${escapeHtml(line)}</div>`).join('');
 
     card.innerHTML = `
-      <div class="slide-card-header">
-        <span class="slide-card-num">Slide ${slide.slideIndex}</span>
-        <span class="slide-card-badge" style="${isLive ? 'display: inline-block;' : 'display: none;'}">LIVE</span>
-      </div>
+      <span class="slide-card-badge" style="${isLive ? 'display: inline-block;' : 'display: none;'}">LIVE</span>
       <div class="slide-card-content" style="font-family: ${songFontFamily};">
         ${linesHtml}
       </div>
