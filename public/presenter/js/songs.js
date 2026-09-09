@@ -303,6 +303,19 @@ function updateSongDeckColumnWidth()
   const targetContainer = document.getElementById('slide-deck-songs') || slideDeckContainer;
   if (!targetContainer || !currentSongSlides || currentSongSlides.length === 0) return;
 
+  const clientWidth = targetContainer.clientWidth;
+  const isMobile = window.innerWidth <= 768 || (clientWidth > 0 && clientWidth <= 540);
+
+  if (isMobile)
+  {
+    targetContainer.style.setProperty('--song-deck-col-width', '100%');
+    targetContainer.classList.add('wrap-lines');
+    targetContainer.classList.add('mobile-single-col');
+    return;
+  }
+
+  targetContainer.classList.remove('mobile-single-col');
+
   const allLines = [];
   currentSongSlides.forEach(s =>
   {
@@ -316,7 +329,6 @@ function updateSongDeckColumnWidth()
   const maxLineWidth = measureMaxLineWidth(allLines, `500 14px ${songFontFam}`);
   const naturalColWidth = Math.max(220, Math.ceil(maxLineWidth * 1.06 + 46));
 
-  const clientWidth = targetContainer.clientWidth;
   const availWidth = clientWidth > 40 ? (clientWidth - 40) : 800;
 
   let colWidth;

@@ -787,6 +787,36 @@
   gap: 12px;
 }
 
+#slide-deck-songs.mobile-single-col
+{
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  gap: 10px !important;
+}
+
+#slide-deck-songs.mobile-single-col .slide-card
+{
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: fit-content !important;
+  overflow: visible !important;
+  box-sizing: border-box !important;
+}
+
+#slide-deck-songs.mobile-single-col .slide-card-content,
+#slide-deck-songs.mobile-single-col .slide-card-content div
+{
+  width: 100% !important;
+  max-width: 100% !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  line-height: 1.6 !important;
+  overflow: visible !important;
+}
+
 #slide-deck-bible,
 #slide-deck-search
 {
@@ -801,7 +831,8 @@
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  height: 100%;
+  min-height: 100%;
+  height: auto;
   background-color: #1e293b;
   border: 1px solid #334155;
   border-radius: var(--radius-md);
@@ -813,7 +844,6 @@
   justify-content: flex-start;
   position: relative;
   box-sizing: border-box;
-  overflow: hidden;
 }
 
 .slide-card:hover
@@ -1562,20 +1592,45 @@
   .slide-deck
   {
     padding: 10px 12px;
-    gap: 8px;
+    gap: 10px;
+  }
+
+  /* One Column Stretch for Mobile View Alone */
+  #slide-deck-songs
+  {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    padding: 10px 12px !important;
+    box-sizing: border-box !important;
   }
 
   .slide-card
   {
-    padding: 12px 14px;
-    min-height: 72px;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: fit-content !important;
+    padding: 14px 16px;
+    overflow: visible !important;
+    box-sizing: border-box !important;
+    flex-shrink: 0 !important;
     touch-action: manipulation;
   }
 
-  .slide-card-content
+  .slide-card-content,
+  .slide-card-content div
   {
-    font-size: 15px;
-    line-height: 1.5;
+    width: 100% !important;
+    max-width: 100% !important;
+    font-size: 15px !important;
+    line-height: 1.6 !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    overflow: visible !important;
   }
 
   /* Modal Windows on Mobile */

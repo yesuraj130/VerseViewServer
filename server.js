@@ -19,11 +19,10 @@ const io = new Server(server, {
   }
 });
 
-// External hosting platforms (such as Render.com, Railway, Heroku) supply process.env.PORT.
-// In the Google AI Studio container sandbox, port 3000 is used by the internal proxy.
-const PORT = (process.env.APPLET_ID || process.env.DEFAULT_APP_PORT)
-  ? 3000
-  : (process.env.PORT || 3000);
+// In the AI Studio development sandbox, NGINX runs on 8080 and reverse-proxies to 3000.
+// In deployed Cloud Run / production environments, Cloud Run routes traffic directly to process.env.PORT (typically 8080).
+const isDevSandbox = Boolean(process.env.CONTROL_PLANE_PORT || process.env.DEFAULT_APP_PORT);
+const PORT = isDevSandbox ? 3000 : (Number(process.env.PORT) || 8080);
 const APP_TITLE = process.env.APP_TITLE || 'Verse View Server';
 const APP_CONFIG = {
   appName: APP_TITLE,
@@ -80,6 +79,23 @@ const songsDbFileName = fs.existsSync(path.join(dataDir, 'songs.db'))
   : 'sm.db';
 const smDbPath = path.join(dataDir, songsDbFileName);
 const smDb = new DatabaseSync(smDbPath);
+
+try
+{
+  smDb.exec(`
+    CREATE TABLE IF NOT EXISTS sm (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT,
+      font TEXT,
+      lyrics TEXT,
+      category TEXT
+    );
+  `);
+}
+catch (e)
+{
+  // Ignore if already existing or read-only
+}
 
 // ---------------------------------------------------------------------------
 // 2. Bible Versions Manager & Read-Only SQLite Database Connections
@@ -418,6 +434,12 @@ app.use((req, res, next) =>
 });
 
 app.use(express.json());
+
+// Standard container liveness & health check probe
+app.get('/healthz', (req, res) =>
+{
+  res.status(200).json({ status: 'ok', time: new Date().toISOString() });
+});
 
 // API: Keep-Alive Heartbeat (Prevents idle spin-down)
 app.get('/api/keepalive', (req, res) =>
@@ -1082,6 +1104,22 @@ app.get('*', (req, res) =>
 // ---------------------------------------------------------------------------
 // 8. Start HTTP + Socket.io Server
 // ---------------------------------------------------------------------------
+server.on('error', (err) =>
+{
+  if (err.code === 'EADDRINUSE')
+  {
+    console.warn(`Primary port ${PORT} in use, attempting fallback to 3000...`);
+    if (PORT !== 3000)
+    {
+      server.listen(3000, '0.0.0.0');
+    }
+  }
+  else
+  {
+    console.error('Server error:', err);
+  }
+});
+
 server.listen(PORT, '0.0.0.0', () =>
 {
   console.log(`Verse View Server running at http://0.0.0.0:${PORT}`);
@@ -1089,3 +1127,24 @@ server.listen(PORT, '0.0.0.0', () =>
   console.log(`Presenter Console available at: http://0.0.0.0:${PORT}/presenter/`);
   console.log(`Display Output available at:    http://0.0.0.0:${PORT}/display/`);
 });
+
+// In production Cloud Run, additionally listen on 3000 if different from PORT for internal compatibility
+if (!isDevSandbox && PORT !== 3000)
+{
+  try
+  {
+    const secondaryServer = http.createServer(app);
+    secondaryServer.on('error', (err) =>
+    {
+      console.warn('Secondary 3000 listener note:', err.message);
+    });
+    secondaryServer.listen(3000, '0.0.0.0', () =>
+    {
+      console.log('Secondary port 3000 listener active');
+    });
+  }
+  catch (e)
+  {
+    // Harmless if 3000 is occupied
+  }
+}
