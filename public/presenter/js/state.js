@@ -7,9 +7,7 @@ const socket = (typeof io !== 'undefined') ? io() : null;
 
 // Application State
 let liveState = null;
-let currentPresentationType = 'song'; // 'song' | 'bible'
 let currentSong = null;
-let currentSongSlides = [];
 let activeSongSlideIndex = 1;
 
 // Bible Application State
@@ -19,7 +17,6 @@ let selectedBibleVersionBooks = [];
 let selectedBookNumber = 1;
 let selectedChapterNumber = 1;
 let selectedVerseNumber = 1;
-let currentChapterVerses = [];
 
 
 // Restore Last Browsed Bible from LocalStorage (Option B)

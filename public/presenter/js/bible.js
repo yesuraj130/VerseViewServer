@@ -295,8 +295,8 @@ async function selectBibleChapter(targetChapterNumber, targetVerseNumber)
   // If chapter text was already loaded previously, render immediately without fetch
   if (cachedBibleChapterText)
   {
-    currentChapterVerses = cachedBibleChapterText.verses || [];
-    renderChapterVersesText(currentChapterVerses);
+    const verses = cachedBibleChapterText.verses || [];
+    renderChapterVersesText(verses);
     selectBibleVerse(chosenVerseNumber);
     return;
   }
@@ -323,12 +323,12 @@ async function selectBibleChapter(targetChapterNumber, targetVerseNumber)
     // Guard against race conditions if user navigated away before response returned
     if (fetchId === currentBibleTextFetchId && selectedBookNumber === targetBookNum && selectedChapterNumber === targetChNum)
     {
-      currentChapterVerses = data.verses || [];
+      const chapterVerses = data.verses || [];
 
       // If exact verses count differs from cached estimate, update buttons seamlessly
-      if (currentChapterVerses.length > 0 && currentChapterVerses.length !== verseCount)
+      if (chapterVerses.length > 0 && chapterVerses.length !== verseCount)
       {
-        const exactVerseNums = currentChapterVerses.map(v => v.verseNum);
+        const exactVerseNums = chapterVerses.map(v => v.verseNum);
         renderBibleVersesList(exactVerseNums);
         if (bibleVersesList)
         {
@@ -343,7 +343,7 @@ async function selectBibleChapter(targetChapterNumber, targetVerseNumber)
         }
       }
 
-      renderChapterVersesText(currentChapterVerses);
+      renderChapterVersesText(chapterVerses);
       selectBibleVerse(chosenVerseNumber);
     }
   }

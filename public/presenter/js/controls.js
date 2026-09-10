@@ -12,31 +12,95 @@ function triggerClear()
 
 function triggerPrevious()
 {
-  if (currentPresentationType === 'song' && currentSong && currentSongSlides.length > 0)
+  // Only control what is currently LIVE (Song or Scripture). If not live, do nothing.
+  if (!liveState || liveState.status !== 'live') return;
+
+  if (liveState.type === 'song' && liveState.songId)
   {
-    const previousSongSlideIndex = activeSongSlideIndex > 1 ? activeSongSlideIndex - 1 : 1;
-    presentSlide(currentSong, previousSongSlideIndex);
+    const currentIdx = Number(liveState.slideIndex) || 1;
+    const prevIdx = Math.max(1, currentIdx - 1);
+    presentSlide({ id: liveState.songId }, prevIdx);
+    if (currentSong && Number(currentSong.id) === Number(liveState.songId))
+    {
+      activeSongSlideIndex = prevIdx;
+    }
   }
-  else if (currentPresentationType === 'bible' && currentChapterVerses.length > 0)
+  else if (liveState.type === 'bible' && liveState.verseInfo)
   {
-    const previousBibleVerseNumber = selectedVerseNumber > 1 ? selectedVerseNumber - 1 : 1;
-    selectBibleVerse(previousBibleVerseNumber, true);
+    const vInfo = liveState.verseInfo;
+    const prevVerse = Math.max(1, Number(vInfo.verseNum) - 1);
+    presentBibleVerse(vInfo.version || selectedBibleVersionId, {
+      bookNum: vInfo.bookNum,
+      chNum: vInfo.chNum,
+      verseNum: prevVerse
+    });
+    if (Number(selectedBookNumber) === Number(vInfo.bookNum) && Number(selectedChapterNumber) === Number(vInfo.chNum))
+    {
+      selectBibleVerse(prevVerse, false);
+    }
   }
 }
 
 function triggerNext()
 {
-  if (currentPresentationType === 'song' && currentSong && currentSongSlides.length > 0)
+  // Only control what is currently LIVE (Song or Scripture). If not live, do nothing.
+  if (!liveState || liveState.status !== 'live') return;
+
+  if (liveState.type === 'song' && liveState.songId)
   {
-    const nextSongSlideIndex = activeSongSlideIndex < currentSongSlides.length ? activeSongSlideIndex + 1 : currentSongSlides.length;
-    presentSlide(currentSong, nextSongSlideIndex);
+    const currentIdx = Number(liveState.slideIndex) || 1;
+    const total = Number(liveState.totalSlides) || ((currentSong && currentSong.slides) ? currentSong.slides.length : (currentIdx + 1));
+    const nextIdx = Math.min(total, currentIdx + 1);
+    presentSlide({ id: liveState.songId }, nextIdx);
+    if (currentSong && Number(currentSong.id) === Number(liveState.songId))
+    {
+      activeSongSlideIndex = nextIdx;
+    }
   }
-  else if (currentPresentationType === 'bible' && currentChapterVerses.length > 0)
+  else if (liveState.type === 'bible' && liveState.verseInfo)
   {
-    const nextBibleVerseNumber = selectedVerseNumber < currentChapterVerses.length ? selectedVerseNumber + 1 : currentChapterVerses.length;
-    selectBibleVerse(nextBibleVerseNumber, true);
+    const vInfo = liveState.verseInfo;
+    const currentVerse = Number(vInfo.verseNum) || 1;
+    const totalVerses = (Number(selectedBookNumber) === Number(vInfo.bookNum) && Number(selectedChapterNumber) === Number(vInfo.chNum))
+      ? ((bibleVersesList && bibleVersesList.children.length) || (slideDeckBible && slideDeckBible.children.length) || 150)
+      : 150;
+    const nextVerse = Math.min(totalVerses, currentVerse + 1);
+    presentBibleVerse(vInfo.version || selectedBibleVersionId, {
+      bookNum: vInfo.bookNum,
+      chNum: vInfo.chNum,
+      verseNum: nextVerse
+    });
+    if (Number(selectedBookNumber) === Number(vInfo.bookNum) && Number(selectedChapterNumber) === Number(vInfo.chNum))
+    {
+      selectBibleVerse(nextVerse, false);
+    }
   }
 }
+
+// Global Keyboard Navigation Shortcuts
+window.addEventListener('keydown', (e) =>
+{
+  const targetTag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+  if (targetTag === 'input' || targetTag === 'textarea' || targetTag === 'select' || (e.target && e.target.isContentEditable))
+  {
+    return;
+  }
+
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ')
+  {
+    e.preventDefault();
+    triggerNext();
+  }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp')
+  {
+    e.preventDefault();
+    triggerPrevious();
+  }
+  else if (e.key === 'Escape')
+  {
+    triggerClear();
+  }
+});
 
 // Event Listeners for Toolbar Buttons
 if (buttonClear) buttonClear.addEventListener('click', triggerClear);

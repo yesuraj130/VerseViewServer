@@ -241,9 +241,8 @@ async function selectSong(songId, autoPresent = false)
     const res = await fetch(`/api/songs/${songId}`);
     const song = await res.json();
     currentSong = song;
-    currentSongSlides = song.slides || [];
     activeSongSlideIndex = 1;
-    currentPresentationType = 'song';
+    const slides = song.slides || [];
 
     if (activeSongTitle)
     {
@@ -257,11 +256,11 @@ async function selectSong(songId, autoPresent = false)
     }
     if (activeSlideCountIndicator)
     {
-      activeSlideCountIndicator.textContent = `${currentSongSlides.length} slides`;
+      activeSlideCountIndicator.textContent = `${slides.length} slides`;
     }
     if (btnDeckEditSong) btnDeckEditSong.style.display = 'inline-flex';
 
-    renderSlideDeck(currentSong, currentSongSlides);
+    renderSlideDeck(currentSong, slides);
 
     if (window.innerWidth <= 768 && typeof setMobilePaneMode === 'function')
     {
@@ -271,7 +270,7 @@ async function selectSong(songId, autoPresent = false)
       }
     }
 
-    if (autoPresent && currentSongSlides.length > 0)
+    if (autoPresent && slides.length > 0)
     {
       presentSlide(song, 1);
     }
@@ -303,10 +302,11 @@ function measureMaxLineWidth(lines, font = '500 14px "Baloo Thambi 2", "Baloo Th
   return Math.ceil(maxW);
 }
 
-function updateSongDeckColumnWidth()
+function updateSongDeckColumnWidth(slides)
 {
   const targetContainer = document.getElementById('slide-deck-songs') || slideDeckContainer;
-  if (!targetContainer || !currentSongSlides || currentSongSlides.length === 0) return;
+  const songSlides = slides || (currentSong && currentSong.slides) || [];
+  if (!targetContainer || songSlides.length === 0) return;
 
   const clientWidth = targetContainer.clientWidth;
   const isMobile = window.innerWidth <= 768 || (clientWidth > 0 && clientWidth <= 540);
@@ -322,7 +322,7 @@ function updateSongDeckColumnWidth()
   targetContainer.classList.remove('mobile-single-col');
 
   const allLines = [];
-  currentSongSlides.forEach(s =>
+  songSlides.forEach(s =>
   {
     (s.lines || []).forEach(l =>
     {
