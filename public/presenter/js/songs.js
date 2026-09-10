@@ -2,26 +2,26 @@
 // Presenter Console — Songs Management & Slide Deck Controller
 // ===========================================================================
 
-async function loadSongs(q = '')
+async function loadSongs(songSearchText = '')
 {
   try
   {
     let url = `/api/songs?`;
-    if (q) url += `q=${encodeURIComponent(q)}`;
+    if (songSearchText) url += `q=${encodeURIComponent(songSearchText)}`;
 
-    const res = await fetch(url);
-    const songs = await res.json();
-    renderSongList(songs);
+    const songsSearchFetchResult = await fetch(url);
+    const songsSearchResultJson = await songsSearchFetchResult.json();
+    renderSongList(songsSearchResultJson);
 
-    if (!currentSong && songs.length > 0)
+    if (!currentSong && songsSearchResultJson.length > 0)
     {
-      let songToSelect = songs[0];
+      let songToSelect = songsSearchResultJson[0];
       try
       {
         const savedSongId = localStorage.getItem('last_browsed_song_id');
         if (savedSongId)
         {
-          const match = songs.find(s => Number(s.id) === Number(savedSongId));
+          const match = songsSearchResultJson.find(s => Number(s.id) === Number(savedSongId));
           if (match) songToSelect = match;
         }
       }
@@ -55,6 +55,17 @@ let lastRenderedEnd = -1;
 function getSongRowHeight()
 {
   return window.innerWidth <= 900 ? 58 : 54;
+}
+
+function isLandscape()
+{
+  if (typeof window !== 'undefined' && window.matchMedia)  return window.matchMedia('(orientation: landscape)').matches;
+  return window.innerWidth > window.innerHeight;
+}
+
+function isHighDpi()
+{
+  return typeof window !== 'undefined' && window.devicePixelRatio >= 2;
 }
 
 function createSongItemElement(song)
@@ -104,7 +115,7 @@ function createSongItemElement(song)
   return item;
 }
 
-function updateVirtualSongList(force = false)
+function updateVirtualSongList(force)
 {
   if (!songListContainer || !allLoadedSongs || allLoadedSongs.length === 0) return;
 
@@ -182,7 +193,7 @@ function renderSongList(songs)
 
   if (allLoadedSongs.length === 0)
   {
-    songListContainer.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px;">No songs found. Click "+ Add Song" above.</div>';
+    songListContainer.innerHTML = 'No songs found.';
     songVirtualSpacer = null;
     songVirtualItems = null;
     return;
@@ -199,7 +210,7 @@ if (songListContainer)
     virtualScrollRaf = requestAnimationFrame(() =>
     {
       virtualScrollRaf = null;
-      updateVirtualSongList();
+      updateVirtualSongList(false);
     });
   }, { passive: true });
 
@@ -378,14 +389,7 @@ function renderSlideDeck(song, slides)
     const isLive = liveState && Number(liveState.songId) === Number(song.id) && Number(liveState.slideIndex) === Number(slide.slideIndex) && liveState.status === 'live';
     if (isLive) card.classList.add('active-live');
 
-    const lines = (slide.lines || []).map((l) =>
-    {
-      if (typeof window.baminiToUnicode === 'function' && typeof window.isBaminiText === 'function')
-      {
-        return window.isBaminiText(l, song ? song.font : '') ? window.baminiToUnicode(l) : l;
-      }
-      return l;
-    });
+    const lines = slide.lines || [];
 
     const linesHtml = lines.map(line => `<div>${escapeHtml(line)}</div>`).join('');
 

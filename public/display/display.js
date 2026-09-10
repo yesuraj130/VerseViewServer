@@ -33,14 +33,7 @@ function renderDisplayState(state)
 
   // Render text lines
   const rawLines = Array.isArray(state.lines) ? state.lines : (state.rawSlide ? state.rawSlide.split('<BR>') : []);
-  const lines = rawLines.map((l) =>
-  {
-    if (typeof window.baminiToUnicode === 'function' && typeof window.isBaminiText === 'function')
-    {
-      return window.isBaminiText(l, state.font) ? window.baminiToUnicode(l) : l;
-    }
-    return l;
-  });
+  const lines = rawLines;
   linesContainer.innerHTML = '';
 
   // Apply font family: use Baloo Thambi for all
