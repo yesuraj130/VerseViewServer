@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { Server } from 'socket.io';
-import { isBaminiText, baminiToUnicode } from './lib/bamini.js';
+import { isTamilBibleFont, baminiToUnicode } from './lib/bamini.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -362,7 +362,7 @@ io.on('connection', (socket) =>
     const rawLines = Array.isArray(payload.lines)
       ? payload.lines
       : (payload.rawSlide ? payload.rawSlide.split('<BR>') : []);
-    const lines = rawLines.map(l => (isBaminiText(l, payload.font) ? baminiToUnicode(l) : l));
+    const lines = rawLines.map(l => (isTamilBibleFont(payload.font) ? baminiToUnicode(l) : l));
 
     currentState = {
       ...currentState,
@@ -479,7 +479,7 @@ app.post('/api/state', (req, res) =>
   const rawLines = Array.isArray(payload.lines)
     ? payload.lines
     : (payload.rawSlide ? payload.rawSlide.split('<BR>') : []);
-  const lines = rawLines.map(l => (isBaminiText(l, payload.font) ? baminiToUnicode(l) : l));
+  const lines = rawLines.map(l => (isTamilBibleFont(payload.font) ? baminiToUnicode(l) : l));
 
   currentState = {
     ...currentState,
@@ -505,7 +505,7 @@ function extractFirstLine(lyrics, font = '')
     if (lines.length > 0)
     {
       const first = lines[0];
-      return isBaminiText(first, font) ? baminiToUnicode(first) : first;
+      return isTamilBibleFont(font) ? baminiToUnicode(first) : first;
     }
   }
   return '';
@@ -572,7 +572,7 @@ app.get('/api/songs', (req, res) =>
     const songs = rows.map((r) =>
     {
       const slides = r.lyrics ? r.lyrics.split('<slide>').filter(s => s.trim().length > 0) : [];
-      const isConverted = isBaminiText(r.lyrics, r.font);
+      const isConverted = isTamilBibleFont(r.font);
       return {
         id: r.id,
         name: r.name,
@@ -611,7 +611,7 @@ app.get('/api/songs/:id', (req, res) =>
       return res.status(404).json({ error: 'Song not found' });
     }
 
-    const needsConversion = isBaminiText(song.lyrics, song.font);
+    const needsConversion = isTamilBibleFont(song.font);
     const convertedLyrics = needsConversion ? baminiToUnicode(song.lyrics) : song.lyrics;
 
     const rawSlides = (convertedLyrics || '').split('<slide>');

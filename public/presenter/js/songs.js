@@ -82,10 +82,7 @@ function createSongItemElement(song)
     item.classList.add('is-live-active');
   }
 
-  const isConverted = Boolean(
-    song.isConverted ||
-    (typeof window.isBaminiText === 'function' && window.isBaminiText(song.firstLine || '', song.font))
-  );
+  const isConverted = Boolean(song.isConverted);
 
   // Only slides are decoded - titles and song names are preserved as-is
   const displayName = song.name;
@@ -255,10 +252,7 @@ async function selectSong(songId, autoPresent = false)
     }
     if (songUnicodeDeckBadge)
     {
-      const isConverted = Boolean(
-        song.isConverted ||
-        (typeof window.isBaminiText === 'function' && window.isBaminiText(song.lyrics || song.rawLyrics || '', song.font))
-      );
+      const isConverted = Boolean(song.isConverted);
       songUnicodeDeckBadge.style.display = isConverted ? 'inline-flex' : 'none';
     }
     if (activeSlideCountIndicator)
