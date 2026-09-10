@@ -153,13 +153,13 @@ function renderBibleBooksList()
 
   let list = selectedBibleVersionBooks;
 
-  list.forEach((book) =>
+  for (let i = 0; i < list.length; i++)
   {
+    const book = list[i];
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'book-btn book-item';
     if (Number(book.bookNum) === Number(selectedBookNumber)) button.classList.add('active');
-    button.setAttribute('data-book-num', book.bookNum);
     button.title = `${book.name}`;
     button.innerHTML = `${escapeHtml(book.name.trim())}`;
 
@@ -169,7 +169,7 @@ function renderBibleBooksList()
     });
 
     bibleBooksList.appendChild(button);
-  });
+  }
 
   if (liveState) highlightActiveInDecks(liveState);  
 }
@@ -185,11 +185,13 @@ async function selectBibleBook(targetBookNumber, bookName, targetChapterNumber, 
 
   if (bibleBooksList)
   {
-    bibleBooksList.querySelectorAll('.book-item').forEach((bookButton) =>
+    const bookChildren = bibleBooksList.children;
+    for (let i = 0; i < bookChildren.length; i++)
     {
-      const bookNumber = Number(bookButton.getAttribute('data-book-num'));
-      bookButton.classList.toggle('active', bookNumber === selectedBookNumber);
-    });
+      const bookObj = selectedBibleVersionBooks[i];
+      const isSelected = bookObj ? Number(bookObj.bookNum) === selectedBookNumber : (i + 1 === selectedBookNumber);
+      bookChildren[i].classList.toggle('active', isSelected);
+    }
   }
 
   // Instant zero-delay chapter resolution from loaded book metadata or bible structure

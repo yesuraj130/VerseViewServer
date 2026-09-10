@@ -213,12 +213,14 @@ function highlightActiveInDecks(state)
   // Green highlight preview for Book list items
   if (bibleBooksList)
   {
-    bibleBooksList.querySelectorAll('.book-item').forEach((it) =>
+    const bookChildren = bibleBooksList.children;
+    for (let i = 0; i < bookChildren.length; i++)
     {
-      const bNum = Number(it.getAttribute('data-book-num'));
+      const bookObj = selectedBibleVersionBooks[i];
+      const bNum = bookObj ? Number(bookObj.bookNum) : (i + 1);
       const isLiveBook = liveVerse && bNum === Number(liveVerse.bookNum);
-      it.classList.toggle('is-live-active', !!isLiveBook);
-    });
+      bookChildren[i].classList.toggle('is-live-active', !!isLiveBook);
+    }
   }
 
   // Green highlight preview for Chapter list buttons
