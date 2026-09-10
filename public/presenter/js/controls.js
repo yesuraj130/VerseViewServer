@@ -19,7 +19,7 @@ function triggerPrev()
   }
   else if (currentPresentationType === 'bible' && currentChapterVerses.length > 0)
   {
-    const prevVerse = Math.max(1, selectedVerseNum - 1);
+    const prevVerse = Math.max(1, selectedVerseNumber - 1);
     selectBibleVerse(prevVerse, true);
   }
 }
@@ -33,7 +33,7 @@ function triggerNext()
   }
   else if (currentPresentationType === 'bible' && currentChapterVerses.length > 0)
   {
-    const nextVerse = Math.min(currentChapterVerses.length, selectedVerseNum + 1);
+    const nextVerse = Math.min(currentChapterVerses.length, selectedVerseNumber + 1);
     selectBibleVerse(nextVerse, true);
   }
 }
@@ -70,27 +70,27 @@ async function jumpToLiveSlide()
   {
     switchTab('bible');
     const vInfo = liveState.verseInfo;
-    const verId = vInfo.versionId || selectedVersionId;
+    const verId = vInfo.versionId || selectedBibleVersionId;
 
-    if (verId !== selectedVersionId)
+    if (verId !== selectedBibleVersionId)
     {
-      selectedVersionId = verId;
-      if (selectVersion) selectVersion.value = verId;
+      selectedBibleVersionId = verId;
+      if (bibleVersionSelectionDropdown) bibleVersionSelectionDropdown.value = verId;
       if (bibleSearchVersionLabel)
       {
         const verObj = (typeof bibleVersions !== 'undefined') ? bibleVersions.find(v => v.id === verId) : null;
         if (verObj) bibleSearchVersionLabel.textContent = verObj.name;
       }
       if (typeof saveLastBrowsedBible === 'function') saveLastBrowsedBible();
-      await loadBibleBooks(selectedVersionId, vInfo.bookNum, vInfo.chNum, vInfo.verseNum);
+      await loadBibleBooks(selectedBibleVersionId, vInfo.bookNum, vInfo.chNum, vInfo.verseNum);
     }
     else
     {
-      if (Number(selectedBookNum) !== Number(vInfo.bookNum))
+      if (Number(selectedBookNumber) !== Number(vInfo.bookNum))
       {
         await selectBibleBook(vInfo.bookNum, vInfo.bookName, vInfo.chNum, vInfo.verseNum);
       }
-      else if (Number(selectedChapterNum) !== Number(vInfo.chNum))
+      else if (Number(selectedChapterNumber) !== Number(vInfo.chNum))
       {
         await selectBibleChapter(vInfo.chNum, vInfo.verseNum);
       }

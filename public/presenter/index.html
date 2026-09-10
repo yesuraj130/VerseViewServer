@@ -44,7 +44,7 @@
             </svg>
           </button>
           <div class="ctrl-select-wrapper" id="wrap-select-version" style="display: none;">
-            <select id="select-version" class="ctrl-select" title="Choose Bible Version"></select>
+            <select id="bibleVersionSelectionDropdown" class="ctrl-select" title="Choose Bible Version"></select>
           </div>
         </div>
         <div class="ctrl-group">
@@ -138,10 +138,6 @@
       <!-- ==================== TAB 2: BIBLE ==================== -->
       <div class="workspace-tab-view" id="workspace-bible">
         <aside class="browser-pane">
-          <div class="quick-ref-box">
-            <input type="text" id="bible-ref-quick-input" class="quick-ref-input" placeholder="Quick Jump (e.g. John 3:16 or Gen 1:1)">
-            <button class="btn-primary" id="btn-quick-ref-go" style="padding: 5px 12px; font-size: 12px;">Go</button>
-          </div>
 
           <div class="recent-strip" id="bible-recent-strip">
             <span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Recent:</span>
@@ -152,11 +148,6 @@
               <div class="bible-col-header">
                 <div class="bible-col-title-row">
                   <span class="bible-col-title">Book</span>
-                  <div class="testament-tabs" id="testament-tabs">
-                    <button type="button" class="testament-btn active" data-testament="all">All</button>
-                    <button type="button" class="testament-btn" data-testament="ot" title="Old Testament (1-39)">OT</button>
-                    <button type="button" class="testament-btn" data-testament="nt" title="New Testament (40-66)">NT</button>
-                  </div>
                 </div>
               </div>
               <div class="bible-col-list books-grid" id="bible-books-list"></div>
@@ -194,10 +185,6 @@
             <div style="display: flex; gap: 6px;">
               <input type="text" id="bible-full-search-input" class="input-search" placeholder="Search Scripture (e.g. grace, அன்பு)...">
               <button class="btn-primary" id="btn-run-bible-search" style="padding: 6px 12px; font-size: 12px;">Search</button>
-            </div>
-            <div style="font-size: 11px; color: #94a3b8; display: flex; justify-content: space-between; align-items: center;">
-              <span id="bible-search-status">Ready to search</span>
-              <span id="bible-search-version-label">Tamil (BSI)</span>
             </div>
           </div>
 

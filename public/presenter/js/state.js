@@ -14,16 +14,15 @@ let activeSongSlideIndex = 1;
 
 // Bible Application State
 let bibleVersions = [];
-let selectedVersionId = 'tamil';
-let allBibleBooks = [];
+let selectedBibleVersionId = 'tamil';
+let selectedBibleVersionBooks = [];
 let filteredBibleBooks = [];
-let selectedBookNum = 43; // Default John
-let selectedBookName = 'John';
-let selectedChapterNum = 3;
-let selectedVerseNum = 16;
+let selectedBookNumber = 1;
+let selectedBookName = '';
+let selectedChapterNumber = 1;
+let selectedVerseNumber = 1;
 let currentChapterVerses = [];
-let testamentFilter = 'all'; // 'all' | 'ot' | 'nt'
-let bookSearchFilter = '';
+
 
 // Restore Last Browsed Bible from LocalStorage (Option B)
 try
@@ -32,11 +31,11 @@ try
   if (savedLastBible)
   {
     const parsed = JSON.parse(savedLastBible);
-    if (parsed.versionId) selectedVersionId = parsed.versionId;
-    if (parsed.bookNum) selectedBookNum = Number(parsed.bookNum);
+    if (parsed.versionId) selectedBibleVersionId = parsed.versionId;
+    if (parsed.bookNum) selectedBookNumber = Number(parsed.bookNum);
     if (parsed.bookName) selectedBookName = parsed.bookName;
-    if (parsed.chapterNum) selectedChapterNum = Number(parsed.chapterNum);
-    if (parsed.verseNum) selectedVerseNum = Number(parsed.verseNum);
+    if (parsed.chapterNum) selectedChapterNumber = Number(parsed.chapterNum);
+    if (parsed.verseNum) selectedVerseNumber = Number(parsed.verseNum);
   }
 }
 catch (e) {}
@@ -46,11 +45,11 @@ function saveLastBrowsedBible()
   try
   {
     localStorage.setItem('last_browsed_bible', JSON.stringify({
-      versionId: selectedVersionId,
-      bookNum: selectedBookNum,
+      versionId: selectedBibleVersionId,
+      bookNum: selectedBookNumber,
       bookName: selectedBookName,
-      chapterNum: selectedChapterNum,
-      verseNum: selectedVerseNum
+      chapterNum: selectedChapterNumber,
+      verseNum: selectedVerseNumber
     }));
   }
   catch (e) {}
@@ -87,34 +86,24 @@ const songListContainer = document.getElementById('song-list-container');
 const songSearchInput = document.getElementById('song-search-input');
 const btnClearSongSearch = document.getElementById('btn-clear-song-search');
 
-const selectVersion = document.getElementById('select-version');
-const bibleRefQuickInput = document.getElementById('bible-ref-quick-input');
-const btnQuickRefGo = document.getElementById('btn-quick-ref-go');
+const bibleVersionSelectionDropdown = document.getElementById('bibleVersionSelectionDropdown');
 const bibleRecentStrip = document.getElementById('bible-recent-strip');
 const bibleBooksList = document.getElementById('bible-books-list');
 const bibleChaptersList = document.getElementById('bible-chapters-list');
 const bibleVersesList = document.getElementById('bible-verses-list');
-const testamentTabs = document.getElementById('testament-tabs');
 
 const bibleFullSearchInput = document.getElementById('bible-full-search-input');
 const btnRunBibleSearch = document.getElementById('btn-run-bible-search');
 const bibleSearchResultsContainer = document.getElementById('bible-search-results-container');
-const bibleSearchStatus = document.getElementById('bible-search-status');
-const bibleSearchVersionLabel = document.getElementById('bible-search-version-label');
 
 const slideDeckSongs = document.getElementById('slide-deck-songs');
 const slideDeckBible = document.getElementById('slide-deck-bible');
 const slideDeckSearch = document.getElementById('slide-deck-search');
-const slideDeckContainer = slideDeckSongs || document.getElementById('slide-deck-container');
 
 const activeSongTitle = document.getElementById('active-song-title');
 const songUnicodeDeckBadge = document.getElementById('song-unicode-deck-badge');
 const activeSlideCountIndicator = document.getElementById('active-slide-count-indicator');
 const btnDeckEditSong = document.getElementById('btn-deck-edit-song');
-
-const activeBibleTitle = document.getElementById('active-bible-title');
-const activeBibleVerBadge = document.getElementById('active-bible-ver-badge');
-const activeSlideCountIndicatorBible = document.getElementById('active-slide-count-indicator-bible');
 
 const activeSearchTitle = document.getElementById('active-search-title');
 const activeSearchVerBadge = document.getElementById('active-search-ver-badge');
