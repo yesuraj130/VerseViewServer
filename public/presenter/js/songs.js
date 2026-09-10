@@ -426,264 +426,32 @@ function presentSlide(song, slideIndex)
 // ---------------------------------------------------------------------------
 // Song Add / Edit / Delete Modal & Event Listeners
 // ---------------------------------------------------------------------------
-let editorSlideTexts = []; // Array of string contents (lines with standard newlines)
-
-function lyricsToSlideTexts(lyricsStr)
+function lyricsToTextareaValue(lyricsStr)
 {
-  if (!lyricsStr || !lyricsStr.trim()) return [''];
-  const rawParts = lyricsStr.split('<slide>');
-  const list = rawParts.map(part =>
-  {
-    // Replace <BR> (case-insensitive) with newline
-    return part.replace(/<br\s*\/?>/gi, '\n').trim();
-  }).filter((text, idx) => idx === 0 || text.length > 0);
-  return list.length > 0 ? list : [''];
+  if (!lyricsStr) return '';
+  const slides = lyricsStr.split('<slide>').filter(s => s.trim().length > 0);
+  return slides.map(s => {
+    return s.replace(/<br\s*\/?>/gi, '\n').trim();
+  }).join('\n\n\n');
 }
 
-function slideTextsToLyrics(slideArr)
+function textareaValueToLyrics(rawText)
 {
-  return slideArr
-    .map(txt => txt.trim())
+  if (!rawText || !rawText.trim()) return '';
+  // Delimited by two or more blank lines (two empty lines between slides)
+  // Single blank lines remain within the same slide
+  const sections = rawText.split(/\r?\n(?:\s*\r?\n){2,}/);
+  return sections
+    .map(sec => sec.trim())
     .filter(Boolean)
-    .map(txt =>
-    {
-      const lines = txt.split(/\r?\n/).map(l => l.trim());
+    .map(sec => {
+      const lines = sec.split(/\r?\n/).map(l => l.trim());
       while (lines.length > 0 && !lines[0]) lines.shift();
       while (lines.length > 0 && !lines[lines.length - 1]) lines.pop();
       return lines.join('<BR>');
     })
     .filter(Boolean)
     .join('<slide>');
-}
-
-function autoFitTextarea(textarea)
-{
-  if (!textarea) return;
-  textarea.style.height = 'auto';
-  const fittedH = Math.max(42, textarea.scrollHeight);
-  textarea.style.height = `${fittedH}px`;
-  textarea.style.overflowY = 'hidden';
-}
-
-function autoFitAllEditorTextareas()
-{
-  if (!editorSlidesList) return;
-  const textareas = editorSlidesList.querySelectorAll('.editor-slide-textarea');
-  textareas.forEach(ta => autoFitTextarea(ta));
-}
-
-function updateEditorGridColumnWidth()
-{
-  if (!editorSlidesList) return;
-  const allLines = [];
-  editorSlideTexts.forEach(text =>
-  {
-    (text || '').split(/\r?\n/).forEach(l =>
-    {
-      if (l && l.trim()) allLines.push(l.trim());
-    });
-  });
-
-  const maxLineWidth = measureMaxLineWidth(allLines, '13px system-ui, -apple-system, sans-serif');
-  const naturalColWidth = Math.max(220, Math.ceil(maxLineWidth * 1.06 + 44));
-
-  const clientWidth = editorSlidesList.clientWidth;
-  const availWidth = clientWidth > 24 ? (clientWidth - 24) : 800;
-
-  let colWidth;
-  let wrapText = false;
-
-  if (naturalColWidth * 2 + 12 <= availWidth)
-  {
-    colWidth = naturalColWidth;
-    wrapText = false;
-  }
-  else if (naturalColWidth <= availWidth)
-  {
-    colWidth = naturalColWidth;
-    wrapText = false;
-  }
-  else
-  {
-    colWidth = Math.max(180, availWidth);
-    wrapText = true;
-  }
-
-  editorSlidesList.style.setProperty('--editor-deck-col-width', `${colWidth}px`);
-  editorSlidesList.classList.toggle('wrap-lines', wrapText);
-}
-
-function renderEditorSlides()
-{
-  if (!editorSlidesList) return;
-  editorSlidesList.innerHTML = '';
-
-  if (editorSlideTexts.length === 0)
-  {
-    editorSlideTexts = [''];
-  }
-
-  if (modalSlidesCounter)
-  {
-    modalSlidesCounter.textContent = `${editorSlideTexts.length} ${editorSlideTexts.length === 1 ? 'slide' : 'slides'}`;
-  }
-
-  updateEditorGridColumnWidth();
-
-  editorSlideTexts.forEach((text, index) =>
-  {
-    const card = document.createElement('div');
-    card.className = 'editor-slide-card';
-
-    card.innerHTML = `
-      <div class="editor-slide-header">
-        <span class="editor-slide-badge">Slide ${index + 1} of ${editorSlideTexts.length}</span>
-        <div class="editor-slide-actions">
-          <button type="button" class="btn-card-tool btn-move-up" title="Move Up" ${index === 0 ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : ''}>↑</button>
-          <button type="button" class="btn-card-tool btn-move-down" title="Move Down" ${index === editorSlideTexts.length - 1 ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : ''}>↓</button>
-          <button type="button" class="btn-card-tool btn-delete-card" title="Delete Slide" ${editorSlideTexts.length <= 1 ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : ''}>&times;</button>
-        </div>
-      </div>
-      <textarea class="editor-slide-textarea" placeholder="Type slide lines here...">${escapeHtml(text)}</textarea>
-    `;
-
-    const textarea = card.querySelector('.editor-slide-textarea');
-    autoFitTextarea(textarea);
-
-    textarea.addEventListener('input', () =>
-    {
-      editorSlideTexts[index] = textarea.value;
-      autoFitTextarea(textarea);
-      updateEditorGridColumnWidth();
-    });
-
-    const buttonMoveUp = card.querySelector('.btn-move-up');
-    if (buttonMoveUp && index > 0)
-    {
-      buttonMoveUp.addEventListener('click', () =>
-      {
-        syncEditorSlideTextsFromDom();
-        const tmp = editorSlideTexts[index - 1];
-        editorSlideTexts[index - 1] = editorSlideTexts[index];
-        editorSlideTexts[index] = tmp;
-        renderEditorSlides();
-      });
-    }
-
-    const buttonMoveDown = card.querySelector('.btn-move-down');
-    if (buttonMoveDown && index < editorSlideTexts.length - 1)
-    {
-      buttonMoveDown.addEventListener('click', () =>
-      {
-        syncEditorSlideTextsFromDom();
-        const tmp = editorSlideTexts[index + 1];
-        editorSlideTexts[index + 1] = editorSlideTexts[index];
-        editorSlideTexts[index] = tmp;
-        renderEditorSlides();
-      });
-    }
-
-    const buttonDeleteCard = card.querySelector('.btn-delete-card');
-    if (buttonDeleteCard && editorSlideTexts.length > 1)
-    {
-      buttonDeleteCard.addEventListener('click', () =>
-      {
-        syncEditorSlideTextsFromDom();
-        editorSlideTexts.splice(index, 1);
-        renderEditorSlides();
-      });
-    }
-
-    editorSlidesList.appendChild(card);
-  });
-}
-
-function syncEditorSlideTextsFromDom()
-{
-  if (!editorSlidesList) return;
-  const textareas = editorSlidesList.querySelectorAll('.editor-slide-textarea');
-  textareas.forEach((ta, idx) =>
-  {
-    if (idx < editorSlideTexts.length)
-    {
-      editorSlideTexts[idx] = ta.value;
-    }
-  });
-}
-
-if (buttonAddEmptySlide)
-{
-  buttonAddEmptySlide.addEventListener('click', () =>
-  {
-    syncEditorSlideTextsFromDom();
-    editorSlideTexts.push('');
-    renderEditorSlides();
-    // Scroll to bottom and focus new slide
-    setTimeout(() =>
-    {
-      if (editorSlidesList)
-      {
-        editorSlidesList.scrollTop = editorSlidesList.scrollHeight;
-        const textareas = editorSlidesList.querySelectorAll('.editor-slide-textarea');
-        if (textareas.length > 0)
-        {
-          textareas[textareas.length - 1].focus();
-        }
-      }
-    }, 50);
-  });
-}
-
-// Generate Slides (Bulk Edit) handling
-if (buttonGenerateSlides)
-{
-  buttonGenerateSlides.addEventListener('click', () =>
-  {
-    syncEditorSlideTextsFromDom();
-    // Formats all slides in a single textbox separated by two blank lines (\n\n\n)
-    const combined = editorSlideTexts
-      .map(s => s.trim())
-      .filter(Boolean)
-      .join('\n\n\n');
-    if (bulkSlidesTextarea)
-    {
-      bulkSlidesTextarea.value = combined;
-    }
-    if (bulkSlidesModal)
-    {
-      bulkSlidesModal.style.display = 'flex';
-      setTimeout(() => { if (bulkSlidesTextarea) bulkSlidesTextarea.focus(); }, 50);
-    }
-  });
-}
-
-function closeBulkModal()
-{
-  if (bulkSlidesModal) bulkSlidesModal.style.display = 'none';
-}
-
-if (buttonCloseBulkModal) buttonCloseBulkModal.addEventListener('click', closeBulkModal);
-if (buttonCancelBulkModal) buttonCancelBulkModal.addEventListener('click', closeBulkModal);
-
-if (buttonApplyBulkSlides)
-{
-  buttonApplyBulkSlides.addEventListener('click', () =>
-  {
-    if (bulkSlidesTextarea)
-    {
-      const raw = bulkSlidesTextarea.value || '';
-      // Delimited by two or more blank lines (two empty lines between slides)
-      // Single blank lines remain within the same slide
-      const sections = raw.split(/\r?\n(?:\s*\r?\n){2,}/);
-      const parsed = sections
-        .map(sec => sec.trim())
-        .filter(Boolean);
-
-      editorSlideTexts = parsed.length > 0 ? parsed : [''];
-      renderEditorSlides();
-    }
-    closeBulkModal();
-  });
 }
 
 if (buttonOpenAddSong)
@@ -697,16 +465,9 @@ if (buttonOpenAddSong)
     if (modalInputCat) modalInputCat.value = '';
     if (modalInputFont) modalInputFont.value = '';
     if (modalInputTags) modalInputTags.value = '';
-    editorSlideTexts = [''];
-    renderEditorSlides();
+    if (modalInputLyrics) modalInputLyrics.value = '';
     if (buttonDeleteModalSong) buttonDeleteModalSong.style.display = 'none';
-    songModal.style.display = 'flex';
-    requestAnimationFrame(() => {
-      autoFitAllEditorTextareas();
-    });
-    setTimeout(() => {
-      autoFitAllEditorTextareas();
-    }, 50);
+    if (songModal) songModal.style.display = 'flex';
     if (modalInputTitle) modalInputTitle.focus();
   });
 }
@@ -731,15 +492,13 @@ if (buttonSaveSong)
 {
   buttonSaveSong.addEventListener('click', async () =>
   {
-    syncEditorSlideTextsFromDom();
     const title = modalInputTitle ? modalInputTitle.value.trim() : '';
     const title2 = modalInputTitle2 ? modalInputTitle2.value.trim() : '';
     const cat = modalInputCat ? modalInputCat.value.trim() || 'General' : 'General';
     const font = modalInputFont ? modalInputFont.value.trim() : '';
     const tags = modalInputTags ? modalInputTags.value.trim() : '';
     const songId = modalSongId ? modalSongId.value : '';
-
-    const lyrics = slideTextsToLyrics(editorSlideTexts);
+    const lyrics = textareaValueToLyrics(modalInputLyrics ? modalInputLyrics.value : '');
 
     if (!title)
     {
@@ -751,6 +510,7 @@ if (buttonSaveSong)
     if (!lyrics)
     {
       alert('Please enter at least one slide of lyrics.');
+      if (modalInputLyrics) modalInputLyrics.focus();
       return;
     }
 
@@ -816,9 +576,7 @@ async function openEditSongModal(songId)
     if (modalInputCat) modalInputCat.value = song.cat || '';
     if (modalInputFont) modalInputFont.value = song.font || '';
     if (modalInputTags) modalInputTags.value = song.tags || '';
-
-    editorSlideTexts = lyricsToSlideTexts(song.lyrics || '');
-    renderEditorSlides();
+    if (modalInputLyrics) modalInputLyrics.value = lyricsToTextareaValue(song.lyrics || '');
 
     if (buttonDeleteModalSong)
     {
@@ -833,13 +591,8 @@ async function openEditSongModal(songId)
       };
     }
 
-    songModal.style.display = 'flex';
-    requestAnimationFrame(() => {
-      autoFitAllEditorTextareas();
-    });
-    setTimeout(() => {
-      autoFitAllEditorTextareas();
-    }, 50);
+    if (songModal) songModal.style.display = 'flex';
+    if (modalInputLyrics) modalInputLyrics.focus();
   }
   catch (err)
   {
@@ -911,7 +664,6 @@ if (songSearchInput)
 window.addEventListener('resize', () =>
 {
   updateSongDeckColumnWidth();
-  updateEditorGridColumnWidth();
 });
 
 if (typeof ResizeObserver !== 'undefined')
@@ -920,9 +672,5 @@ if (typeof ResizeObserver !== 'undefined')
   if (songsDeckEl)
   {
     new ResizeObserver(() => updateSongDeckColumnWidth()).observe(songsDeckEl);
-  }
-  if (editorSlidesList)
-  {
-    new ResizeObserver(() => updateEditorGridColumnWidth()).observe(editorSlidesList);
   }
 }

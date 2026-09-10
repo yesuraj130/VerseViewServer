@@ -244,7 +244,7 @@ function initTabNavigation()
   try
   {
     const savedTab = localStorage.getItem('presenter_active_tab');
-    if (savedTab && ['songs', 'bible', 'biblesearch', 'search'].includes(savedTab))
+    if (savedTab && ['songs', 'bible'].includes(savedTab))
     {
       initialTab = savedTab;
     }
@@ -261,8 +261,6 @@ function getChildAt(parent, index)
 
 function switchTab(tabId)
 {
-  if (tabId === 'search') tabId = 'biblesearch';
-
   tabButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === tabId));
   
   const workspaceViews = document.querySelectorAll('.workspace-tab-view');
@@ -277,7 +275,7 @@ function switchTab(tabId)
   const versionWrap = document.getElementById('wrap-select-version');
   if (versionWrap)
   {
-    versionWrap.style.display = (tabId === 'bible' || tabId === 'biblesearch') ? 'inline-flex' : 'none';
+    versionWrap.style.display = (tabId === 'bible') ? 'inline-flex' : 'none';
   }
 
   if (tabId === 'songs' && typeof updateVirtualSongList === 'function')
