@@ -86,7 +86,6 @@ const tabPanels = document.querySelectorAll('.tab-panel');
 const songListContainer = document.getElementById('song-list-container');
 const songSearchInput = document.getElementById('song-search-input');
 const btnClearSongSearch = document.getElementById('btn-clear-song-search');
-const categoryChips = document.getElementById('category-chips');
 
 const selectVersion = document.getElementById('select-version');
 const bibleRefQuickInput = document.getElementById('bible-ref-quick-input');
@@ -95,7 +94,6 @@ const bibleRecentStrip = document.getElementById('bible-recent-strip');
 const bibleBooksList = document.getElementById('bible-books-list');
 const bibleChaptersList = document.getElementById('bible-chapters-list');
 const bibleVersesList = document.getElementById('bible-verses-list');
-const bibleBookFilter = document.getElementById('bible-book-filter');
 const testamentTabs = document.getElementById('testament-tabs');
 
 const bibleFullSearchInput = document.getElementById('bible-full-search-input');
@@ -111,8 +109,6 @@ const slideDeckContainer = slideDeckSongs || document.getElementById('slide-deck
 
 const activeSongTitle = document.getElementById('active-song-title');
 const songUnicodeDeckBadge = document.getElementById('song-unicode-deck-badge');
-const activeSongCatBadge = document.getElementById('active-song-cat-badge');
-const deckTypeBadge = document.getElementById('deck-type-badge-songs') || document.getElementById('deck-type-badge');
 const activeSlideCountIndicator = document.getElementById('active-slide-count-indicator');
 const btnDeckEditSong = document.getElementById('btn-deck-edit-song');
 
@@ -132,7 +128,6 @@ const modalInputTitle2 = document.getElementById('modal-input-title2');
 const modalInputCat = document.getElementById('modal-input-cat');
 const modalInputFont = document.getElementById('modal-input-font');
 const modalInputTags = document.getElementById('modal-input-tags');
-const modalInputLyrics2 = document.getElementById('modal-input-lyrics2');
 const editorSlidesList = document.getElementById('editor-slides-list');
 const modalSlidesCounter = document.getElementById('modal-slides-counter');
 const btnGenerateSlides = document.getElementById('btn-generate-slides');

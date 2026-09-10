@@ -1,316 +1,178 @@
 /* ==========================================================================
-   Base Theme, CSS Variables, Reset & Common Components
+   Base Theme, Global Variables & Common Components
    ========================================================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@400;500;600;700;800&family=Mukta+Malar:wght@400;500;600;700;800&family=Noto+Sans+Tamil:wght@400;600;700;800&display=swap');
 
-/* Font File 1: Baloo Thambi (Tamil Display Font) */
 @font-face {
   font-family: 'Baloo Thambi';
-  src: url('/fonts/baloo-thambi.woff2') format('woff2'),
-       local('Baloo Thambi 2'),
-       local('Baloo Thambi');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
+  src: url('/fonts/baloo-thambi.woff2') format('woff2'), local('Baloo Thambi 2'), local('Baloo Thambi');
+  font-weight: 100 900; font-style: normal; font-display: swap;
 }
 
 @font-face {
   font-family: 'Baloo Thambi 2';
-  src: url('/fonts/baloo-thambi.woff2') format('woff2'),
-       local('Baloo Thambi 2'),
-       local('Baloo Thambi');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
+  src: url('/fonts/baloo-thambi.woff2') format('woff2'), local('Baloo Thambi 2'), local('Baloo Thambi');
+  font-weight: 100 900; font-style: normal; font-display: swap;
 }
 
-/* Font File 2: Legacy font aliases mapped to Baloo Thambi */
 @font-face {
   font-family: 'Tamil Bible';
-  src: local('Baloo Thambi 2'),
-       local('Baloo Thambi'),
-       url('/fonts/baloo-thambi.woff2') format('woff2');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
+  src: local('Baloo Thambi 2'), local('Baloo Thambi'), url('/fonts/baloo-thambi.woff2') format('woff2');
+  font-weight: 100 900; font-style: normal; font-display: swap;
 }
 
 @font-face {
   font-family: 'Mukta Malar';
-  src: url('/fonts/baloo-thambi.woff2') format('woff2'),
-       local('Baloo Thambi 2'),
-       local('Baloo Thambi');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
+  src: url('/fonts/baloo-thambi.woff2') format('woff2'), local('Baloo Thambi 2'), local('Baloo Thambi');
+  font-weight: 100 900; font-style: normal; font-display: swap;
 }
 
 @font-face {
   font-family: 'Tamil-Ananthi';
-  src: url('/fonts/baloo-thambi.woff2') format('woff2'),
-       local('Baloo Thambi 2'),
-       local('Baloo Thambi');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
+  src: url('/fonts/baloo-thambi.woff2') format('woff2'), local('Baloo Thambi 2'), local('Baloo Thambi');
+  font-weight: 100 900; font-style: normal; font-display: swap;
 }
 
 @font-face {
   font-family: 'Latha';
-  src: url('/fonts/baloo-thambi.woff2') format('woff2'),
-       local('Baloo Thambi 2'),
-       local('Baloo Thambi');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
+  src: url('/fonts/baloo-thambi.woff2') format('woff2'), local('Baloo Thambi 2'), local('Baloo Thambi');
+  font-weight: 100 900; font-style: normal; font-display: swap;
 }
 
-:root
-{
-  --bg-primary: #0a0f1d;
-  --bg-secondary: #111827;
-  --bg-surface: #1e293b;
-  --bg-card: #1e293b;
-  --bg-card-hover: #283548;
-  --border-color: #334155;
-  --border-light: #475569;
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --accent-primary: #0284c7;
-  --accent-hover: #0369a1;
-  --accent-live: #10b981;
-  --accent-live-bg: rgba(16, 185, 129, 0.15);
-  --accent-warning: #f59e0b;
-  --accent-danger: #ef4444;
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
+:root {
+  /* Core 5-color Palette */
+  --color-font:          #f8fafc;        /* 1. Font color: white */
+  --color-font-muted:    #94a3b8;        /* Subtitles / secondary */
+  --color-font-dim:      #64748b;        /* Dim captions / placeholder */
+
+  --color-canvas:        #0b1120;        /* Main dark background */
+  --color-panel:         #0f172a;        /* Panel / header background */
+  --color-bluegray:      #1e293b;        /* 2. Slide background: bluegray */
+  --color-bluegray-hover:#273549;        /* Hover background */
+
+  --color-blue:          #0284c7;        /* 3. Selection highlight: blue */
+  --color-blue-light:    #38bdf8;        /* Active focus highlight */
+  --color-blue-glow:     rgba(2, 132, 199, 0.35);
+
+  --color-green:         #10b981;        /* 4. Active slide: green (LIVE) */
+  --color-green-dark:    #064e3b;
+  --color-green-glow:    rgba(16, 185, 129, 0.35);
+
+  --color-orange:        #f59e0b;        /* 5. Warning / no slide: orange */
+  --color-red:           #ef4444;        /* Danger / delete: red */
+  --color-red-dark:      #dc2626;
+
+  --border-color:        #334155;
+  --border-subtle:       #1e293b;
+
+  /* Aliases */
+  --text-primary:        var(--color-font);
+  --text-secondary:      var(--color-font-muted);
+  --text-muted:          var(--color-font-dim);
+  --bg-primary:          var(--color-canvas);
+  --bg-secondary:        var(--color-panel);
+  --bg-surface:          var(--color-bluegray);
+  --bg-card:             var(--color-bluegray);
+  --bg-card-hover:       var(--color-bluegray-hover);
+  --border-light:        var(--color-blue-light);
+  --accent-primary:      var(--color-blue);
+  --accent-live:         var(--color-green);
+  --accent-danger:       var(--color-red);
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.35);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-display: "Baloo Thambi 2", "Baloo Thambi", "Mukta Malar", "Noto Sans Tamil", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Baloo Thambi 2", "Baloo Thambi", "Mukta Malar", "Noto Sans Tamil", sans-serif;
 }
 
-*
-{
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body
-{
-  font-family: var(--font-family);
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  line-height: 1.5;
-  min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-family); background-color: var(--bg-primary); color: var(--text-primary); line-height: 1.5; min-height: 100vh; -webkit-font-smoothing: antialiased; }
 
 /* Custom Scrollbars */
-::-webkit-scrollbar
-{
-  width: 6px;
-  height: 6px;
-}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
 
-::-webkit-scrollbar-track
-{
-  background: var(--bg-primary);
-}
-
-::-webkit-scrollbar-thumb
-{
-  background: var(--border-color);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover
-{
-  background: var(--border-light);
-}
-
-/* Status Indicator Dot & Tooltip */
-.server-dot
-{
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+/* Server Connection Indicator Dot & Tooltip */
+.server-dot {
+  width: 10px; height: 10px; border-radius: 50%;
   background-color: var(--accent-live);
   box-shadow: 0 0 8px var(--accent-live);
-  display: inline-block;
-  flex-shrink: 0;
-  cursor: pointer;
-  position: relative;
+  display: inline-block; flex-shrink: 0; cursor: pointer; position: relative;
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
+.server-dot.disconnected { background-color: var(--accent-danger); box-shadow: 0 0 8px var(--accent-danger); }
 
-.server-dot.disconnected
-{
-  background-color: var(--accent-danger);
-  box-shadow: 0 0 8px var(--accent-danger);
+.server-status-tooltip {
+  position: fixed; background-color: #0b1329; border: 1px solid #1e293b; color: #f8fafc;
+  padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;
+  display: flex; align-items: center; gap: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6); z-index: 99999;
+  opacity: 0; transform: translateY(-4px); pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease; white-space: nowrap;
+}
+.server-status-tooltip.visible { opacity: 1; transform: translateY(0); }
+.server-status-tooltip.online { border-color: #059669; color: #34d399; }
+.server-status-tooltip.offline { border-color: #dc2626; color: #f87171; }
+
+/* Common UI Buttons */
+.btn-primary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 6px 14px; background-color: var(--color-blue); color: #ffffff;
+  font-size: 13px; font-weight: 600; border: 1px solid var(--color-blue);
+  border-radius: var(--radius-sm); cursor: pointer; text-decoration: none;
+  transition: background-color 0.12s ease;
+}
+.btn-primary:hover { background-color: #0369a1; }
+
+.btn-secondary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 6px 12px; background-color: var(--bg-card); color: var(--text-primary);
+  font-size: 13px; font-weight: 500; border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm); cursor: pointer; text-decoration: none;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+.btn-secondary:hover { background-color: var(--bg-card-hover); border-color: #475569; }
+
+.btn-danger {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 6px 12px; background-color: var(--color-red-dark); color: #ffffff;
+  font-size: 13px; font-weight: 600; border: 1px solid var(--color-red);
+  border-radius: var(--radius-sm); cursor: pointer; text-decoration: none;
+  transition: background-color 0.12s ease;
+}
+.btn-danger:hover { background-color: #b91c1c; }
+
+.btn-icon-tiny {
+  padding: 4px 6px; background: transparent; border: none; color: var(--text-secondary);
+  cursor: pointer; border-radius: var(--radius-sm); font-size: 13px;
+  transition: all 0.12s ease;
+}
+.btn-icon-tiny:hover { background-color: rgba(255, 255, 255, 0.1); color: #ffffff; }
+
+/* Common Inputs */
+.input-text, .input-search, .quick-ref-input, .form-input {
+  width: 100%; box-sizing: border-box; background-color: var(--bg-card);
+  border: 1px solid var(--border-color); border-radius: var(--radius-sm);
+  color: var(--text-primary); font-size: 13px; font-family: inherit;
+  padding: 6px 10px; outline: none; transition: border-color 0.12s ease;
+}
+.input-text:focus, .input-search:focus, .quick-ref-input:focus, .form-input:focus {
+  border-color: var(--color-blue-light);
+  box-shadow: 0 0 0 1px var(--color-blue-light);
 }
 
-.server-status-tooltip
-{
-  position: fixed;
-  background-color: #0b1329;
-  border: 1px solid #1e293b;
-  color: #f8fafc;
-  padding: 5px 10px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
-  z-index: 99999;
-  opacity: 0;
-  transform: translateY(-4px);
-  pointer-events: none;
-  transition: opacity 0.18s ease, transform 0.18s ease;
-  white-space: nowrap;
+/* Category Chips */
+.chip {
+  padding: 4px 10px; font-size: 11px; font-weight: 600; background-color: var(--bg-card);
+  color: var(--text-secondary); border: 1px solid var(--border-color);
+  border-radius: 12px; cursor: pointer; white-space: nowrap; transition: all 0.12s ease;
 }
-
-.server-status-tooltip::before
-{
-  content: '';
-  position: absolute;
-  top: -5px;
-  left: var(--arrow-x, 50%);
-  transform: translateX(-50%) rotate(45deg);
-  width: 8px;
-  height: 8px;
-  background-color: #0b1329;
-  border-left: 1px solid #1e293b;
-  border-top: 1px solid #1e293b;
-  pointer-events: none;
-}
-
-.server-status-tooltip.visible
-{
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.server-status-tooltip.online
-{
-  border-color: #059669;
-  color: #34d399;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 12px rgba(5, 150, 105, 0.25);
-}
-
-.server-status-tooltip.online::before
-{
-  border-left-color: #059669;
-  border-top-color: #059669;
-  background-color: #0b1329;
-}
-
-.server-status-tooltip.offline
-{
-  border-color: #dc2626;
-  color: #f87171;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 12px rgba(220, 38, 38, 0.25);
-}
-
-.server-status-tooltip.offline::before
-{
-  border-left-color: #dc2626;
-  border-top-color: #dc2626;
-  background-color: #0b1329;
-}
-
-/* Common Button Styles */
-.btn-primary
-{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background-color: var(--accent-primary);
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 600;
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  text-decoration: none;
-  transition: all 0.15s ease;
-}
-
-.btn-primary:hover
-{
-  background-color: var(--accent-hover);
-}
-
-.btn-secondary
-{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 14px;
-  background-color: var(--bg-surface);
-  color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 500;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  text-decoration: none;
-  transition: all 0.15s ease;
-}
-
-.btn-secondary:hover
-{
-  background-color: var(--bg-card-hover);
-  border-color: var(--border-light);
-}
-
-.btn-icon-tiny
-{
-  padding: 4px 6px;
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  border-radius: 4px;
-  font-size: 13px;
-  transition: all 0.15s ease;
-}
-
-.btn-icon-tiny:hover
-{
-  background-color: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-}
-
-/* Category & Filter Chips */
-.chip
-{
-  padding: 4px 10px;
-  font-size: 11px;
-  font-weight: 600;
-  background-color: var(--bg-surface);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s ease;
-}
-
-.chip.active,
-.chip:hover
-{
-  background-color: var(--accent-primary);
-  color: #ffffff;
-  border-color: var(--accent-primary);
-}
+.chip.active, .chip:hover { background-color: var(--color-blue); color: #ffffff; border-color: var(--color-blue); }

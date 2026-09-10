@@ -50,7 +50,7 @@ async function performBibleSearch()
 
         // Highlight matched keyword
         const regex = new RegExp(`(${query})`, 'gi');
-        const highlighted = escapeHtml(r.word).replace(regex, '<mark style="background: #0284c7; color: #fff; padding: 0 2px; border-radius: 2px;">$1</mark>');
+        const highlighted = escapeHtml(r.word).replace(regex, '<mark style="background: var(--color-blue); color: #fff; padding: 0 2px; border-radius: 2px;">$1</mark>');
 
         card.innerHTML = `
           <div class="verse-header">
@@ -112,7 +112,7 @@ async function performBibleSearch()
     if (bibleSearchStatus) bibleSearchStatus.textContent = 'Search failed';
     if (bibleSearchResultsContainer)
     {
-      bibleSearchResultsContainer.innerHTML = '<div style="color: #ef4444; text-align: center; padding: 24px;">Failed to perform search.</div>';
+      bibleSearchResultsContainer.innerHTML = '<div style="color: var(--color-red); text-align: center; padding: 24px;">Failed to perform search.</div>';
     }
   }
 }

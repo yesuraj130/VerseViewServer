@@ -28,7 +28,7 @@ async function initBible()
         const opt = document.createElement('option');
         opt.value = ver.id;
         opt.textContent = ver.available ? ver.name : `${ver.name} (DB missing)`;
-        if (!ver.available) opt.style.color = '#94a3b8';
+        if (!ver.available) opt.style.color = 'var(--color-font-muted)';
         selectVersion.appendChild(opt);
       });
     }
@@ -57,16 +57,6 @@ async function initBible()
           testamentFilter = btn.getAttribute('data-testament') || 'all';
           renderBibleBooksList();
         });
-      });
-    }
-
-    // Initialize Book Search filter
-    if (bibleBookFilter)
-    {
-      bibleBookFilter.addEventListener('input', (e) =>
-      {
-        bookSearchFilter = (e.target.value || '').trim().toLowerCase();
-        renderBibleBooksList();
       });
     }
 
@@ -687,7 +677,7 @@ async function handleQuickRefGo()
 function renderRecentVersesStrip()
 {
   if (!bibleRecentStrip) return;
-  bibleRecentStrip.innerHTML = '<span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Recent:</span>';
+  bibleRecentStrip.innerHTML = '<span style="font-size: 10px; font-weight: 700; color: var(--color-font-dim); text-transform: uppercase;">Recent:</span>';
 
   recentVerses.slice(0, 6).forEach((rv) =>
   {

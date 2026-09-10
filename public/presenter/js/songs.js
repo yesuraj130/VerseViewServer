@@ -712,7 +712,6 @@ if (btnOpenAddSong)
     if (modalInputCat) modalInputCat.value = '';
     if (modalInputFont) modalInputFont.value = '';
     if (modalInputTags) modalInputTags.value = '';
-    if (modalInputLyrics2) modalInputLyrics2.value = '';
     editorSlideTexts = [''];
     renderEditorSlides();
     if (btnDeleteModalSong) btnDeleteModalSong.style.display = 'none';
