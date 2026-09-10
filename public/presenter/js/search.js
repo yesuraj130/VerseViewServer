@@ -27,7 +27,7 @@ async function performBibleSearch()
 
   try
   {
-    const res = await fetch(`/api/bible/${selectedVersionId}/search?q=${encodeURIComponent(query)}`);
+    const res = await fetch(`/api/bible/${selectedBibleVersionId}/search?q=${encodeURIComponent(query)}`);
     const results = await res.json();
     if (bibleSearchStatus) bibleSearchStatus.textContent = `${results.length} results found`;
 
@@ -71,7 +71,7 @@ async function performBibleSearch()
             displaySearchVerseDeck(r);
             if (typeof presentBibleVerse === 'function')
             {
-              presentBibleVerse(selectedVersionId, r.bookName, {
+              presentBibleVerse(selectedBibleVersionId, {
                 bookNum: r.bookNum,
                 chNum: r.chNum,
                 verseNum: r.verseNum,
@@ -93,7 +93,7 @@ async function performBibleSearch()
           }
           if (typeof presentBibleVerse === 'function')
           {
-            presentBibleVerse(selectedVersionId, r.bookName, {
+            presentBibleVerse(selectedBibleVersionId, {
               bookNum: r.bookNum,
               chNum: r.chNum,
               verseNum: r.verseNum,
@@ -143,7 +143,7 @@ function displaySearchVerseDeck(r)
         if (typeof switchTab === 'function') switchTab('bible');
         if (typeof selectBibleBook === 'function')
         {
-          await selectBibleBook(r.bookNum, r.bookName, r.chNum, r.verseNum);
+          await selectBibleBook(r.bookNum, r.chNum, r.verseNum);
         }
       });
     }

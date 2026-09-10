@@ -313,6 +313,134 @@ function broadcastStats()
   });
 }
 
+function resolveLiveState(payload)
+{
+  if (!payload) return currentState;
+
+  if (payload.type === 'bible' && (payload.verseInfo || (payload.bookNum && payload.chNum && payload.verseNum)))
+  {
+    const vInfo = payload.verseInfo || payload;
+    const versionId = vInfo.version || vInfo.versionId || 'tamil';
+    const bookNum = Number(vInfo.bookNum) || 1;
+    const chNum = Number(vInfo.chNum) || 1;
+    const verseNum = Number(vInfo.verseNum) || 1;
+
+    const versions = getVersionMetadata();
+    const ver = versions.find(v => v.id === versionId || v.file === versionId || v.dbFile === versionId);
+    const versionName = ver ? ver.name : versionId;
+    let bookName = `Book ${bookNum}`;
+    if (ver && ver.books && ver.books[bookNum - 1])
+    {
+      bookName = ver.books[bookNum - 1];
+    }
+
+    let lineText = '';
+    const db = getBibleDb(versionId);
+    if (db)
+    {
+      try
+      {
+        const row = db.prepare(
+          'SELECT word FROM words WHERE bookNum = ? AND chNum = ? AND verseNum = ?'
+        ).get(bookNum, chNum, verseNum);
+        if (row && row.word) lineText = row.word;
+      }
+      catch (e)
+      {
+        console.error('Error fetching verse text from db in resolveLiveState:', e);
+      }
+    }
+
+    const lines = lineText ? [lineText] : (Array.isArray(payload.lines) ? payload.lines : []);
+
+    return {
+      type: 'bible',
+      status: 'live',
+      title: bookName,
+      reference: `${bookName} ${chNum}:${verseNum} (${versionName})`,
+      lines: lines,
+      rawSlide: lineText || (payload.rawSlide || lines.join('<BR>')),
+      slideIndex: verseNum,
+      totalSlides: payload.totalSlides || 1,
+      songId: null,
+      font: '',
+      font2: '',
+      verseInfo: {
+        version: versionId,
+        bookNum,
+        chNum,
+        verseNum
+      },
+      updatedAt: Date.now()
+    };
+  }
+  else if (payload.type === 'song' && payload.songId)
+  {
+    const songId = Number(payload.songId);
+    const slideIndex = Math.max(1, Number(payload.slideIndex) || 1);
+
+    try
+    {
+      const row = smDb.prepare('SELECT id, name, title2, cat, font, font2, lyrics FROM sm WHERE id = ?').get(songId);
+      if (row)
+      {
+        const rawSlides = row.lyrics ? row.lyrics.split('<slide>').filter(s => s.trim().length > 0) : [];
+        const totalSlides = rawSlides.length || 1;
+        const validSlideIndex = Math.min(slideIndex, totalSlides);
+        const targetRawSlide = rawSlides[validSlideIndex - 1] || '';
+
+        const rawLines = targetRawSlide
+          ? targetRawSlide.split(/<BR>|\r?\n/i).map(l => l.replace(/<[^>]*>/g, '').trim()).filter(Boolean)
+          : [];
+        const lines = rawLines.map(l => (isTamilBibleFont(row.font) ? baminiToUnicode(l) : l));
+
+        return {
+          type: 'song',
+          status: 'live',
+          title: row.name,
+          reference: `${row.cat || 'Song'} • Slide ${validSlideIndex} of ${totalSlides}`,
+          lines: lines,
+          rawSlide: targetRawSlide,
+          slideIndex: validSlideIndex,
+          totalSlides: totalSlides,
+          songId: row.id,
+          font: row.font || 'Baloo Thambi 2',
+          font2: row.font2 || '',
+          verseInfo: null,
+          updatedAt: Date.now()
+        };
+      }
+    }
+    catch (e)
+    {
+      console.error('Error fetching song slide from db in resolveLiveState:', e);
+    }
+  }
+
+  // Fallback for custom or direct text payload
+  const rawLines = Array.isArray(payload.lines)
+    ? payload.lines
+    : (payload.rawSlide ? payload.rawSlide.split('<BR>') : []);
+  const lines = rawLines.map(l => (isTamilBibleFont(payload.font) ? baminiToUnicode(l) : l));
+
+  return {
+    ...currentState,
+    type: payload.type || 'song',
+    status: payload.status || 'live',
+    title: payload.title || '',
+    reference: payload.reference || '',
+    lines: lines,
+    rawSlide: payload.rawSlide || lines.join('<BR>'),
+    slideIndex: Number(payload.slideIndex) || 1,
+    totalSlides: Number(payload.totalSlides) || 1,
+    songId: payload.songId !== undefined ? payload.songId : null,
+    font: payload.font || '',
+    font2: payload.font2 || '',
+    verseInfo: payload.verseInfo || null,
+    updatedAt: Date.now()
+  };
+}
+
 // ---------------------------------------------------------------------------
 // 4. Socket.io Real-Time Synchronization ("Last-Click-Wins")
 // ---------------------------------------------------------------------------
@@ -359,28 +487,7 @@ io.on('connection', (socket) =>
   socket.on('action:present', (payload) =>
   {
     if (!payload) return;
-    const rawLines = Array.isArray(payload.lines)
-      ? payload.lines
-      : (payload.rawSlide ? payload.rawSlide.split('<BR>') : []);
-    const lines = rawLines.map(l => (isTamilBibleFont(payload.font) ? baminiToUnicode(l) : l));
-
-    currentState = {
-      ...currentState,
-      type: payload.type || 'song',
-      status: 'live',
-      title: payload.title || '',
-      reference: payload.reference || '',
-      lines: lines,
-      rawSlide: payload.rawSlide || lines.join('<BR>'),
-      slideIndex: Number(payload.slideIndex) || 1,
-      totalSlides: Number(payload.totalSlides) || 1,
-      songId: payload.songId !== undefined ? payload.songId : null,
-      font: payload.font || '',
-      font2: payload.font2 || '',
-      verseInfo: payload.verseInfo || null,
-      updatedAt: Date.now()
-    };
-
+    currentState = resolveLiveState(payload);
     broadcastState();
   });
 
@@ -475,20 +582,8 @@ app.post('/api/state', (req, res) =>
 {
   const payload = req.body;
   if (!payload) return res.status(400).json({ error: 'Missing body' });
-  
-  const rawLines = Array.isArray(payload.lines)
-    ? payload.lines
-    : (payload.rawSlide ? payload.rawSlide.split('<BR>') : []);
-  const lines = rawLines.map(l => (isTamilBibleFont(payload.font) ? baminiToUnicode(l) : l));
 
-  currentState = {
-    ...currentState,
-    ...payload,
-    lines,
-    status: payload.status || 'live',
-    updatedAt: Date.now()
-  };
-
+  currentState = resolveLiveState(payload);
   broadcastState();
   res.json({ success: true, state: currentState });
 });

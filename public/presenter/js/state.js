@@ -16,9 +16,7 @@ let activeSongSlideIndex = 1;
 let bibleVersions = [];
 let selectedBibleVersionId = 'tamil';
 let selectedBibleVersionBooks = [];
-let filteredBibleBooks = [];
 let selectedBookNumber = 1;
-let selectedBookName = '';
 let selectedChapterNumber = 1;
 let selectedVerseNumber = 1;
 let currentChapterVerses = [];
@@ -33,7 +31,6 @@ try
     const parsed = JSON.parse(savedLastBible);
     if (parsed.versionId) selectedBibleVersionId = parsed.versionId;
     if (parsed.bookNum) selectedBookNumber = Number(parsed.bookNum);
-    if (parsed.bookName) selectedBookName = parsed.bookName;
     if (parsed.chapterNum) selectedChapterNumber = Number(parsed.chapterNum);
     if (parsed.verseNum) selectedVerseNumber = Number(parsed.verseNum);
   }
@@ -47,7 +44,6 @@ function saveLastBrowsedBible()
     localStorage.setItem('last_browsed_bible', JSON.stringify({
       versionId: selectedBibleVersionId,
       bookNum: selectedBookNumber,
-      bookName: selectedBookName,
       chapterNum: selectedChapterNumber,
       verseNum: selectedVerseNumber
     }));

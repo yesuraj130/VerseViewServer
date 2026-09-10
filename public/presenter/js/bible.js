@@ -71,22 +71,6 @@ async function initBible()
       await loadBibleBooks(selectedBibleVersionId, selectedBookNumber, selectedChapterNumber, selectedVerseNumber);
     }
 
-    // Initialize Testament filter tabs
-    if (testamentTabs)
-    {
-      const tButtons = testamentTabs.querySelectorAll('.testament-btn');
-      tButtons.forEach((btn) =>
-      {
-        btn.addEventListener('click', () =>
-        {
-          tButtons.forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          testamentFilter = btn.getAttribute('data-testament') || 'all';
-          renderBibleBooksList();
-        });
-      });
-    }
-
     // Version dropdown change listener
     if (bibleVersionSelectionDropdown)
     {
@@ -137,7 +121,7 @@ async function loadBibleBooks(targetVersionId, targetBookNumber, targetChapterNu
     {
       const initialChapter = (targetChapterNumber !== null && targetChapterNumber !== undefined) ? targetChapterNumber : 1;
       const initialVerse = (targetVerseNumber !== null && targetVerseNumber !== undefined) ? targetVerseNumber : 1;
-      await selectBibleBook(initialBook.bookNum, initialBook.name, initialChapter, initialVerse);
+      await selectBibleBook(initialBook.bookNum, initialChapter, initialVerse);
     }
   }
   catch (err)
@@ -165,7 +149,7 @@ function renderBibleBooksList()
 
     button.addEventListener('click', () =>
     {
-      selectBibleBook(book.bookNum, book.name);
+      selectBibleBook(book.bookNum);
     });
 
     bibleBooksList.appendChild(button);
@@ -174,10 +158,9 @@ function renderBibleBooksList()
   if (liveState) highlightActiveInDecks(liveState);  
 }
 
-async function selectBibleBook(targetBookNumber, bookName, targetChapterNumber, targetVerseNumber)
+async function selectBibleBook(targetBookNumber, targetChapterNumber, targetVerseNumber)
 {
   selectedBookNumber = Number(targetBookNumber);
-  selectedBookName = bookName;
   selectedChapterNumber = Number(targetChapterNumber);
   selectedVerseNumber = Number(targetVerseNumber);
 
@@ -435,7 +418,7 @@ function renderChapterVersesText(bibleChapterVersesText)
 
     verseSlide.addEventListener('click', () =>
     {
-      presentBibleVerse(selectedBibleVersionId, selectedBookName, verse);
+      presentBibleVerse(selectedBibleVersionId, verse);
     });
 
     slideDeckBible.appendChild(verseSlide);
@@ -469,26 +452,15 @@ function selectBibleVerse(targetVerseNumber)
   }
 }
 
-function presentBibleVerse(bibleVersionId, bookName, bibleVerse)
+function presentBibleVerse(bibleVersionId, bibleVerse)
 {
-  const bibleVersion = bibleVersions.find(version => version.id === bibleVersionId);
-  const bibleVersionName = bibleVersion ? bibleVersion.name : 'Bible';
-  const refText = `${bookName} ${bibleVerse.chNum}:${bibleVerse.verseNum} (${bibleVersionName})`;
-
   const payload = {
     type: 'bible',
-    title: `${bookName} ${bibleVerse.chNum}:${bibleVerse.verseNum}`,
-    reference: refText,
-    lines: [bibleVerse.word],
-    rawSlide: bibleVerse.word,
-    slideIndex: bibleVerse.verseNum,
-    totalSlides: currentChapterVerses.length || 1,
-    songId: null,
     verseInfo: {
+      version: bibleVersionId,
       bookNum: bibleVerse.bookNum,
       chNum: bibleVerse.chNum,
-      verseNum: bibleVerse.verseNum,
-      version: bibleVersionId
+      verseNum: bibleVerse.verseNum
     }
   };
 
@@ -505,10 +477,11 @@ function presentBibleVerse(bibleVersionId, bookName, bibleVerse)
     });
   }
 
+  const book = selectedBibleVersionBooks[bibleVerse.bookNum - 1];
+  const bookName = book ? book.name : '';
   addRecentVerse({
     versionId: bibleVersionId,
     bookNum: bibleVerse.bookNum,
-    bookName,
     chNum: bibleVerse.chNum,
     verseNum: bibleVerse.verseNum,
     ref: `${bookName} ${bibleVerse.chNum}:${bibleVerse.verseNum}`
@@ -529,7 +502,7 @@ function renderRecentVersesStrip()
     chip.title = `Jump to ${rv.ref}`;
     chip.addEventListener('click', async () =>
     {
-      await selectBibleBook(rv.bookNum, rv.bookName, rv.chNum, rv.verseNum);
+      await selectBibleBook(rv.bookNum, rv.chNum, rv.verseNum);
     });
     bibleRecentStrip.appendChild(chip);
   });

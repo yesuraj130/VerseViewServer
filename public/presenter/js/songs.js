@@ -273,7 +273,7 @@ async function selectSong(songId, autoPresent = false)
 
     if (autoPresent && currentSongSlides.length > 0)
     {
-      presentSlide(song, 1, currentSongSlides[0]);
+      presentSlide(song, 1);
     }
   }
   catch (err)
@@ -395,29 +395,20 @@ function renderSlideDeck(song, slides)
 
     card.addEventListener('click', () =>
     {
-      presentSlide(song, slide.slideIndex, { ...slide, lines });
+      presentSlide(song, slide.slideIndex);
     });
 
     targetContainer.appendChild(card);
   });
 }
 
-function presentSlide(song, slideIndex, slideObj)
+function presentSlide(song, slideIndex)
 {
   activeSongSlideIndex = slideIndex;
-  const total = currentSongSlides.length;
   const payload = {
     type: 'song',
-    title: song.name,
-    reference: `${song.cat || 'Song'} • Slide ${slideIndex} of ${total}`,
-    lines: slideObj.lines,
-    rawSlide: slideObj.rawSlide,
-    slideIndex: slideIndex,
-    totalSlides: total,
     songId: song.id,
-    font: song.font || 'Baloo Thambi 2',
-    font2: song.font2 || '',
-    verseInfo: null
+    slideIndex: slideIndex
   };
 
   if (socket)

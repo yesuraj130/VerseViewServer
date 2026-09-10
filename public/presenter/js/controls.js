@@ -15,7 +15,7 @@ function triggerPrevious()
   if (currentPresentationType === 'song' && currentSong && currentSongSlides.length > 0)
   {
     const previousSongSlideIndex = activeSongSlideIndex > 1 ? activeSongSlideIndex - 1 : 1;
-    presentSlide(currentSong, previousSongSlideIndex, currentSongSlides[previousSongSlideIndex - 1]);
+    presentSlide(currentSong, previousSongSlideIndex);
   }
   else if (currentPresentationType === 'bible' && currentChapterVerses.length > 0)
   {
@@ -29,7 +29,7 @@ function triggerNext()
   if (currentPresentationType === 'song' && currentSong && currentSongSlides.length > 0)
   {
     const nextSongSlideIndex = activeSongSlideIndex < currentSongSlides.length ? activeSongSlideIndex + 1 : currentSongSlides.length;
-    presentSlide(currentSong, nextSongSlideIndex, currentSongSlides[nextSongSlideIndex - 1]);
+    presentSlide(currentSong, nextSongSlideIndex);
   }
   else if (currentPresentationType === 'bible' && currentChapterVerses.length > 0)
   {
@@ -91,7 +91,7 @@ async function jumpToLiveSlide()
     {
       if (Number(selectedBookNumber) !== Number(verseInfo.bookNum))
       {
-        await selectBibleBook(verseInfo.bookNum, verseInfo.bookName, verseInfo.chNum, verseInfo.verseNum);
+        await selectBibleBook(verseInfo.bookNum, verseInfo.chNum, verseInfo.verseNum);
       }
       else if (Number(selectedChapterNumber) !== Number(verseInfo.chNum))
       {
