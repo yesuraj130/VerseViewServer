@@ -10,10 +10,6 @@ let liveState = null;
 let selectedSongId = null;
 let lastBrowsedSongId = null;
 
-// Song Slides in-memory text cache
-const songSlidesTextCache = new Map();
-const MAX_SONG_CACHE_COUNT = 50;
-
 // Restore Last Browsed Song ID from LocalStorage
 try
 {

@@ -2,6 +2,10 @@
 // Presenter Console — Songs Management & Slide Deck Controller
 // ===========================================================================
 
+// Song Slides in-memory text cache
+const songSlidesTextCache = new Map();
+const MAX_SONG_CACHE_COUNT = 50; // Caps in-memory song cache to ~50 songs
+
 async function loadSongs(songSearchText = '')
 {
   try
