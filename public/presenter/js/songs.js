@@ -13,7 +13,7 @@ async function loadSongs(songSearchText = '')
     const songsSearchResultJson = await songsSearchFetchResult.json();
     renderSongList(songsSearchResultJson);
 
-    if (!selectedSong && songsSearchResultJson.length > 0)
+    if (!selectedSongId && songsSearchResultJson.length > 0)
     {
       let songToSelect = songsSearchResultJson[0];
       if (lastBrowsedSongId)
@@ -68,7 +68,7 @@ function createSongItemElement(song)
   const item = document.createElement('div');
   item.className = 'song-item';
   item.setAttribute('data-id', song.id);
-  if (selectedSong && Number(selectedSong.id) === Number(song.id))
+  if (selectedSongId && Number(selectedSongId) === Number(song.id))
   {
     item.classList.add('selected');
   }
@@ -214,6 +214,7 @@ if (songListContainer)
 
 async function selectSong(songId, autoPresent = false)
 {
+  selectedSongId = Number(songId);
   saveLastBrowsedSong(songId);
 
   if (songVirtualItems)
@@ -227,47 +228,72 @@ async function selectSong(songId, autoPresent = false)
 
   scrollToSong(songId, false);
 
+  // If song slides were already cached in memory, render immediately without fetch
+  if (songSlidesTextCache.has(Number(songId)))
+  {
+    const cachedSong = songSlidesTextCache.get(Number(songId));
+    displaySongInDeck(cachedSong, autoPresent);
+    return;
+  }
+
   try
   {
     const res = await fetch(`/api/songs/${songId}`);
     const song = await res.json();
-    selectedSong = song;
-    const slides = song.slides || [];
 
-    if (activeSongTitle)
+    // Cache with bounded LRU eviction to prevent memory accumulation
+    if (songSlidesTextCache.size >= MAX_SONG_CACHE_COUNT)
     {
-      activeSongTitle.textContent = song.name;
-      activeSongTitle.style.fontFamily = getSongFontFamily(song.font);
+      const oldestKey = songSlidesTextCache.keys().next().value;
+      if (oldestKey) songSlidesTextCache.delete(oldestKey);
     }
-    if (songUnicodeDeckBadge)
-    {
-      const isConverted = Boolean(song.isConverted);
-      songUnicodeDeckBadge.style.display = isConverted ? 'inline-flex' : 'none';
-    }
-    if (activeSlideCountIndicator)
-    {
-      activeSlideCountIndicator.textContent = `${slides.length} slides`;
-    }
-    if (buttonDeckEditSong) buttonDeckEditSong.style.display = 'inline-flex';
+    songSlidesTextCache.set(Number(songId), song);
 
-    renderSlideDeck(selectedSong, slides);
-
-    if (window.innerWidth <= 768 && typeof setMobilePaneMode === 'function')
+    // Guard against race conditions if user clicked another song before fetch returned
+    if (Number(selectedSongId) === Number(songId))
     {
-      if (window.currentMobilePaneMode !== 'both')
-      {
-        setMobilePaneMode('deck');
-      }
-    }
-
-    if (autoPresent && slides.length > 0)
-    {
-      presentSlide(song, 1);
+      displaySongInDeck(song, autoPresent);
     }
   }
   catch (err)
   {
     console.error('Error selecting song:', err);
+  }
+}
+
+function displaySongInDeck(song, autoPresent = false)
+{
+  const slides = song.slides || [];
+
+  if (activeSongTitle)
+  {
+    activeSongTitle.textContent = song.name;
+    activeSongTitle.style.fontFamily = getSongFontFamily(song.font);
+  }
+  if (songUnicodeDeckBadge)
+  {
+    const isConverted = Boolean(song.isConverted);
+    songUnicodeDeckBadge.style.display = isConverted ? 'inline-flex' : 'none';
+  }
+  if (activeSlideCountIndicator)
+  {
+    activeSlideCountIndicator.textContent = `${slides.length} slides`;
+  }
+  if (buttonDeckEditSong) buttonDeckEditSong.style.display = 'inline-flex';
+
+  renderSlideDeck(song, slides);
+
+  if (window.innerWidth <= 768 && typeof setMobilePaneMode === 'function')
+  {
+    if (window.currentMobilePaneMode !== 'both')
+    {
+      setMobilePaneMode('deck');
+    }
+  }
+
+  if (autoPresent && slides.length > 0)
+  {
+    presentSlide(song, 1);
   }
 }
 
@@ -295,7 +321,8 @@ function measureMaxLineWidth(lines, font = '500 14px "Baloo Thambi 2", "Baloo Th
 function updateSongDeckColumnWidth(slides)
 {
   const targetContainer = document.getElementById('slide-deck-songs') || slideDeckContainer;
-  const songSlides = slides || (selectedSong && selectedSong.slides) || [];
+  const currentSong = selectedSongId ? songSlidesTextCache.get(Number(selectedSongId)) : null;
+  const songSlides = slides || (currentSong && currentSong.slides) || [];
   if (!targetContainer || songSlides.length === 0) return;
 
   const clientWidth = targetContainer.clientWidth;
@@ -320,7 +347,7 @@ function updateSongDeckColumnWidth(slides)
     });
   });
 
-  const songFontFam = selectedSong ? getSongFontFamily(selectedSong.font) : 'var(--font-display)';
+  const songFontFam = currentSong ? getSongFontFamily(currentSong.font) : 'var(--font-display)';
   const maxLineWidth = measureMaxLineWidth(allLines, `500 14px ${songFontFam}`);
   const naturalColWidth = Math.max(220, Math.ceil(maxLineWidth * 1.06 + 46));
 
@@ -467,7 +494,7 @@ if (buttonDeckEditSong)
 {
   buttonDeckEditSong.addEventListener('click', () =>
   {
-    if (selectedSong) openEditSongDialog(selectedSong.id);
+    if (selectedSongId) openEditSongDialog(selectedSongId);
   });
 }
 
@@ -542,6 +569,7 @@ if (buttonSaveSong)
       }
 
       const saved = await res.json();
+      songSlidesTextCache.set(Number(saved.id), saved);
       closeEditSongDialog();
       await loadSongs(songSearchInput ? songSearchInput.value : '');
       selectSong(saved.id);
@@ -558,8 +586,13 @@ async function openEditSongDialog(songId)
 {
   try
   {
-    const res = await fetch(`/api/songs/${songId}`);
-    const song = await res.json();
+    let song = songSlidesTextCache.get(Number(songId));
+    if (!song)
+    {
+      const res = await fetch(`/api/songs/${songId}`);
+      song = await res.json();
+      songSlidesTextCache.set(Number(songId), song);
+    }
     if (editSongIdHiddenInput) editSongIdHiddenInput.value = song.id;
     if (editSongDialogHeading) editSongDialogHeading.textContent = 'Edit Song';
     if (editSongTitleTextbox) editSongTitleTextbox.value = song.name || '';
@@ -598,15 +631,19 @@ async function deleteSong(songId)
     const res = await fetch(`/api/songs/${songId}`, { method: 'DELETE' });
     if (res.ok)
     {
-      if (selectedSong && Number(selectedSong.id) === Number(songId))
+      songSlidesTextCache.delete(Number(songId));
+      if (selectedSongId && Number(selectedSongId) === Number(songId))
       {
-        selectedSong = null;
-        if (slideDeckContainer)
+        selectedSongId = null;
+        const targetContainer = document.getElementById('slide-deck-songs') || (typeof slideDeckContainer !== 'undefined' ? slideDeckContainer : null);
+        if (targetContainer)
         {
-          slideDeckContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 48px;">Select a song from the library on the left.</div>';
+          targetContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 48px;">Select a song from the library on the left.</div>';
         }
         if (activeSongTitle) activeSongTitle.textContent = 'Select a Song';
         if (buttonDeckEditSong) buttonDeckEditSong.style.display = 'none';
+        if (activeSlideCountIndicator) activeSlideCountIndicator.textContent = '0 slides';
+        if (songUnicodeDeckBadge) songUnicodeDeckBadge.style.display = 'none';
       }
       await loadSongs(songSearchInput ? songSearchInput.value : '');
     }

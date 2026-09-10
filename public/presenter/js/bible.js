@@ -293,6 +293,8 @@ async function selectBibleChapter(targetChapterNumber, targetVerseNumber)
   }
 
   // If chapter text was already loaded previously, render immediately without fetch
+  const cacheKey = `${selectedBibleVersionId}:${selectedBookNumber}:${selectedChapterNumber}`;
+  const cachedBibleChapterText = bibleChapterTextCache.get(cacheKey);
   if (cachedBibleChapterText)
   {
     const verses = cachedBibleChapterText.verses || [];
