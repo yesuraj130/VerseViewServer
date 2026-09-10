@@ -61,12 +61,17 @@ async function jumpToLiveSlide()
     const slideIdx = Number(liveState.slideIndex) || 1;
     activeSongSlideIndex = slideIdx;
 
-    const targetSongSlide = slideDeckSongs ? slideDeckSongs.querySelector(`.slide-card[data-slide-index="${slideIdx}"]`) : null;
-    if (targetSongSlide && slideDeckSongs)
+    if (slideDeckSongs)
     {
-      slideDeckSongs.querySelectorAll(':scope > div').forEach(songSlide => songSlide.classList.remove('active-card'));
-      targetSongSlide.classList.add('active-card');
-      smoothScrollToElement(slideDeckContainer, targetSongSlide, 200);
+      for (let i = 0; i < slideDeckSongs.children.length; i++)
+      {
+        slideDeckSongs.children[i].classList.toggle('active-card', (i + 1) === slideIdx);
+      }
+      const targetSongSlide = slideDeckSongs.children[slideIdx - 1];
+      if (targetSongSlide)
+      {
+        smoothScrollToElement(slideDeckContainer, targetSongSlide, 200);
+      }
     }
   }
   else if (liveState.type === 'bible' && liveState.verseInfo)

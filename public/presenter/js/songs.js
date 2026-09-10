@@ -378,7 +378,6 @@ function renderSlideDeck(song, slides)
   {
     const card = document.createElement('div');
     card.className = 'slide-card';
-    card.setAttribute('data-slide-index', slide.slideIndex);
 
     const isLive = liveState && Number(liveState.songId) === Number(song.id) && Number(liveState.slideIndex) === Number(slide.slideIndex) && liveState.status === 'live';
     if (isLive) card.classList.add('active-live');
@@ -546,7 +545,6 @@ function renderEditorSlides()
   {
     const card = document.createElement('div');
     card.className = 'editor-slide-card';
-    card.setAttribute('data-index', index);
 
     card.innerHTML = `
       <div class="editor-slide-header">

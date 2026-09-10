@@ -215,11 +215,10 @@ async function selectBibleBook(targetBookNumber, bookName, targetChapterNumber, 
     }
     else
     {
-      const chapterButtons = bibleChaptersList.querySelectorAll('button');
-      if (chapterButtons.length > chosenChapterNumber - 1)
+      const activeChapterButton = bibleChaptersList.children[chosenChapterNumber - 1];
+      if (activeChapterButton)
       {
-        const activeChapterButton = chapterButtons[chosenChapterNumber - 1];
-        if (activeChapterButton) activeChapterButton.scrollIntoView({ block: 'nearest', behavior: 'auto' });   
+        activeChapterButton.scrollIntoView({ block: 'nearest', behavior: 'auto' });   
       }
       else
       {
@@ -242,7 +241,6 @@ function renderBibleChaptersList(chapters)
     const chapterButton = document.createElement('button');
     chapterButton.type = 'button';
     chapterButton.className = 'num-btn';
-    chapterButton.setAttribute('data-ch-num', chapter);
     chapterButton.textContent = chapter;
 
     if (Number(chapter) === Number(selectedChapterNumber)) chapterButton.classList.add('active');
@@ -265,11 +263,10 @@ async function selectBibleChapter(targetChapterNumber, targetVerseNumber)
 
   if (bibleChaptersList)
   {
-    bibleChaptersList.querySelectorAll('button').forEach((chapterButton) =>
+    for (let i = 0; i < bibleChaptersList.children.length; i++)
     {
-      const chapterNumber = Number(chapterButton.getAttribute('data-ch-num'));
-      chapterButton.classList.toggle('active', chapterNumber === selectedChapterNumber);
-    });
+      bibleChaptersList.children[i].classList.toggle('active', (i + 1) === selectedChapterNumber);
+    }
   }
 
   // Instant zero-delay verse resolution from book metadata or bible structure
@@ -294,23 +291,16 @@ async function selectBibleChapter(targetChapterNumber, targetVerseNumber)
   // Highlight verse button immediately and scroll to top on reset to 1
   if (bibleVersesList)
   {
-    // bibleVersesList.querySelectorAll('.num-btn').forEach((btn) =>
-    // {
-    //   const v = Number(btn.getAttribute('data-verse-num'));
-    //   btn.classList.toggle('active', v === selectedVerseNumber);
-    // });
-
     if (chosenVerseNumber === 1)
     {
       bibleVersesList.scrollTop = 0;
     }
     else
     {
-      const verseButtons = bibleVersesList.querySelectorAll('button');
-      if (verseButtons.length > chosenVerseNumber - 1)
+      const activeVerseButton = bibleVersesList.children[chosenVerseNumber - 1];
+      if (activeVerseButton)
       {
-        const activeVerseButton = verseButtons[chosenVerseNumber - 1];
-        if (activeVerseButton) activeVerseButton.scrollIntoView({ block: 'nearest', behavior: 'auto' });   
+        activeVerseButton.scrollIntoView({ block: 'nearest', behavior: 'auto' });   
       }
       else
       {
@@ -359,11 +349,10 @@ async function selectBibleChapter(targetChapterNumber, targetVerseNumber)
         renderBibleVersesList(exactVerseNums);
         if (bibleVersesList)
         {
-          bibleVersesList.querySelectorAll('button').forEach((verseButton) =>
+          for (let i = 0; i < bibleVersesList.children.length; i++)
           {
-            const verseNumber = Number(verseButton.getAttribute('data-verse-num'));
-            verseButton.classList.toggle('active', verseNumber === selectedVerseNumber);
-          });
+            bibleVersesList.children[i].classList.toggle('active', (i + 1) === selectedVerseNumber);
+          }
           if (chosenVerseNumber === 1)
           {
             bibleVersesList.scrollTop = 0;
@@ -391,7 +380,6 @@ function renderBibleVersesList(verseNumbers)
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'num-btn';
-    btn.setAttribute('data-verse-num', v);
     btn.textContent = v;
 
     if (Number(v) === Number(selectedVerseNumber))
@@ -430,10 +418,6 @@ function renderChapterVersesText(bibleChapterVersesText)
   {
     const verseSlide = document.createElement('div');
     verseSlide.className = 'slide-card-vertical';
-    verseSlide.setAttribute('data-book-num', verse.bookNum);
-    verseSlide.setAttribute('data-ch-num', verse.chNum);
-    verseSlide.setAttribute('data-verse-num', verse.verseNum);
-    verseSlide.id = `slide-verse-${verse.verseNum}`;
 
     const isLive = liveState && liveState.verseInfo &&
       Number(liveState.verseInfo.bookNum) === Number(verse.bookNum) &&
@@ -454,7 +438,7 @@ function renderChapterVersesText(bibleChapterVersesText)
       presentBibleVerse(selectedBibleVersionId, selectedBookName, verse);
     });
 
-    targetContainer.appendChild(verseSlide);
+    slideDeckBible.appendChild(verseSlide);
   });
 }
 
@@ -465,19 +449,23 @@ function selectBibleVerse(targetVerseNumber)
 
   if (bibleVersesList)
   {
-    bibleVersesList.querySelectorAll('button').forEach((verseButton) =>
+    for (let i = 0; i < bibleVersesList.children.length; i++)
     {
-      const verseNumber = Number(verseButton.getAttribute('data-verse-num'));
-      verseButton.classList.toggle('active', verseNumber === selectedVerseNumber);
-    });
+      bibleVersesList.children[i].classList.toggle('active', (i + 1) === selectedVerseNumber);
+    }
   }
 
-  const targetCard = slideDeckBible ? slideDeckBible.querySelector(`#slide-verse-${selectedVerseNumber}`) : null;
-  if (targetCard && slideDeckBible)
+  if (slideDeckBible)
   {
-    slideDeckBible.querySelectorAll('.slide-card-vertical').forEach(c => c.classList.remove('active'));
-    targetCard.classList.add('active');
-    smoothScrollToElement(slideDeckBible, targetCard, 200, true);
+    for (let i = 0; i < slideDeckBible.children.length; i++)
+    {
+      slideDeckBible.children[i].classList.toggle('active', (i + 1) === selectedVerseNumber);
+    }
+    const targetCard = slideDeckBible.children[selectedVerseNumber - 1];
+    if (targetCard)
+    {
+      smoothScrollToElement(slideDeckBible, targetCard, 200, true);
+    }
   }
 }
 

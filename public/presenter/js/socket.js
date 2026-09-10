@@ -172,15 +172,19 @@ function highlightActiveInDecks(state)
   const liveVerse = (isLive && state.type === 'bible' && state.verseInfo) ? state.verseInfo : null;
 
   // Highlight in song slide deck
-  document.querySelectorAll('.slide-card').forEach((card) =>
+  const slideDeckSongsEl = document.getElementById('slide-deck-songs') || (typeof slideDeckContainer !== 'undefined' ? slideDeckContainer : null);
+  if (slideDeckSongsEl)
   {
-    const sIndex = Number(card.getAttribute('data-slide-index'));
     const isThisSong = isLive && currentSong && Number(state.songId) === Number(currentSong.id);
-    const active = isThisSong && sIndex === Number(state.slideIndex);
-    card.classList.toggle('active-live', active);
-    const badge = card.querySelector('.slide-card-badge');
-    if (badge) badge.style.display = active ? 'inline-block' : 'none';
-  });
+    for (let i = 0; i < slideDeckSongsEl.children.length; i++)
+    {
+      const card = slideDeckSongsEl.children[i];
+      const active = isThisSong && (i + 1) === Number(state.slideIndex);
+      card.classList.toggle('active-live', active);
+      const badge = card.querySelector('.slide-card-badge');
+      if (badge) badge.style.display = active ? 'inline-block' : 'none';
+    }
+  }
 
   // Green highlight for Song items list in left panel
   const songListContainer = document.getElementById('song-list-container');
@@ -195,28 +199,30 @@ function highlightActiveInDecks(state)
   }
 
   // Highlight in vertical Bible chapter slide deck
-  document.querySelectorAll('.slide-card-vertical').forEach((card) =>
+  if (typeof slideDeckBible !== 'undefined' && slideDeckBible)
   {
-    const bNum = Number(card.getAttribute('data-book-num'));
-    const cNum = Number(card.getAttribute('data-ch-num'));
-    const vNum = Number(card.getAttribute('data-verse-num'));
-    const isLiveVerse = liveVerse &&
-      Number(liveVerse.bookNum) === bNum &&
-      Number(liveVerse.chNum) === cNum &&
-      Number(liveVerse.verseNum) === vNum;
+    const isCurrentChapter = liveVerse &&
+      Number(liveVerse.bookNum) === Number(selectedBookNumber) &&
+      Number(liveVerse.chNum) === Number(selectedChapterNumber);
 
-    card.classList.toggle('is-live', isLiveVerse);
-    const livePill = card.querySelector('.sc-live-pill');
-    if (livePill) livePill.style.display = isLiveVerse ? 'inline-block' : 'none';
-  });
+    for (let i = 0; i < slideDeckBible.children.length; i++)
+    {
+      const card = slideDeckBible.children[i];
+      const isLiveVerse = isCurrentChapter && (i + 1) === Number(liveVerse.verseNum);
+
+      card.classList.toggle('is-live', !!isLiveVerse);
+      const livePill = card.querySelector('.sc-live-pill');
+      if (livePill) livePill.style.display = isLiveVerse ? 'inline-block' : 'none';
+    }
+  }
 
   // Green highlight preview for Book list items
-  if (bibleBooksList)
+  if (typeof bibleBooksList !== 'undefined' && bibleBooksList)
   {
     const bookChildren = bibleBooksList.children;
     for (let i = 0; i < bookChildren.length; i++)
     {
-      const bookObj = selectedBibleVersionBooks[i];
+      const bookObj = selectedBibleVersionBooks ? selectedBibleVersionBooks[i] : null;
       const bNum = bookObj ? Number(bookObj.bookNum) : (i + 1);
       const isLiveBook = liveVerse && bNum === Number(liveVerse.bookNum);
       bookChildren[i].classList.toggle('is-live-active', !!isLiveBook);
@@ -224,29 +230,27 @@ function highlightActiveInDecks(state)
   }
 
   // Green highlight preview for Chapter list buttons
-  if (bibleChaptersList)
+  if (typeof bibleChaptersList !== 'undefined' && bibleChaptersList)
   {
-    bibleChaptersList.querySelectorAll('.num-btn').forEach((btn) =>
+    const isLiveBook = liveVerse && Number(liveVerse.bookNum) === Number(selectedBookNumber);
+    for (let i = 0; i < bibleChaptersList.children.length; i++)
     {
-      const cNum = Number(btn.getAttribute('data-ch-num'));
-      const isLiveChapter = liveVerse &&
-        Number(liveVerse.bookNum) === Number(selectedBookNum) &&
-        cNum === Number(liveVerse.chNum);
-      btn.classList.toggle('is-live-active', !!isLiveChapter);
-    });
+      const isLiveChapter = isLiveBook && (i + 1) === Number(liveVerse.chNum);
+      bibleChaptersList.children[i].classList.toggle('is-live-active', !!isLiveChapter);
+    }
   }
 
   // Green highlight preview for Verse list buttons
-  if (bibleVersesList)
+  if (typeof bibleVersesList !== 'undefined' && bibleVersesList)
   {
-    bibleVersesList.querySelectorAll('.num-btn').forEach((btn) =>
+    const isLiveChapter = liveVerse &&
+      Number(liveVerse.bookNum) === Number(selectedBookNumber) &&
+      Number(liveVerse.chNum) === Number(selectedChapterNumber);
+
+    for (let i = 0; i < bibleVersesList.children.length; i++)
     {
-      const vNum = Number(btn.getAttribute('data-verse-num'));
-      const isLiveVerseBtn = liveVerse &&
-        Number(liveVerse.bookNum) === Number(selectedBookNum) &&
-        Number(liveVerse.chNum) === Number(selectedChapterNum) &&
-        vNum === Number(liveVerse.verseNum);
-      btn.classList.toggle('is-live-active', !!isLiveVerseBtn);
-    });
+      const isLiveVerseBtn = isLiveChapter && (i + 1) === Number(liveVerse.verseNum);
+      bibleVersesList.children[i].classList.toggle('is-live-active', !!isLiveVerseBtn);
+    }
   }
 }
