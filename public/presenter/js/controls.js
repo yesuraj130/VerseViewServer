@@ -10,17 +10,17 @@ function triggerClear()
   if (socket) socket.emit('action:clear');
 }
 
-function triggerPrev()
+function triggerPrevious()
 {
   if (currentPresentationType === 'song' && currentSong && currentSongSlides.length > 0)
   {
-    const prevIdx = activeSongSlideIndex > 1 ? activeSongSlideIndex - 1 : 1;
-    presentSlide(currentSong, prevIdx, currentSongSlides[prevIdx - 1]);
+    const previousSongSlideIndex = activeSongSlideIndex > 1 ? activeSongSlideIndex - 1 : 1;
+    presentSlide(currentSong, previousSongSlideIndex, currentSongSlides[previousSongSlideIndex - 1]);
   }
   else if (currentPresentationType === 'bible' && currentChapterVerses.length > 0)
   {
-    const prevVerse = Math.max(1, selectedVerseNumber - 1);
-    selectBibleVerse(prevVerse, true);
+    const previousBibleVerseNumber = selectedVerseNumber > 1 ? selectedVerseNumber - 1 : 1;
+    selectBibleVerse(previousBibleVerseNumber, true);
   }
 }
 
@@ -28,20 +28,23 @@ function triggerNext()
 {
   if (currentPresentationType === 'song' && currentSong && currentSongSlides.length > 0)
   {
-    const nextIdx = activeSongSlideIndex < currentSongSlides.length ? activeSongSlideIndex + 1 : currentSongSlides.length;
-    presentSlide(currentSong, nextIdx, currentSongSlides[nextIdx - 1]);
+    const nextSongSlideIndex = activeSongSlideIndex < currentSongSlides.length ? activeSongSlideIndex + 1 : currentSongSlides.length;
+    presentSlide(currentSong, nextSongSlideIndex, currentSongSlides[nextSongSlideIndex - 1]);
   }
   else if (currentPresentationType === 'bible' && currentChapterVerses.length > 0)
   {
-    const nextVerse = Math.min(currentChapterVerses.length, selectedVerseNumber + 1);
-    selectBibleVerse(nextVerse, true);
+    const nextBibleVerseNumber = selectedVerseNumber < currentChapterVerses.length ? selectedVerseNumber + 1 : currentChapterVerses.length;
+    selectBibleVerse(nextBibleVerseNumber, true);
   }
 }
 
 // Event Listeners for Toolbar Buttons
-if (btnClear) btnClear.addEventListener('click', triggerClear);
-if (btnPrevSlide) btnPrevSlide.addEventListener('click', triggerPrev);
-if (btnNextSlide) btnNextSlide.addEventListener('click', triggerNext);
+if (buttonClear) buttonClear.addEventListener('click', triggerClear);
+if (butttonPreviousSlide) butttonPreviousSlide.addEventListener('click', triggerPrevious);
+if (buttonNextSlide) buttonNextSlide.addEventListener('click', triggerNext);
+
+// Event Listeners
+if (liveIndicatorPill) liveIndicatorPill.addEventListener('click', jumpToLiveSlide);
 
 // Jump to active live slide on clicking live indicator
 async function jumpToLiveSlide()
@@ -53,59 +56,51 @@ async function jumpToLiveSlide()
     switchTab('songs');
     if (!currentSong || Number(currentSong.id) !== Number(liveState.songId))
     {
-      await selectSong(liveState.songId, false);
+      await selectSong(liveState.songId);
     }
     const slideIdx = Number(liveState.slideIndex) || 1;
     activeSongSlideIndex = slideIdx;
 
-    const card = slideDeckContainer ? slideDeckContainer.querySelector(`.slide-card[data-slide-index="${slideIdx}"]`) : null;
-    if (card && slideDeckContainer)
+    const targetSongSlide = slideDeckSongs ? slideDeckSongs.querySelector(`.slide-card[data-slide-index="${slideIdx}"]`) : null;
+    if (targetSongSlide && slideDeckSongs)
     {
-      slideDeckContainer.querySelectorAll('.slide-card').forEach(c => c.classList.remove('active-card'));
-      card.classList.add('active-card');
-      smoothScrollToElement(slideDeckContainer, card, 200);
+      slideDeckSongs.querySelectorAll(':scope > div').forEach(songSlide => songSlide.classList.remove('active-card'));
+      targetSongSlide.classList.add('active-card');
+      smoothScrollToElement(slideDeckContainer, targetSongSlide, 200);
     }
   }
   else if (liveState.type === 'bible' && liveState.verseInfo)
   {
     switchTab('bible');
-    const vInfo = liveState.verseInfo;
-    const verId = vInfo.versionId || selectedBibleVersionId;
+    const verseInfo = liveState.verseInfo;
+    const bibleVersionId = verseInfo.versionId || selectedBibleVersionId;
 
-    if (verId !== selectedBibleVersionId)
+    if (bibleVersionId !== selectedBibleVersionId)
     {
-      selectedBibleVersionId = verId;
-      if (bibleVersionSelectionDropdown) bibleVersionSelectionDropdown.value = verId;
-      if (bibleSearchVersionLabel)
-      {
-        const verObj = (typeof bibleVersions !== 'undefined') ? bibleVersions.find(v => v.id === verId) : null;
-        if (verObj) bibleSearchVersionLabel.textContent = verObj.name;
-      }
-      if (typeof saveLastBrowsedBible === 'function') saveLastBrowsedBible();
-      await loadBibleBooks(selectedBibleVersionId, vInfo.bookNum, vInfo.chNum, vInfo.verseNum);
+      selectedBibleVersionId = bibleVersionId;
+      if (bibleVersionSelectionDropdown) bibleVersionSelectionDropdown.value = bibleVersionId;
+      saveLastBrowsedBible();
+      await loadBibleBooks(selectedBibleVersionId, verseInfo.bookNum, verseInfo.chNum, verseInfo.verseNum);
     }
     else
     {
-      if (Number(selectedBookNumber) !== Number(vInfo.bookNum))
+      if (Number(selectedBookNumber) !== Number(verseInfo.bookNum))
       {
-        await selectBibleBook(vInfo.bookNum, vInfo.bookName, vInfo.chNum, vInfo.verseNum);
+        await selectBibleBook(verseInfo.bookNum, verseInfo.bookName, verseInfo.chNum, verseInfo.verseNum);
       }
-      else if (Number(selectedChapterNumber) !== Number(vInfo.chNum))
+      else if (Number(selectedChapterNumber) !== Number(verseInfo.chNum))
       {
-        await selectBibleChapter(vInfo.chNum, vInfo.verseNum);
+        await selectBibleChapter(verseInfo.chNum, verseInfo.verseNum);
       }
-      else
+      else if (Number(selectedVerseNumber) !== Number(verseInfo.verseNum))
       {
-        selectBibleVerse(vInfo.verseNum, false);
+        selectBibleVerse(verseInfo.verseNum, false);
       }
     }
   }
 }
 
-if (liveIndicatorPill)
-{
-  liveIndicatorPill.addEventListener('click', jumpToLiveSlide);
-}
+
 
 // ---------------------------------------------------------------------------
 // 2. Tab Navigation System
@@ -197,6 +192,11 @@ function initTabNavigation()
   catch (e) {}
 
   switchTab(initialTab);
+}
+
+function getChildAt(parent, index)
+{
+  return parent?.children[index] ?? null;
 }
 
 function switchTab(tabId)

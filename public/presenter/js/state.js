@@ -75,16 +75,16 @@ const liveIndicatorPill = document.getElementById('live-indicator-pill');
 const liveStatusBadge = document.getElementById('live-status-badge');
 const liveTitleText = document.getElementById('live-title-text');
 const liveLineText = document.getElementById('live-line-text');
-const btnClear = document.getElementById('btn-clear');
-const btnPrevSlide = document.getElementById('btn-prev-slide');
-const btnNextSlide = document.getElementById('btn-next-slide');
+const buttonClear = document.getElementById('btn-clear');
+const buttonPreviousSlide = document.getElementById('btn-prev-slide');
+const buttonNextSlide = document.getElementById('btn-next-slide');
 
 const tabButtons = document.querySelectorAll('.tab-btn');
 const tabPanels = document.querySelectorAll('.tab-panel');
 
 const songListContainer = document.getElementById('song-list-container');
 const songSearchInput = document.getElementById('song-search-input');
-const btnClearSongSearch = document.getElementById('btn-clear-song-search');
+const buttonClearSongSearch = document.getElementById('btn-clear-song-search');
 
 const bibleVersionSelectionDropdown = document.getElementById('bibleVersionSelectionDropdown');
 const bibleRecentStrip = document.getElementById('bible-recent-strip');

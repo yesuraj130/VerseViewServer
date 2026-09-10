@@ -95,7 +95,6 @@ async function initBible()
         selectedBibleVersionId = e.target.value;
         bibleChapterTextCache.clear();
         const verObj = bibleVersions.find(v => v.id === selectedBibleVersionId);
-        if (bibleSearchVersionLabel && verObj) bibleSearchVersionLabel.textContent = verObj.name;
         
         // Load Bible structure for new version
         await loadBibleStructure(selectedBibleVersionId);
