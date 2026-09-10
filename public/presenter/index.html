@@ -180,34 +180,34 @@
     </main>
   </div>
 
-  <!-- Add / Edit Song Modal -->
-  <div class="modal-backdrop" id="song-modal" style="display: none;">
+  <!-- Add / Edit Song Dialog -->
+  <div class="modal-backdrop" id="edit-song-dialog" style="display: none;">
     <div class="modal-content song-editor-modal-content">
       <div class="modal-header">
-        <h3 id="modal-song-title">Add New Song</h3>
-        <button id="btn-close-song-modal" class="btn-icon-tiny" style="font-size: 20px; color: #fff;">&times;</button>
+        <h3 id="edit-song-dialog-heading">Add New Song</h3>
+        <button id="btn-close-edit-song-dialog" class="btn-icon-tiny" style="font-size: 20px; color: #fff;">&times;</button>
       </div>
       <div class="modal-body song-editor-modal-body">
-        <input type="hidden" id="modal-song-id">
+        <input type="hidden" id="edit-song-id-hidden-input">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
           <div class="form-group">
-            <label class="form-label" for="modal-input-title">Song Title</label>
-            <input type="text" id="modal-input-title" class="input-text" placeholder="e.g. Amazing Grace or English / Romanized title">
+            <label class="form-label" for="edit-song-title-textbox">Song Title</label>
+            <input type="text" id="edit-song-title-textbox" class="input-text" placeholder="e.g. Amazing Grace or English / Romanized title">
           </div>
           <div class="form-group">
-            <label class="form-label" for="modal-input-title2">Alternative / Secondary Title</label>
-            <input type="text" id="modal-input-title2" class="input-text" placeholder="e.g. Vernacular script title or alternate title">
+            <label class="form-label" for="edit-song-secondary-title-textbox">Alternative / Secondary Title</label>
+            <input type="text" id="edit-song-secondary-title-textbox" class="input-text" placeholder="e.g. Vernacular script title or alternate title">
           </div>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 10px;">
           <div class="form-group">
-            <label class="form-label" for="modal-input-cat">Category</label>
-            <input type="text" id="modal-input-cat" class="input-text" placeholder="e.g. Hymns, Worship, Sunday School">
+            <label class="form-label" for="edit-song-category-textbox">Category</label>
+            <input type="text" id="edit-song-category-textbox" class="input-text" placeholder="e.g. Hymns, Worship, Sunday School">
           </div>
           <div class="form-group">
-            <label class="form-label" for="modal-input-font">Font Name</label>
-            <input type="text" id="modal-input-font" class="input-text" list="font-list-options" placeholder="e.g. Arial, Baloo Thambi, Latha">
+            <label class="form-label" for="edit-song-font-textbox">Font Name</label>
+            <input type="text" id="edit-song-font-textbox" class="input-text" list="font-list-options" placeholder="e.g. Arial, Baloo Thambi, Latha">
             <datalist id="font-list-options">
               <option value="Baloo Thambi 2">
               <option value="Baloo Thambi">
@@ -219,22 +219,22 @@
             </datalist>
           </div>
           <div class="form-group">
-            <label class="form-label" for="modal-input-tags">Searchable Tags</label>
-            <input type="text" id="modal-input-tags" class="input-text" placeholder="e.g. PRAISE, EASTER, COMMUNION">
+            <label class="form-label" for="edit-song-tags-textbox">Searchable Tags</label>
+            <input type="text" id="edit-song-tags-textbox" class="input-text" placeholder="e.g. PRAISE, EASTER, COMMUNION">
           </div>
         </div>
 
         <div class="form-group" style="flex-grow: 1; display: flex; flex-direction: column;">
           <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
-            <label class="form-label" for="modal-input-lyrics" style="margin-bottom: 0;">Lyrics &amp; Slides</label>
+            <label class="form-label" for="edit-song-lyrics-textarea" style="margin-bottom: 0;">Lyrics &amp; Slides</label>
             <span style="font-size: 11px; color: var(--color-font-muted);">Separate slides with <strong>2 blank lines</strong> (two empty lines)</span>
           </div>
-          <textarea id="modal-input-lyrics" class="textarea-lyrics" style="flex-grow: 1; min-height: 240px; font-size: 13px; line-height: 1.5; outline: none; resize: vertical;" placeholder="Slide 1 line 1&#10;Slide 1 line 2&#10;&#10;&#10;Slide 2 line 1&#10;Slide 2 line 2"></textarea>
+          <textarea id="edit-song-lyrics-textarea" class="textarea-lyrics" style="flex-grow: 1; min-height: 240px; font-size: 13px; line-height: 1.5; outline: none; resize: vertical;" placeholder="Slide 1 line 1&#10;Slide 1 line 2&#10;&#10;&#10;Slide 2 line 1&#10;Slide 2 line 2"></textarea>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn-danger" id="btn-delete-modal-song" style="display: none; margin-right: auto;">Delete Song</button>
-        <button type="button" class="btn-secondary" id="btn-cancel-song-modal">Cancel</button>
+        <button type="button" class="btn-danger" id="btn-delete-song-dialog" style="display: none; margin-right: auto;">Delete Song</button>
+        <button type="button" class="btn-secondary" id="btn-cancel-edit-song-dialog">Cancel</button>
         <button type="button" class="btn-primary" id="btn-save-song">Save Song</button>
       </div>
     </div>

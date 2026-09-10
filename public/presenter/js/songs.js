@@ -16,16 +16,11 @@ async function loadSongs(songSearchText = '')
     if (!selectedSong && songsSearchResultJson.length > 0)
     {
       let songToSelect = songsSearchResultJson[0];
-      try
+      if (lastBrowsedSongId)
       {
-        const savedSongId = localStorage.getItem('last_browsed_song_id');
-        if (savedSongId)
-        {
-          const match = songsSearchResultJson.find(s => Number(s.id) === Number(savedSongId));
-          if (match) songToSelect = match;
-        }
+        const match = songsSearchResultJson.find(s => Number(s.id) === Number(lastBrowsedSongId));
+        if (match) songToSelect = match;
       }
-      catch (e) {}
       selectSong(songToSelect.id);
     }
   }
@@ -219,11 +214,7 @@ if (songListContainer)
 
 async function selectSong(songId, autoPresent = false)
 {
-  try
-  {
-    localStorage.setItem('last_browsed_song_id', songId);
-  }
-  catch (e) {}
+  saveLastBrowsedSong(songId);
 
   if (songVirtualItems)
   {
@@ -458,17 +449,17 @@ if (buttonOpenAddSong)
 {
   buttonOpenAddSong.addEventListener('click', () =>
   {
-    modalSongId.value = '';
-    modalSongTitle.textContent = 'Add New Song';
-    if (modalInputTitle) modalInputTitle.value = '';
-    if (modalInputTitle2) modalInputTitle2.value = '';
-    if (modalInputCat) modalInputCat.value = '';
-    if (modalInputFont) modalInputFont.value = '';
-    if (modalInputTags) modalInputTags.value = '';
-    if (modalInputLyrics) modalInputLyrics.value = '';
-    if (buttonDeleteModalSong) buttonDeleteModalSong.style.display = 'none';
-    if (songModal) songModal.style.display = 'flex';
-    if (modalInputTitle) modalInputTitle.focus();
+    if (editSongIdHiddenInput) editSongIdHiddenInput.value = '';
+    if (editSongDialogHeading) editSongDialogHeading.textContent = 'Add New Song';
+    if (editSongTitleTextbox) editSongTitleTextbox.value = '';
+    if (editSongSecondaryTitleTextbox) editSongSecondaryTitleTextbox.value = '';
+    if (editSongCategoryTextbox) editSongCategoryTextbox.value = '';
+    if (editSongFontTextbox) editSongFontTextbox.value = '';
+    if (editSongTagsTextbox) editSongTagsTextbox.value = '';
+    if (editSongLyricsTextarea) editSongLyricsTextarea.value = '';
+    if (buttonDeleteSongDialog) buttonDeleteSongDialog.style.display = 'none';
+    if (editSongDialog) editSongDialog.style.display = 'flex';
+    if (editSongTitleTextbox) editSongTitleTextbox.focus();
   });
 }
 
@@ -476,41 +467,41 @@ if (buttonDeckEditSong)
 {
   buttonDeckEditSong.addEventListener('click', () =>
   {
-    if (selectedSong) openEditSongModal(selectedSong.id);
+    if (selectedSong) openEditSongDialog(selectedSong.id);
   });
 }
 
-function closeSongModal()
+function closeEditSongDialog()
 {
-  if (songModal) songModal.style.display = 'none';
+  if (editSongDialog) editSongDialog.style.display = 'none';
 }
 
-if (buttonCloseSongModal) buttonCloseSongModal.addEventListener('click', closeSongModal);
-if (buttonCancelSongModal) buttonCancelSongModal.addEventListener('click', closeSongModal);
+if (buttonCloseEditSongDialog) buttonCloseEditSongDialog.addEventListener('click', closeEditSongDialog);
+if (buttonCancelEditSongDialog) buttonCancelEditSongDialog.addEventListener('click', closeEditSongDialog);
 
 if (buttonSaveSong)
 {
   buttonSaveSong.addEventListener('click', async () =>
   {
-    const title = modalInputTitle ? modalInputTitle.value.trim() : '';
-    const title2 = modalInputTitle2 ? modalInputTitle2.value.trim() : '';
-    const cat = modalInputCat ? modalInputCat.value.trim() || 'General' : 'General';
-    const font = modalInputFont ? modalInputFont.value.trim() : '';
-    const tags = modalInputTags ? modalInputTags.value.trim() : '';
-    const songId = modalSongId ? modalSongId.value : '';
-    const lyrics = textareaValueToLyrics(modalInputLyrics ? modalInputLyrics.value : '');
+    const title = editSongTitleTextbox ? editSongTitleTextbox.value.trim() : '';
+    const title2 = editSongSecondaryTitleTextbox ? editSongSecondaryTitleTextbox.value.trim() : '';
+    const cat = editSongCategoryTextbox ? editSongCategoryTextbox.value.trim() || 'General' : 'General';
+    const font = editSongFontTextbox ? editSongFontTextbox.value.trim() : '';
+    const tags = editSongTagsTextbox ? editSongTagsTextbox.value.trim() : '';
+    const songId = editSongIdHiddenInput ? editSongIdHiddenInput.value : '';
+    const lyrics = textareaValueToLyrics(editSongLyricsTextarea ? editSongLyricsTextarea.value : '');
 
     if (!title)
     {
       alert('Please enter a song title.');
-      if (modalInputTitle) modalInputTitle.focus();
+      if (editSongTitleTextbox) editSongTitleTextbox.focus();
       return;
     }
 
     if (!lyrics)
     {
       alert('Please enter at least one slide of lyrics.');
-      if (modalInputLyrics) modalInputLyrics.focus();
+      if (editSongLyricsTextarea) editSongLyricsTextarea.focus();
       return;
     }
 
@@ -551,7 +542,7 @@ if (buttonSaveSong)
       }
 
       const saved = await res.json();
-      closeSongModal();
+      closeEditSongDialog();
       await loadSongs(songSearchInput ? songSearchInput.value : '');
       selectSong(saved.id);
     }
@@ -563,36 +554,36 @@ if (buttonSaveSong)
   });
 }
 
-async function openEditSongModal(songId)
+async function openEditSongDialog(songId)
 {
   try
   {
     const res = await fetch(`/api/songs/${songId}`);
     const song = await res.json();
-    modalSongId.value = song.id;
-    modalSongTitle.textContent = 'Edit Song';
-    if (modalInputTitle) modalInputTitle.value = song.name || '';
-    if (modalInputTitle2) modalInputTitle2.value = song.title2 || '';
-    if (modalInputCat) modalInputCat.value = song.cat || '';
-    if (modalInputFont) modalInputFont.value = song.font || '';
-    if (modalInputTags) modalInputTags.value = song.tags || '';
-    if (modalInputLyrics) modalInputLyrics.value = lyricsToTextareaValue(song.lyrics || '');
+    if (editSongIdHiddenInput) editSongIdHiddenInput.value = song.id;
+    if (editSongDialogHeading) editSongDialogHeading.textContent = 'Edit Song';
+    if (editSongTitleTextbox) editSongTitleTextbox.value = song.name || '';
+    if (editSongSecondaryTitleTextbox) editSongSecondaryTitleTextbox.value = song.title2 || '';
+    if (editSongCategoryTextbox) editSongCategoryTextbox.value = song.cat || '';
+    if (editSongFontTextbox) editSongFontTextbox.value = song.font || '';
+    if (editSongTagsTextbox) editSongTagsTextbox.value = song.tags || '';
+    if (editSongLyricsTextarea) editSongLyricsTextarea.value = lyricsToTextareaValue(song.lyrics || '');
 
-    if (buttonDeleteModalSong)
+    if (buttonDeleteSongDialog)
     {
-      buttonDeleteModalSong.style.display = 'inline-flex';
-      buttonDeleteModalSong.onclick = async () =>
+      buttonDeleteSongDialog.style.display = 'inline-flex';
+      buttonDeleteSongDialog.onclick = async () =>
       {
         if (confirm(`Are you sure you want to delete song "${song.name}"? This action cannot be undone.`))
         {
           await deleteSong(song.id);
-          closeSongModal();
+          closeEditSongDialog();
         }
       };
     }
 
-    if (songModal) songModal.style.display = 'flex';
-    if (modalInputLyrics) modalInputLyrics.focus();
+    if (editSongDialog) editSongDialog.style.display = 'flex';
+    if (editSongLyricsTextarea) editSongLyricsTextarea.focus();
   }
   catch (err)
   {

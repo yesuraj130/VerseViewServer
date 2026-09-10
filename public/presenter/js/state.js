@@ -8,6 +8,28 @@ const socket = (typeof io !== 'undefined') ? io() : null;
 // Application State
 let liveState = null;
 let selectedSong = null;
+let lastBrowsedSongId = null;
+
+// Restore Last Browsed Song ID from LocalStorage
+try
+{
+  const savedSongId = localStorage.getItem('last_browsed_song_id');
+  if (savedSongId)
+  {
+    lastBrowsedSongId = Number(savedSongId);
+  }
+}
+catch (e) {}
+
+function saveLastBrowsedSong(songId)
+{
+  try
+  {
+    lastBrowsedSongId = Number(songId);
+    localStorage.setItem('last_browsed_song_id', songId);
+  }
+  catch (e) {}
+}
 
 // Bible Application State
 let bibleVersions = [];
@@ -17,8 +39,7 @@ let selectedBookNumber = 1;
 let selectedChapterNumber = 1;
 let selectedVerseNumber = 1;
 
-
-// Restore Last Browsed Bible from LocalStorage (Option B)
+// Restore Last Browsed Bible from LocalStorage
 try
 {
   const savedLastBible = localStorage.getItem('last_browsed_bible');
@@ -91,21 +112,21 @@ const songUnicodeDeckBadge = document.getElementById('song-unicode-deck-badge');
 const activeSlideCountIndicator = document.getElementById('active-slide-count-indicator');
 const buttonDeckEditSong = document.getElementById('btn-deck-edit-song');
 
-// Song Add / Edit Modal Elements
-const songModal = document.getElementById('song-modal');
-const modalSongTitle = document.getElementById('modal-song-title');
-const modalSongId = document.getElementById('modal-song-id');
-const modalInputTitle = document.getElementById('modal-input-title');
-const modalInputTitle2 = document.getElementById('modal-input-title2');
-const modalInputCat = document.getElementById('modal-input-cat');
-const modalInputFont = document.getElementById('modal-input-font');
-const modalInputTags = document.getElementById('modal-input-tags');
-const modalInputLyrics = document.getElementById('modal-input-lyrics');
+// Song Add / Edit Dialog Elements
+const editSongDialog = document.getElementById('edit-song-dialog');
+const editSongDialogHeading = document.getElementById('edit-song-dialog-heading');
+const editSongIdHiddenInput = document.getElementById('edit-song-id-hidden-input');
+const editSongTitleTextbox = document.getElementById('edit-song-title-textbox');
+const editSongSecondaryTitleTextbox = document.getElementById('edit-song-secondary-title-textbox');
+const editSongCategoryTextbox = document.getElementById('edit-song-category-textbox');
+const editSongFontTextbox = document.getElementById('edit-song-font-textbox');
+const editSongTagsTextbox = document.getElementById('edit-song-tags-textbox');
+const editSongLyricsTextarea = document.getElementById('edit-song-lyrics-textarea');
 const buttonOpenAddSong = document.getElementById('btn-open-add-song');
-const buttonCloseSongModal = document.getElementById('btn-close-song-modal');
-const buttonCancelSongModal = document.getElementById('btn-cancel-song-modal');
+const buttonCloseEditSongDialog = document.getElementById('btn-close-edit-song-dialog');
+const buttonCancelEditSongDialog = document.getElementById('btn-cancel-edit-song-dialog');
 const buttonSaveSong = document.getElementById('btn-save-song');
-const buttonDeleteModalSong = document.getElementById('btn-delete-modal-song');
+const buttonDeleteSongDialog = document.getElementById('btn-delete-song-dialog');
 
 // ---------------------------------------------------------------------------
 // Common Utility Functions
