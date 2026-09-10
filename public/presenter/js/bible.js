@@ -2,16 +2,42 @@
 // Presenter Console — Bible 3-Column Browser & Scripture Presentation
 // ===========================================================================
 
-const STANDARD_BIBLE_CHAPTER_COUNTS = [
-  50, 40, 27, 36, 34, 24, 21, 4, 31, 24, 22, 25, 29, 36, 10, 13, 10, 42, 150, 31,
-  12, 8, 66, 52, 5, 48, 12, 14, 3, 9, 1, 4, 7, 3, 3, 3, 2, 14, 4, 28,
-  16, 24, 21, 28, 16, 16, 13, 6, 6, 4, 4, 5, 3, 6, 4, 3, 1, 13, 5, 5,
-  3, 5, 1, 1, 1, 22
-];
+let standardBibleChapterAndVerseCounts = null; // Cached from /api/bible/{versionId}/structure
+const bibleStructureCache = new Map(); // Cache indexed by versionId
 
 const bibleChapterTextCache = new Map();
 const MAX_BIBLE_CACHE_CHAPTERS = 20; // Caps in-memory text cache to ~80-100 KB total
 let currentBibleTextFetchId = 0;
+
+// Fetch and cache the Bible structure (chapter/verse counts) for a specific version
+async function loadBibleStructure(versionId)
+{
+  if (bibleStructureCache.has(versionId))
+  {
+    standardBibleChapterAndVerseCounts = bibleStructureCache.get(versionId);
+    return standardBibleChapterAndVerseCounts;
+  }
+
+  try
+  {
+    const res = await fetch(`/api/bible/${versionId}/structure`);
+    if (res.ok)
+    {
+      const data = await res.json();
+      const books = data.books || [];
+      bibleStructureCache.set(versionId, books);
+      standardBibleChapterAndVerseCounts = books;
+      return books;
+    }
+  }
+  catch (err)
+  {
+    console.warn(`Could not load Bible structure for ${versionId}:`, err);
+  }
+
+  standardBibleChapterAndVerseCounts = null;
+  return null;
+}
 
 async function initBible()
 {
@@ -41,6 +67,10 @@ async function initBible()
       selectedVersionId = targetVer.id;
       if (selectVersion) selectVersion.value = targetVer.id;
       if (bibleSearchVersionLabel) bibleSearchVersionLabel.textContent = targetVer.name;
+      
+      // Load Bible structure (chapter/verse counts) for this version
+      await loadBibleStructure(selectedVersionId);
+      
       await loadBibleBooks(selectedVersionId, selectedBookNum, selectedChapterNum, selectedVerseNum);
     }
 
@@ -69,6 +99,10 @@ async function initBible()
         bibleChapterTextCache.clear();
         const verObj = bibleVersions.find(v => v.id === selectedVersionId);
         if (bibleSearchVersionLabel && verObj) bibleSearchVersionLabel.textContent = verObj.name;
+        
+        // Load Bible structure for new version
+        await loadBibleStructure(selectedVersionId);
+        
         await loadBibleBooks(selectedVersionId, selectedBookNum, selectedChapterNum, selectedVerseNum);
       });
     }
@@ -123,56 +157,6 @@ async function loadBibleBooks(versionId, targetBookNum = null, targetChapter = n
   {
     console.error('Error loading Bible books:', err);
   }
-}
-
-const STANDARD_ENGLISH_BOOK_ABBR = {
-  1: 'Gen', 2: 'Exo', 3: 'Lev', 4: 'Num', 5: 'Deu', 6: 'Jos', 7: 'Jdg', 8: 'Rut', 9: '1Sa', 10: '2Sa',
-  11: '1Ki', 12: '2Ki', 13: '1Ch', 14: '2Ch', 15: 'Ezr', 16: 'Neh', 17: 'Est', 18: 'Job', 19: 'Psa', 20: 'Pro',
-  21: 'Ecc', 22: 'Sng', 23: 'Isa', 24: 'Jer', 25: 'Lam', 26: 'Eze', 27: 'Dan', 28: 'Hos', 29: 'Joe', 30: 'Amo',
-  31: 'Oba', 32: 'Jon', 33: 'Mic', 34: 'Nah', 35: 'Hab', 36: 'Zep', 37: 'Hag', 38: 'Zec', 39: 'Mal',
-  40: 'Mat', 41: 'Mrk', 42: 'Luk', 43: 'Jhn', 44: 'Act', 45: 'Rom', 46: '1Co', 47: '2Co', 48: 'Gal', 49: 'Eph',
-  50: 'Php', 51: 'Col', 52: '1Th', 53: '2Th', 54: '1Ti', 55: '2Ti', 56: 'Tit', 57: 'Phm', 58: 'Heb', 59: 'Jas',
-  60: '1Pe', 61: '2Pe', 62: '1Jn', 63: '2Jn', 64: '3Jn', 65: 'Jud', 66: 'Rev'
-};
-
-function getShortBookName(name, bookNum)
-{
-  if (!name) return '';
-  const num = Number(bookNum);
-  const trimmed = name.trim();
-
-  // If standard English book name:
-  if (STANDARD_ENGLISH_BOOK_ABBR[num] && /^[1-3]?\s*[A-Za-z\s]+$/.test(trimmed))
-  {
-    return STANDARD_ENGLISH_BOOK_ABBR[num];
-  }
-
-  // Use Intl.Segmenter for Indic / Unicode scripts to preserve combining characters accurately
-  if (typeof Intl !== 'undefined' && Intl.Segmenter)
-  {
-    try
-    {
-      const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
-      const numMatch = trimmed.match(/^([1-3]|I{1,3})\s*(.*)$/i);
-      if (numMatch && numMatch[2])
-      {
-        const prefix = numMatch[1];
-        const restSegments = Array.from(segmenter.segment(numMatch[2].trim())).map(s => s.segment);
-        return prefix + restSegments.slice(0, 3).join('');
-      }
-      const segments = Array.from(segmenter.segment(trimmed)).map(s => s.segment);
-      return segments.slice(0, 4).join('');
-    }
-    catch (e) {}
-  }
-
-  // Fallback for environments without Intl.Segmenter
-  const numMatch = trimmed.match(/^([1-3]|I{1,3})\s*(.*)$/i);
-  if (numMatch && numMatch[2])
-  {
-    return numMatch[1] + numMatch[2].slice(0, 3);
-  }
-  return trimmed.slice(0, 4);
 }
 
 function renderBibleBooksList()
@@ -252,7 +236,17 @@ async function selectBibleBook(bookNum, bookName, targetChapter = null, targetVe
 
   // Instant zero-delay chapter resolution from loaded book metadata or standard canon
   const bookObj = allBibleBooks.find(b => Number(b.bookNum) === selectedBookNum);
-  const chapterCount = (bookObj && bookObj.chapterCount) ? bookObj.chapterCount : (STANDARD_BIBLE_CHAPTER_COUNTS[selectedBookNum - 1] || 1);
+  let chapterCount = 1;
+  
+  if (bookObj && bookObj.chapterCount)
+  {
+    chapterCount = bookObj.chapterCount;
+  }
+  else if (standardBibleChapterAndVerseCounts && standardBibleChapterAndVerseCounts[selectedBookNum - 1])
+  {
+    chapterCount = standardBibleChapterAndVerseCounts[selectedBookNum - 1].length;
+  }
+  
   const chapters = Array.from({ length: chapterCount }, (_, i) => i + 1);
 
   // Render chapter list immediately without waiting for any network roundtrip!
@@ -331,12 +325,16 @@ async function selectBibleChapter(chNum, targetVerse = null)
     });
   }
 
-  // Instant zero-delay verse resolution from book metadata
+  // Instant zero-delay verse resolution from book metadata or standard canon
   const bookObj = allBibleBooks.find(b => Number(b.bookNum) === selectedBookNum);
   let vCount = 0;
   if (bookObj && bookObj.verseCounts && bookObj.verseCounts[selectedChapterNum - 1])
   {
     vCount = bookObj.verseCounts[selectedChapterNum - 1];
+  }
+  else if (standardBibleChapterAndVerseCounts && standardBibleChapterAndVerseCounts[selectedBookNum - 1] && standardBibleChapterAndVerseCounts[selectedBookNum - 1][selectedChapterNum - 1])
+  {
+    vCount = standardBibleChapterAndVerseCounts[selectedBookNum - 1][selectedChapterNum - 1];
   }
 
   const cacheKey = `${selectedVersionId}_${selectedBookNum}_${selectedChapterNum}`;

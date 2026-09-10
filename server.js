@@ -103,13 +103,6 @@ catch (e)
 const bibleDbCache = new Map();
 const bibleStructureCache = new Map();
 
-const STANDARD_BIBLE_CHAPTER_COUNTS = [
-  50, 40, 27, 36, 34, 24, 21, 4, 31, 24, 22, 25, 29, 36, 10, 13, 10, 42, 150, 31,
-  12, 8, 66, 52, 5, 48, 12, 14, 3, 9, 1, 4, 7, 3, 3, 3, 2, 14, 4, 28,
-  16, 24, 21, 28, 16, 16, 13, 6, 6, 4, 4, 5, 3, 6, 4, 3, 1, 13, 5, 5,
-  3, 5, 1, 1, 1, 22
-];
-
 function getBibleStructure(versionId)
 {
   if (bibleStructureCache.has(versionId))
@@ -804,7 +797,7 @@ app.get('/api/bible/:version/books', (req, res) =>
         return {
           bookNum: bNum,
           name: b,
-          chapterCount: struct ? struct.chapterCount : (STANDARD_BIBLE_CHAPTER_COUNTS[idx] || 1),
+          chapterCount: struct ? struct.chapterCount : 1,
           verseCounts: struct ? struct.verseCounts : []
         };
       });
@@ -828,7 +821,7 @@ app.get('/api/bible/:version/books', (req, res) =>
       return {
         bookNum: r.bookNum,
         name: `Book ${r.bookNum}`,
-        chapterCount: struct ? struct.chapterCount : (STANDARD_BIBLE_CHAPTER_COUNTS[r.bookNum - 1] || 1),
+        chapterCount: struct ? struct.chapterCount : 1,
         verseCounts: struct ? struct.verseCounts : []
       };
     });
@@ -837,6 +830,34 @@ app.get('/api/bible/:version/books', (req, res) =>
       version: ver || { id: versionId, name: versionId },
       books
     });
+  }
+  catch (err)
+  {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/bible/:version/structure', (req, res) =>
+{
+  try
+  {
+    const versionId = req.params.version;
+    const structure = getBibleStructure(versionId);
+    
+    // Build the books array with chapter/verse counts for each book from database
+    const books = [];
+    for (let bookNum = 1; bookNum <= 66; bookNum++)
+    {
+      const struct = structure ? structure.get(bookNum) : null;
+      
+      if (struct && struct.verseCounts && struct.verseCounts.length > 0)
+      {
+        // Use actual verse counts from database
+        books.push(struct.verseCounts);
+      }
+    }
+    
+    res.json({ books });
   }
   catch (err)
   {
@@ -854,7 +875,7 @@ app.get('/api/bible/:version/chapters', (req, res) =>
 
     const structure = getBibleStructure(versionId);
     const struct = structure ? structure.get(bookNum) : null;
-    const chapterCount = struct ? struct.chapterCount : (STANDARD_BIBLE_CHAPTER_COUNTS[bookNum - 1] || 1);
+    const chapterCount = struct ? struct.chapterCount : 1;
 
     const chapters = Array.from({ length: chapterCount }, (_, i) => i + 1);
     res.json(chapters);
