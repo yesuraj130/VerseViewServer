@@ -45,7 +45,9 @@ function triggerNext()
   if (liveState.type === 'song' && liveState.songId)
   {
     const currentIdx = Number(liveState.slideIndex) || 1;
-    const total = Number(liveState.totalSlides) || ((selectedSong && selectedSong.slides) ? selectedSong.slides.length : (currentIdx + 1));
+    const currentCachedSong = (liveState.songId && songSlidesTextCache.get(Number(liveState.songId))) ||
+      (selectedSongId && songSlidesTextCache.get(Number(selectedSongId)));
+    const total = Number(liveState.totalSlides) || ((currentCachedSong && currentCachedSong.slides) ? currentCachedSong.slides.length : (currentIdx + 1));
     const nextIdx = Math.min(total, currentIdx + 1);
     presentSlide({ id: liveState.songId }, nextIdx);
   }
@@ -110,7 +112,7 @@ async function jumpToLiveSlide()
   if (liveState.type === 'song' && liveState.songId)
   {
     switchTab('songs');
-    if (!selectedSong || Number(selectedSong.id) !== Number(liveState.songId))
+    if (!selectedSongId || Number(selectedSongId) !== Number(liveState.songId))
     {
       await selectSong(liveState.songId);
     }

@@ -7,8 +7,12 @@ const socket = (typeof io !== 'undefined') ? io() : null;
 
 // Application State
 let liveState = null;
-let selectedSong = null;
+let selectedSongId = null;
 let lastBrowsedSongId = null;
+
+// Song Slides in-memory text cache
+const songSlidesTextCache = new Map();
+const MAX_SONG_CACHE_COUNT = 50;
 
 // Restore Last Browsed Song ID from LocalStorage
 try
