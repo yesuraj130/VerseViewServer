@@ -360,22 +360,22 @@ function renderBibleVersesList(verseNumbers)
 
   verseNumbers.forEach((v) =>
   {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'num-btn';
-    btn.textContent = v;
+    const verseButton = document.createElement('button');
+    verseButton.type = 'button';
+    verseButton.className = 'num-btn';
+    verseButton.textContent = v;
 
     if (Number(v) === Number(selectedVerseNumber))
     {
-      btn.classList.add('active');
+      verseButton.classList.add('active');
     }
 
-    btn.addEventListener('click', () =>
+    verseButton.addEventListener('click', () =>
     {
       selectBibleVerse(v);
     });
 
-    bibleVersesList.appendChild(btn);
+    bibleVersesList.appendChild(verseButton);
   });
 
   if (typeof highlightActiveInDecks === 'function' && liveState)

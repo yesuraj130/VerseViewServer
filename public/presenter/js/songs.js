@@ -13,7 +13,7 @@ async function loadSongs(songSearchText = '')
     const songsSearchResultJson = await songsSearchFetchResult.json();
     renderSongList(songsSearchResultJson);
 
-    if (!currentSong && songsSearchResultJson.length > 0)
+    if (!selectedSong && songsSearchResultJson.length > 0)
     {
       let songToSelect = songsSearchResultJson[0];
       try
@@ -73,7 +73,7 @@ function createSongItemElement(song)
   const item = document.createElement('div');
   item.className = 'song-item';
   item.setAttribute('data-id', song.id);
-  if (currentSong && Number(currentSong.id) === Number(song.id))
+  if (selectedSong && Number(selectedSong.id) === Number(song.id))
   {
     item.classList.add('selected');
   }
@@ -240,8 +240,7 @@ async function selectSong(songId, autoPresent = false)
   {
     const res = await fetch(`/api/songs/${songId}`);
     const song = await res.json();
-    currentSong = song;
-    activeSongSlideIndex = 1;
+    selectedSong = song;
     const slides = song.slides || [];
 
     if (activeSongTitle)
@@ -258,9 +257,9 @@ async function selectSong(songId, autoPresent = false)
     {
       activeSlideCountIndicator.textContent = `${slides.length} slides`;
     }
-    if (btnDeckEditSong) btnDeckEditSong.style.display = 'inline-flex';
+    if (buttonDeckEditSong) buttonDeckEditSong.style.display = 'inline-flex';
 
-    renderSlideDeck(currentSong, slides);
+    renderSlideDeck(selectedSong, slides);
 
     if (window.innerWidth <= 768 && typeof setMobilePaneMode === 'function')
     {
@@ -305,7 +304,7 @@ function measureMaxLineWidth(lines, font = '500 14px "Baloo Thambi 2", "Baloo Th
 function updateSongDeckColumnWidth(slides)
 {
   const targetContainer = document.getElementById('slide-deck-songs') || slideDeckContainer;
-  const songSlides = slides || (currentSong && currentSong.slides) || [];
+  const songSlides = slides || (selectedSong && selectedSong.slides) || [];
   if (!targetContainer || songSlides.length === 0) return;
 
   const clientWidth = targetContainer.clientWidth;
@@ -330,7 +329,7 @@ function updateSongDeckColumnWidth(slides)
     });
   });
 
-  const songFontFam = currentSong ? getSongFontFamily(currentSong.font) : 'var(--font-display)';
+  const songFontFam = selectedSong ? getSongFontFamily(selectedSong.font) : 'var(--font-display)';
   const maxLineWidth = measureMaxLineWidth(allLines, `500 14px ${songFontFam}`);
   const naturalColWidth = Math.max(220, Math.ceil(maxLineWidth * 1.06 + 46));
 
@@ -404,7 +403,6 @@ function renderSlideDeck(song, slides)
 
 function presentSlide(song, slideIndex)
 {
-  activeSongSlideIndex = slideIndex;
   const payload = {
     type: 'song',
     songId: song.id,
@@ -559,10 +557,10 @@ function renderEditorSlides()
       updateEditorGridColumnWidth();
     });
 
-    const btnUp = card.querySelector('.btn-move-up');
-    if (btnUp && index > 0)
+    const buttonMoveUp = card.querySelector('.btn-move-up');
+    if (buttonMoveUp && index > 0)
     {
-      btnUp.addEventListener('click', () =>
+      buttonMoveUp.addEventListener('click', () =>
       {
         syncEditorSlideTextsFromDom();
         const tmp = editorSlideTexts[index - 1];
@@ -572,10 +570,10 @@ function renderEditorSlides()
       });
     }
 
-    const btnDown = card.querySelector('.btn-move-down');
-    if (btnDown && index < editorSlideTexts.length - 1)
+    const buttonMoveDown = card.querySelector('.btn-move-down');
+    if (buttonMoveDown && index < editorSlideTexts.length - 1)
     {
-      btnDown.addEventListener('click', () =>
+      buttonMoveDown.addEventListener('click', () =>
       {
         syncEditorSlideTextsFromDom();
         const tmp = editorSlideTexts[index + 1];
@@ -585,10 +583,10 @@ function renderEditorSlides()
       });
     }
 
-    const btnDel = card.querySelector('.btn-delete-card');
-    if (btnDel && editorSlideTexts.length > 1)
+    const buttonDeleteCard = card.querySelector('.btn-delete-card');
+    if (buttonDeleteCard && editorSlideTexts.length > 1)
     {
-      btnDel.addEventListener('click', () =>
+      buttonDeleteCard.addEventListener('click', () =>
       {
         syncEditorSlideTextsFromDom();
         editorSlideTexts.splice(index, 1);
@@ -613,9 +611,9 @@ function syncEditorSlideTextsFromDom()
   });
 }
 
-if (btnAddEmptySlide)
+if (buttonAddEmptySlide)
 {
-  btnAddEmptySlide.addEventListener('click', () =>
+  buttonAddEmptySlide.addEventListener('click', () =>
   {
     syncEditorSlideTextsFromDom();
     editorSlideTexts.push('');
@@ -637,9 +635,9 @@ if (btnAddEmptySlide)
 }
 
 // Generate Slides (Bulk Edit) handling
-if (btnGenerateSlides)
+if (buttonGenerateSlides)
 {
-  btnGenerateSlides.addEventListener('click', () =>
+  buttonGenerateSlides.addEventListener('click', () =>
   {
     syncEditorSlideTextsFromDom();
     // Formats all slides in a single textbox separated by two blank lines (\n\n\n)
@@ -664,12 +662,12 @@ function closeBulkModal()
   if (bulkSlidesModal) bulkSlidesModal.style.display = 'none';
 }
 
-if (btnCloseBulkModal) btnCloseBulkModal.addEventListener('click', closeBulkModal);
-if (btnCancelBulkModal) btnCancelBulkModal.addEventListener('click', closeBulkModal);
+if (buttonCloseBulkModal) buttonCloseBulkModal.addEventListener('click', closeBulkModal);
+if (buttonCancelBulkModal) buttonCancelBulkModal.addEventListener('click', closeBulkModal);
 
-if (btnApplyBulkSlides)
+if (buttonApplyBulkSlides)
 {
-  btnApplyBulkSlides.addEventListener('click', () =>
+  buttonApplyBulkSlides.addEventListener('click', () =>
   {
     if (bulkSlidesTextarea)
     {
@@ -688,9 +686,9 @@ if (btnApplyBulkSlides)
   });
 }
 
-if (btnOpenAddSong)
+if (buttonOpenAddSong)
 {
-  btnOpenAddSong.addEventListener('click', () =>
+  buttonOpenAddSong.addEventListener('click', () =>
   {
     modalSongId.value = '';
     modalSongTitle.textContent = 'Add New Song';
@@ -701,7 +699,7 @@ if (btnOpenAddSong)
     if (modalInputTags) modalInputTags.value = '';
     editorSlideTexts = [''];
     renderEditorSlides();
-    if (btnDeleteModalSong) btnDeleteModalSong.style.display = 'none';
+    if (buttonDeleteModalSong) buttonDeleteModalSong.style.display = 'none';
     songModal.style.display = 'flex';
     requestAnimationFrame(() => {
       autoFitAllEditorTextareas();
@@ -713,11 +711,11 @@ if (btnOpenAddSong)
   });
 }
 
-if (btnDeckEditSong)
+if (buttonDeckEditSong)
 {
-  btnDeckEditSong.addEventListener('click', () =>
+  buttonDeckEditSong.addEventListener('click', () =>
   {
-    if (currentSong) openEditSongModal(currentSong.id);
+    if (selectedSong) openEditSongModal(selectedSong.id);
   });
 }
 
@@ -726,12 +724,12 @@ function closeSongModal()
   if (songModal) songModal.style.display = 'none';
 }
 
-if (btnCloseSongModal) btnCloseSongModal.addEventListener('click', closeSongModal);
-if (btnCancelSongModal) btnCancelSongModal.addEventListener('click', closeSongModal);
+if (buttonCloseSongModal) buttonCloseSongModal.addEventListener('click', closeSongModal);
+if (buttonCancelSongModal) buttonCancelSongModal.addEventListener('click', closeSongModal);
 
-if (btnSaveSong)
+if (buttonSaveSong)
 {
-  btnSaveSong.addEventListener('click', async () =>
+  buttonSaveSong.addEventListener('click', async () =>
   {
     syncEditorSlideTextsFromDom();
     const title = modalInputTitle ? modalInputTitle.value.trim() : '';
@@ -822,10 +820,10 @@ async function openEditSongModal(songId)
     editorSlideTexts = lyricsToSlideTexts(song.lyrics || '');
     renderEditorSlides();
 
-    if (btnDeleteModalSong)
+    if (buttonDeleteModalSong)
     {
-      btnDeleteModalSong.style.display = 'inline-flex';
-      btnDeleteModalSong.onclick = async () =>
+      buttonDeleteModalSong.style.display = 'inline-flex';
+      buttonDeleteModalSong.onclick = async () =>
       {
         if (confirm(`Are you sure you want to delete song "${song.name}"? This action cannot be undone.`))
         {
@@ -856,15 +854,15 @@ async function deleteSong(songId)
     const res = await fetch(`/api/songs/${songId}`, { method: 'DELETE' });
     if (res.ok)
     {
-      if (currentSong && Number(currentSong.id) === Number(songId))
+      if (selectedSong && Number(selectedSong.id) === Number(songId))
       {
-        currentSong = null;
+        selectedSong = null;
         if (slideDeckContainer)
         {
           slideDeckContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 48px;">Select a song from the library on the left.</div>';
         }
         if (activeSongTitle) activeSongTitle.textContent = 'Select a Song';
-        if (btnDeckEditSong) btnDeckEditSong.style.display = 'none';
+        if (buttonDeckEditSong) buttonDeckEditSong.style.display = 'none';
       }
       await loadSongs(songSearchInput ? songSearchInput.value : '');
     }
@@ -881,9 +879,9 @@ if (songSearchInput)
 {
   const updateClearBtn = () =>
   {
-    if (btnClearSongSearch)
+    if (buttonClearSongSearch)
     {
-      btnClearSongSearch.style.display = songSearchInput.value ? 'flex' : 'none';
+      buttonClearSongSearch.style.display = songSearchInput.value ? 'flex' : 'none';
     }
   };
 
@@ -897,9 +895,9 @@ if (songSearchInput)
     }, 200);
   });
 
-  if (btnClearSongSearch)
+  if (buttonClearSongSearch)
   {
-    btnClearSongSearch.addEventListener('click', () =>
+    buttonClearSongSearch.addEventListener('click', () =>
     {
       songSearchInput.value = '';
       updateClearBtn();

@@ -175,7 +175,7 @@ function highlightActiveInDecks(state)
   const slideDeckSongsEl = document.getElementById('slide-deck-songs') || (typeof slideDeckContainer !== 'undefined' ? slideDeckContainer : null);
   if (slideDeckSongsEl)
   {
-    const isThisSong = isLive && currentSong && Number(state.songId) === Number(currentSong.id);
+    const isThisSong = isLive && selectedSong && Number(state.songId) === Number(selectedSong.id);
     for (let i = 0; i < slideDeckSongsEl.children.length; i++)
     {
       const card = slideDeckSongsEl.children[i];

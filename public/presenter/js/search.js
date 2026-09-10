@@ -2,9 +2,9 @@
 // Presenter Console — Bible Word / Phrase Search
 // ===========================================================================
 
-if (btnRunBibleSearch)
+if (buttonRunBibleSearch)
 {
-  btnRunBibleSearch.addEventListener('click', performBibleSearch);
+  buttonRunBibleSearch.addEventListener('click', performBibleSearch);
 }
 if (bibleFullSearchInput)
 {
@@ -62,10 +62,10 @@ async function performBibleSearch()
           <div class="verse-text">${highlighted}</div>
         `;
 
-        const presBtn = card.querySelector('.btn-search-pres');
-        if (presBtn)
+        const buttonSearchPresent = card.querySelector('.btn-search-pres');
+        if (buttonSearchPresent)
         {
-          presBtn.addEventListener('click', async (e) =>
+          buttonSearchPresent.addEventListener('click', async (e) =>
           {
             e.stopPropagation();
             displaySearchVerseDeck(r);
@@ -135,10 +135,10 @@ function displaySearchVerseDeck(r)
       </div>
     `;
 
-    const btnOpenCh = card.querySelector('.btn-open-ch');
-    if (btnOpenCh)
+    const buttonOpenChapter = card.querySelector('.btn-open-ch');
+    if (buttonOpenChapter)
     {
-      btnOpenCh.addEventListener('click', async () =>
+      buttonOpenChapter.addEventListener('click', async () =>
       {
         if (typeof switchTab === 'function') switchTab('bible');
         if (typeof selectBibleBook === 'function')

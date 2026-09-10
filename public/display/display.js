@@ -5,7 +5,7 @@ const linesContainer = document.getElementById('lines-container');
 const displayRef = document.getElementById('display-ref');
 const socketDot = document.getElementById('display-socket-dot');
 const statusText = document.getElementById('display-status-text');
-const btnToggleFs = document.getElementById('btn-toggle-fs');
+const buttonToggleFullscreen = document.getElementById('btn-toggle-fs');
 
 // Initialize Socket.io
 const socket = (typeof io !== 'undefined') ? io() : null;
@@ -204,9 +204,9 @@ function toggleFullscreen()
   }
 }
 
-if (btnToggleFs)
+if (buttonToggleFullscreen)
 {
-  btnToggleFs.addEventListener('click', (e) =>
+  buttonToggleFullscreen.addEventListener('click', (e) =>
   {
     e.stopPropagation();
     toggleFullscreen();

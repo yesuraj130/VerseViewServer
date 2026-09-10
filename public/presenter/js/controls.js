@@ -20,10 +20,6 @@ function triggerPrevious()
     const currentIdx = Number(liveState.slideIndex) || 1;
     const prevIdx = Math.max(1, currentIdx - 1);
     presentSlide({ id: liveState.songId }, prevIdx);
-    if (currentSong && Number(currentSong.id) === Number(liveState.songId))
-    {
-      activeSongSlideIndex = prevIdx;
-    }
   }
   else if (liveState.type === 'bible' && liveState.verseInfo)
   {
@@ -49,13 +45,9 @@ function triggerNext()
   if (liveState.type === 'song' && liveState.songId)
   {
     const currentIdx = Number(liveState.slideIndex) || 1;
-    const total = Number(liveState.totalSlides) || ((currentSong && currentSong.slides) ? currentSong.slides.length : (currentIdx + 1));
+    const total = Number(liveState.totalSlides) || ((selectedSong && selectedSong.slides) ? selectedSong.slides.length : (currentIdx + 1));
     const nextIdx = Math.min(total, currentIdx + 1);
     presentSlide({ id: liveState.songId }, nextIdx);
-    if (currentSong && Number(currentSong.id) === Number(liveState.songId))
-    {
-      activeSongSlideIndex = nextIdx;
-    }
   }
   else if (liveState.type === 'bible' && liveState.verseInfo)
   {
@@ -104,7 +96,7 @@ window.addEventListener('keydown', (e) =>
 
 // Event Listeners for Toolbar Buttons
 if (buttonClear) buttonClear.addEventListener('click', triggerClear);
-if (butttonPreviousSlide) butttonPreviousSlide.addEventListener('click', triggerPrevious);
+if (buttonPreviousSlide) buttonPreviousSlide.addEventListener('click', triggerPrevious);
 if (buttonNextSlide) buttonNextSlide.addEventListener('click', triggerNext);
 
 // Event Listeners
@@ -118,12 +110,11 @@ async function jumpToLiveSlide()
   if (liveState.type === 'song' && liveState.songId)
   {
     switchTab('songs');
-    if (!currentSong || Number(currentSong.id) !== Number(liveState.songId))
+    if (!selectedSong || Number(selectedSong.id) !== Number(liveState.songId))
     {
       await selectSong(liveState.songId);
     }
     const slideIdx = Number(liveState.slideIndex) || 1;
-    activeSongSlideIndex = slideIdx;
 
     if (slideDeckSongs)
     {
@@ -179,15 +170,15 @@ async function jumpToLiveSlide()
 // ---------------------------------------------------------------------------
 function updateCollapseButtons(collapsed)
 {
-  const toggleBtn = document.getElementById('btn-collapse-header');
-  if (toggleBtn)
+  const buttonCollapseHeader = document.getElementById('btn-collapse-header');
+  if (buttonCollapseHeader)
   {
     if (collapsed)
     {
-      toggleBtn.classList.add('collapsed');
-      toggleBtn.setAttribute('title', 'Expand Header & Tabs');
-      toggleBtn.setAttribute('aria-label', 'Expand Header & Tabs');
-      toggleBtn.innerHTML = `
+      buttonCollapseHeader.classList.add('collapsed');
+      buttonCollapseHeader.setAttribute('title', 'Expand Header & Tabs');
+      buttonCollapseHeader.setAttribute('aria-label', 'Expand Header & Tabs');
+      buttonCollapseHeader.innerHTML = `
         <svg class="vv-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="6 9 12 15 18 9"></polyline>
         </svg>
@@ -195,10 +186,10 @@ function updateCollapseButtons(collapsed)
     }
     else
     {
-      toggleBtn.classList.remove('collapsed');
-      toggleBtn.setAttribute('title', 'Collapse Header & Tabs');
-      toggleBtn.setAttribute('aria-label', 'Collapse Header & Tabs');
-      toggleBtn.innerHTML = `
+      buttonCollapseHeader.classList.remove('collapsed');
+      buttonCollapseHeader.setAttribute('title', 'Collapse Header & Tabs');
+      buttonCollapseHeader.setAttribute('aria-label', 'Collapse Header & Tabs');
+      buttonCollapseHeader.innerHTML = `
         <svg class="vv-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="18 15 12 9 6 15"></polyline>
         </svg>
@@ -209,9 +200,9 @@ function updateCollapseButtons(collapsed)
 
 function initHeaderCollapseToggle()
 {
-  const toggleBtn = document.getElementById('btn-collapse-header');
+  const buttonCollapseHeader = document.getElementById('btn-collapse-header');
   const appContainer = document.querySelector('.presenter-app');
-  if (!appContainer || !toggleBtn) return;
+  if (!appContainer || !buttonCollapseHeader) return;
 
   try
   {
@@ -224,7 +215,7 @@ function initHeaderCollapseToggle()
   }
   catch (e) {}
 
-  toggleBtn.addEventListener('click', (e) => {
+  buttonCollapseHeader.addEventListener('click', (e) => {
     e.stopPropagation();
     const collapsed = appContainer.classList.toggle('header-collapsed');
     updateCollapseButtons(collapsed);
@@ -277,10 +268,10 @@ function switchTab(tabId)
   const workspaceViews = document.querySelectorAll('.workspace-tab-view');
   workspaceViews.forEach(v => v.classList.toggle('active', v.id === `workspace-${tabId}`));
 
-  const addSongBtn = document.getElementById('btn-open-add-song');
-  if (addSongBtn)
+  const buttonAddSong = document.getElementById('btn-open-add-song');
+  if (buttonAddSong)
   {
-    addSongBtn.style.display = (tabId === 'songs') ? '' : 'none';
+    buttonAddSong.style.display = (tabId === 'songs') ? '' : 'none';
   }
 
   const versionWrap = document.getElementById('wrap-select-version');

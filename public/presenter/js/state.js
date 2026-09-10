@@ -7,8 +7,7 @@ const socket = (typeof io !== 'undefined') ? io() : null;
 
 // Application State
 let liveState = null;
-let currentSong = null;
-let activeSongSlideIndex = 1;
+let selectedSong = null;
 
 // Bible Application State
 let bibleVersions = [];
@@ -86,7 +85,7 @@ const bibleChaptersList = document.getElementById('bible-chapters-list');
 const bibleVersesList = document.getElementById('bible-verses-list');
 
 const bibleFullSearchInput = document.getElementById('bible-full-search-input');
-const btnRunBibleSearch = document.getElementById('btn-run-bible-search');
+const buttonRunBibleSearch = document.getElementById('btn-run-bible-search');
 const bibleSearchResultsContainer = document.getElementById('bible-search-results-container');
 
 const slideDeckSongs = document.getElementById('slide-deck-songs');
@@ -96,7 +95,7 @@ const slideDeckSearch = document.getElementById('slide-deck-search');
 const activeSongTitle = document.getElementById('active-song-title');
 const songUnicodeDeckBadge = document.getElementById('song-unicode-deck-badge');
 const activeSlideCountIndicator = document.getElementById('active-slide-count-indicator');
-const btnDeckEditSong = document.getElementById('btn-deck-edit-song');
+const buttonDeckEditSong = document.getElementById('btn-deck-edit-song');
 
 const activeSearchTitle = document.getElementById('active-search-title');
 const activeSearchVerBadge = document.getElementById('active-search-ver-badge');
@@ -112,20 +111,20 @@ const modalInputFont = document.getElementById('modal-input-font');
 const modalInputTags = document.getElementById('modal-input-tags');
 const editorSlidesList = document.getElementById('editor-slides-list');
 const modalSlidesCounter = document.getElementById('modal-slides-counter');
-const btnGenerateSlides = document.getElementById('btn-generate-slides');
-const btnAddEmptySlide = document.getElementById('btn-add-empty-slide');
-const btnOpenAddSong = document.getElementById('btn-open-add-song');
-const btnCloseSongModal = document.getElementById('btn-close-song-modal');
-const btnCancelSongModal = document.getElementById('btn-cancel-song-modal');
-const btnSaveSong = document.getElementById('btn-save-song');
-const btnDeleteModalSong = document.getElementById('btn-delete-modal-song');
+const buttonGenerateSlides = document.getElementById('btn-generate-slides');
+const buttonAddEmptySlide = document.getElementById('btn-add-empty-slide');
+const buttonOpenAddSong = document.getElementById('btn-open-add-song');
+const buttonCloseSongModal = document.getElementById('btn-close-song-modal');
+const buttonCancelSongModal = document.getElementById('btn-cancel-song-modal');
+const buttonSaveSong = document.getElementById('btn-save-song');
+const buttonDeleteModalSong = document.getElementById('btn-delete-modal-song');
 
 // Generate Slides (Bulk Edit) Modal References
 const bulkSlidesModal = document.getElementById('bulk-slides-modal');
 const bulkSlidesTextarea = document.getElementById('bulk-slides-textarea');
-const btnCloseBulkModal = document.getElementById('btn-close-bulk-modal');
-const btnCancelBulkModal = document.getElementById('btn-cancel-bulk-modal');
-const btnApplyBulkSlides = document.getElementById('btn-apply-bulk-slides');
+const buttonCloseBulkModal = document.getElementById('btn-close-bulk-modal');
+const buttonCancelBulkModal = document.getElementById('btn-cancel-bulk-modal');
+const buttonApplyBulkSlides = document.getElementById('btn-apply-bulk-slides');
 
 // ---------------------------------------------------------------------------
 // Common Utility Functions
