@@ -2,21 +2,15 @@
 // Presenter Console — Bible 3-Column Browser & Scripture Presentation
 // ===========================================================================
 
-let selectedBibleVersionStructure = null; // Cached from /api/bible/{versionId}/structure
-const bibleStructureCache = new Map(); // Cache indexed by versionId
-
-const bibleChapterTextCache = new Map();
-const MAX_BIBLE_CACHE_CHAPTERS = 20; // Caps in-memory text cache to ~80-100 KB total
-let currentBibleTextFetchId = 0;
+const bibleStructureCache = new Map(); // Cached from /api/bible/{versionId}/structure
+const bibleChapterTextCache = new Map(); // Cached from /api/bible/${versionId}/text
+const maxBibleChapterTextCache = 20; // Caps in-memory text cache to ~80-100 KB total
 
 // Fetch and cache the Bible structure (chapter/verse counts) for a specific version
 async function loadBibleStructure(versionId)
 {
-  if (bibleStructureCache.has(versionId))
-  {
-    selectedBibleVersionStructure = bibleStructureCache.get(versionId);
-    return selectedBibleVersionStructure;
-  }
+  if (bibleStructureCache.has(versionId)) return bibleStructureCache.get(versionId);
+  
 
   try
   {
@@ -26,8 +20,7 @@ async function loadBibleStructure(versionId)
       const bibleVersionStructureJson = await bibleVersionStructureFetchResult.json();
       const bibleVersionStructure = bibleVersionStructureJson.books || [];
       bibleStructureCache.set(versionId, bibleVersionStructure);
-      selectedBibleVersionStructure = bibleVersionStructure;
-      return selectedBibleVersionStructure;
+      return bibleVersionStructure;
     }
   }
   catch (err)
@@ -35,7 +28,6 @@ async function loadBibleStructure(versionId)
     console.warn(`Could not load Bible structure for ${versionId}:`, err);
   }
 
-  selectedBibleVersionStructure = null;
   return null;
 }
 
@@ -110,7 +102,7 @@ async function loadBibleBooks(targetVersionId, targetBookNumber, targetChapterNu
     }
     const bibleBooksJson = await bibleBooksFetchResult.json();
     selectedBibleVersionBooks = bibleBooksJson.books || [];
-    renderBibleBooksList();
+    renderBibleBooksList(bibleBooksJson.books);
 
     let initialBook = null;
     const bookNumberToFind = (targetBookNumber !== null && targetBookNumber !== undefined) ? targetBookNumber : 1;
@@ -130,223 +122,103 @@ async function loadBibleBooks(targetVersionId, targetBookNumber, targetChapterNu
   }
 }
 
-function renderBibleBooksList()
+
+async function selectBibleBook(targetBookNumber)
 {
-  if (!bibleBooksList) return;
-  bibleBooksList.innerHTML = '';
+  selectedBookNumber = targetBookNumber;
+  setSelectedIndexInList(bibleBooksList, targetBookNumber - 1);
 
-  let list = selectedBibleVersionBooks;
-
-  for (let i = 0; i < list.length; i++)
+  // Load chapters for the selected book
+  const selectedBibleVersionStructure = bibleStructureCache.get(selectedBibleVersionId);
+  if (selectedBibleVersionStructure && selectedBibleVersionStructure[selectedBookNumber - 1])
   {
-    const book = list[i];
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'book-btn book-item';
-    if (Number(book.bookNum) === Number(selectedBookNumber)) button.classList.add('active');
-    button.title = `${book.name}`;
-    button.innerHTML = `${escapeHtml(book.name.trim())}`;
-
-    button.addEventListener('click', () =>
-    {
-      selectBibleBook(book.bookNum);
-    });
-
-    bibleBooksList.appendChild(button);
+    const chaptersCount = selectedBibleVersionStructure[selectedBookNumber - 1].length;
+    renderBibleChaptersList(chaptersCount);
   }
-
-  if (liveState) highlightActiveInDecks(liveState);  
+  else
+  {
+    // If structure is not available, clear chapters and verses
+    if (bibleChaptersList) bibleChaptersList.innerHTML = '';
+    if (bibleVersesList) bibleVersesList.innerHTML = '';
+    if (slideDeckBible) slideDeckBible.innerHTML = '';
+    console.warn(`Bible structure not available for version ${selectedBibleVersionId} book ${selectedBookNumber}`);
+  }
 }
 
-async function selectBibleBook(targetBookNumber, targetChapterNumber, targetVerseNumber)
-{
-  selectedBookNumber = Number(targetBookNumber);
-  selectedChapterNumber = Number(targetChapterNumber);
-  selectedVerseNumber = Number(targetVerseNumber);
+async function selectBibleChapter(targetChapterNumber)
+{  
+  selectedChapterNumber = targetChapterNumber;
+  setSelectedIndexInList(bibleChaptersList, targetChapterNumber - 1);
 
-  saveLastBrowsedBible();
-
-  if (bibleBooksList)
+  // Load verses for the selected chapter
+  const selectedBibleVersionStructure = bibleStructureCache.get(targetVersionId);
+  if (selectedBibleVersionStructure && selectedBibleVersionStructure[targetBookNumber - 1] && selectedBibleVersionStructure[targetBookNumber - 1][targetChapterNumber - 1])
   {
-    const bookChildren = bibleBooksList.children;
-    for (let i = 0; i < bookChildren.length; i++)
-    {
-      const bookObj = selectedBibleVersionBooks[i];
-      const isSelected = bookObj ? Number(bookObj.bookNum) === selectedBookNumber : (i + 1 === selectedBookNumber);
-      bookChildren[i].classList.toggle('active', isSelected);
-    }
+    const verseCount = selectedBibleVersionStructure[targetBookNumber - 1][targetChapterNumber - 1];
+    renderBibleVersesList(verseCount);
+  }
+  else
+  {
+    // If structure is not available, clear verses
+    if (bibleVersesList) bibleVersesList.innerHTML = '';
+    console.warn(`Bible structure not available for version ${targetVersionId} book ${targetBookNumber} chapter ${targetChapterNumber}`);
   }
 
-  // Instant zero-delay chapter resolution from loaded book metadata or bible structure
-  const bibleBook = selectedBibleVersionBooks.find(b => Number(b.bookNum) === selectedBookNumber);
-  let chapterCount = 1;
-  if (bibleBook && bibleBook.chapterCount) chapterCount = bibleBook.chapterCount;
-  else if (selectedBibleVersionStructure && selectedBibleVersionStructure[selectedBookNumber - 1]) chapterCount = selectedBibleVersionStructure[selectedBookNumber - 1].length;
-  
-  const chapters = Array.from({ length: chapterCount }, (_, i) => i + 1);
-  renderBibleChaptersList(chapters);
-
-  let chosenChapterNumber = targetChapterNumber ? Number(targetChapterNumber) : 1;
-  if (chosenChapterNumber < 1 || chosenChapterNumber > chapterCount) chosenChapterNumber = 1;
-  
-  // Scroll chapter column to top when resetting to chapter 1, or into view if specific target
-  if (bibleChaptersList)
-  {
-    if (chosenChapterNumber === 1)
-    {
-      bibleChaptersList.scrollTop = 0;
-    }
-    else
-    {
-      const activeChapterButton = bibleChaptersList.children[chosenChapterNumber - 1];
-      if (activeChapterButton)
-      {
-        activeChapterButton.scrollIntoView({ block: 'nearest', behavior: 'auto' });   
-      }
-      else
-      {
-        bibleChaptersList.scrollTop = 0;
-      }
-    }
-  }
-
-  // Select chapter immediately
-  await selectBibleChapter(chosenChapterNumber, targetVerseNumber);
-}
-
-function renderBibleChaptersList(chapters)
-{
-  if (!bibleChaptersList) return;
-  bibleChaptersList.innerHTML = '';
-
-  chapters.forEach((chapter) =>
-  {
-    const chapterButton = document.createElement('button');
-    chapterButton.type = 'button';
-    chapterButton.className = 'num-btn';
-    chapterButton.textContent = chapter;
-
-    if (Number(chapter) === Number(selectedChapterNumber)) chapterButton.classList.add('active');
-    
-    chapterButton.addEventListener('click', () =>
-    {
-      selectBibleChapter(chapter);
-    });
-
-    bibleChaptersList.appendChild(chapterButton);
-  });
-
-  if (liveState) highlightActiveInDecks(liveState); 
-}
-
-async function selectBibleChapter(targetChapterNumber, targetVerseNumber)
-{
-  selectedChapterNumber = Number(targetChapterNumber);
-  saveLastBrowsedBible();
-
-  if (bibleChaptersList)
-  {
-    for (let i = 0; i < bibleChaptersList.children.length; i++)
-    {
-      bibleChaptersList.children[i].classList.toggle('active', (i + 1) === selectedChapterNumber);
-    }
-  }
-
-  // Instant zero-delay verse resolution from book metadata or bible structure
-  const bibleBook = selectedBibleVersionBooks.find(book => Number(book.bookNum) === selectedBookNumber);
-  let verseCount = 0;
-  if (bibleBook && bibleBook.verseCounts && bibleBook.verseCounts[selectedChapterNumber - 1])
-  {
-    verseCount = bibleBook.verseCounts[selectedChapterNumber - 1];
-  }
-  else if (selectedBibleVersionStructure && selectedBibleVersionStructure[selectedBookNumber - 1] && selectedBibleVersionStructure[selectedBookNumber - 1][selectedChapterNumber - 1])
-  {
-    verseCount = selectedBibleVersionStructure[selectedBookNumber - 1][selectedChapterNumber - 1];
-  }
-
-  const verseNumbers = Array.from({ length: verseCount }, (_, i) => i + 1);
-  renderBibleVersesList(verseNumbers);
-
-  let chosenVerseNumber = (targetVerseNumber !== null && targetVerseNumber !== undefined) ? Number(targetVerseNumber) : 1;
-  if (chosenVerseNumber < 1 || chosenVerseNumber > verseCount) chosenVerseNumber = 1;
-  selectedVerseNumber = chosenVerseNumber;
-
-  // Highlight verse button immediately and scroll to top on reset to 1
-  if (bibleVersesList)
-  {
-    if (chosenVerseNumber === 1)
-    {
-      bibleVersesList.scrollTop = 0;
-    }
-    else
-    {
-      const activeVerseButton = bibleVersesList.children[chosenVerseNumber - 1];
-      if (activeVerseButton)
-      {
-        activeVerseButton.scrollIntoView({ block: 'nearest', behavior: 'auto' });   
-      }
-      else
-      {
-        bibleVersesList.scrollTop = 0;
-      }
-    }
-  }
-
-  // If chapter text was already loaded previously, render immediately without fetch
-  const cacheKey = `${selectedBibleVersionId}:${selectedBookNumber}:${selectedChapterNumber}`;
+  // Load verse slides for the selected chapter
+  const cacheKey = `${selectedBibleVersionId}:${selectedBookNumber}:${targetChapterNumber}`;
   const cachedBibleChapterText = bibleChapterTextCache.get(cacheKey);
-  if (cachedBibleChapterText)
+  if (cachedBibleChapterText && cachedBibleChapterText.verses && cachedBibleChapterText.verses.length > 0)
   {
-    const verses = cachedBibleChapterText.verses || [];
-    renderChapterVersesText(verses);
-    selectBibleVerse(chosenVerseNumber);
-    return;
+    renderChapterVersesText(cachedBibleChapterText.verses);
   }
+  else
+  {
+    //Not available in cache, fetch from server
+    if (slideDeckBible) slideDeckBible.innerHTML = '';
+    await fetchAndloadVerseSlides(selectedBibleVersionId, selectedBookNumber, targetChapterNumber);
+  }
+}
 
-  // Fetch chapter text asynchronously in background
-  const fetchId = ++currentBibleTextFetchId;
-  const targetBookNum = selectedBookNumber;
-  const targetChNum = selectedChapterNumber;
+let currentBibleChapterTextFetchId = 0;
+async function fetchAndloadVerseSlides(targetVersionId, targetBookNumber, targetChapterNumber)
+{
+  const localBibleVersionId = targetVersionId;
+  const localBookNumber = targetBookNumber;
+  const localChapterNumber = targetChapterNumber;
+  const localFetchId = ++currentBibleChapterTextFetchId;
 
   try
   {
-    const resText = await fetch(`/api/bible/${selectedBibleVersionId}/text?bookNum=${targetBookNum}&chNum=${targetChNum}`);
-    if (!resText.ok) return;
-    const data = await resText.json();
-
-    // Cache with bounded LRU eviction to prevent memory accumulation
-    if (bibleChapterTextCache.size >= MAX_BIBLE_CACHE_CHAPTERS)
-    {
-      const oldestKey = bibleChapterTextCache.keys().next().value;
-      if (oldestKey) bibleChapterTextCache.delete(oldestKey);
-    }
-    bibleChapterTextCache.set(cacheKey, data);
-
+    const chapterTextFetchResult = await fetch(`/api/bible/${localBibleVersionId}/text?bookNum=${localBookNumber}&chNum=${localChapterNumber}`);
+    
     // Guard against race conditions if user navigated away before response returned
-    if (fetchId === currentBibleTextFetchId && selectedBookNumber === targetBookNum && selectedChapterNumber === targetChNum)
+    if (localFetchId !== currentBibleChapterTextFetchId) return;
+    
+    if (!chapterTextFetchResult.ok)
+    { 
+      // If fetch fails, clear the verse text area and log error
+      if (slideDeckBible) slideDeckBible.innerHTML = 'Error loading verses';
+      console.error(`Failed to fetch Bible text for ${localBibleVersionId} book ${localBookNumber} chapter ${localChapterNumber}:`, chapterTextFetchResult.statusText);
+      return;
+    }
+
+    const chapterTextJson = await chapterTextFetchResult.json();
+    if (chapterTextJson && chapterTextJson.verses && chapterTextJson.verses.length > 0)
     {
-      const chapterVerses = data.verses || [];
-
-      // If exact verses count differs from cached estimate, update buttons seamlessly
-      if (chapterVerses.length > 0 && chapterVerses.length !== verseCount)
+      //Add to cache
+      if (bibleChapterTextCache.size >= maxBibleChapterTextCache)
       {
-        const exactVerseNums = chapterVerses.map(v => v.verseNum);
-        renderBibleVersesList(exactVerseNums);
-        if (bibleVersesList)
-        {
-          for (let i = 0; i < bibleVersesList.children.length; i++)
-          {
-            bibleVersesList.children[i].classList.toggle('active', (i + 1) === selectedVerseNumber);
-          }
-          if (chosenVerseNumber === 1)
-          {
-            bibleVersesList.scrollTop = 0;
-          }
-        }
+        const oldestKey = bibleChapterTextCache.keys().next().value;
+        if (oldestKey) bibleChapterTextCache.delete(oldestKey);
       }
+      const cacheKey = `${localBibleVersionId}:${localBookNumber}:${localChapterNumber}`;
+      bibleChapterTextCache.set(cacheKey, chapterTextJson);
 
-      renderChapterVersesText(chapterVerses);
-      selectBibleVerse(chosenVerseNumber);
+      renderChapterVersesText(chapterTextJson.verses);
+    }
+    else
+    {
+      if (slideDeckBible) slideDeckBible.innerHTML = 'No verses available';
     }
   }
   catch (err)
@@ -355,104 +227,175 @@ async function selectBibleChapter(targetChapterNumber, targetVerseNumber)
   }
 }
 
+function selectBibleVerse(targetVerseNumber)
+{
+  selectedVerseNumber = targetVerseNumber;
+  setSelectedIndexInList(bibleVersesList, targetVerseNumber - 1);
+}
+
+function selectVerseSlide(targetVerseNumber)
+{
+  setSelectedIndexInList(slideDeckBible, targetVerseNumber - 1);
+  smoothScrollToIndexInList(slideDeckBible, targetVerseNumber - 1);
+}
+
+function scrollToIndexInList(container, index)
+{
+  if (container)
+  {
+    if (index === 0)
+    {
+      container.scrollTop = 0;
+    }
+    else 
+    {
+      const activeVerseButton = container.children[index];
+      if (activeVerseButton)
+      {
+        activeVerseButton.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+      }
+      else
+      {
+        container.scrollTop = 0;
+      }
+    }
+  }
+}
+
+function smoothScrollToIndexInList(container, index)
+{
+  if (container)
+  {
+    const targetChild = container.children[index];
+    if (targetChild) smoothScrollToElement(container, targetChild, 200, true);
+  }
+}
+
+function setSelectedIndexInList(container, activeIndex)
+{
+  if (container)
+  {
+    const verseButtons = container.children;
+    for (let i = 0; i < verseButtons.length; i++)
+    {
+      verseButtons[i].classList.toggle('active', i === activeIndex);
+    }
+  }
+}
+
+function renderBibleBooksList(bibleBooks)
+{
+  bibleBooksList.innerHTML = '';
+
+  //change to foreach loop to avoid issues with let in for loop and closures
+  bibleBooks.forEach((book) =>
+  {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'book-btn book-item';
+    button.title = `${book.name}`;
+    button.innerHTML = `${escapeHtml(book.name.trim())}`;
+
+    button.addEventListener('click', () =>
+    {
+      if (selectedBookNumber === book.bookNum) return;
+      selectBibleBook(book.bookNum);
+
+      selectBibleChapter(1);
+      scrollToIndexInList(bibleChaptersList, 0);
+
+      selectBibleVerse(1);
+      selectVerseSlide(1);
+      scrollToIndexInList(bibleVersesList, 0);
+      smoothScrollToIndexInList(slideDeckBible, 0);
+    });
+
+    bibleBooksList.appendChild(button);
+  }); 
+}
+
+function renderBibleChaptersList(chaptersCount)
+{
+  bibleChaptersList.innerHTML = '';
+
+  const chapters = Array.from({ length: chaptersCount }, (_, i) => i + 1);
+  chapters.forEach((chapterNumber) =>
+  {
+    const chapterButton = document.createElement('button');
+    chapterButton.type = 'button';
+    chapterButton.className = 'num-btn';
+    chapterButton.textContent = chapterNumber;
+    
+    chapterButton.addEventListener('click', () =>
+    {
+      if (selectedChapterNumber === chapterNumber) return;
+      selectBibleChapter(chapterNumber);
+      scrollToIndexInList(bibleChaptersList, 0);
+
+      selectBibleVerse(1);
+      selectVerseSlide(1);
+      scrollToIndexInList(bibleVersesList, 0);
+      smoothScrollToIndexInList(slideDeckBible, 0);
+    });
+
+    bibleChaptersList.appendChild(chapterButton);
+  });
+}
+
 function renderBibleVersesList(verseNumbers)
 {
-  if (!bibleVersesList) return;
   bibleVersesList.innerHTML = '';
 
-  verseNumbers.forEach((v) =>
+  verseNumbers.forEach((verseNumber) =>
   {
     const verseButton = document.createElement('button');
     verseButton.type = 'button';
     verseButton.className = 'num-btn';
-    verseButton.textContent = v;
-
-    if (Number(v) === Number(selectedVerseNumber))
-    {
-      verseButton.classList.add('active');
-    }
+    verseButton.textContent = verseNumber;
 
     verseButton.addEventListener('click', () =>
     {
-      selectBibleVerse(v);
+      if (selectedVerseNumber === verseNumber) return;
+      selectBibleVerse(verseNumber);
+      selectVerseSlide(verseNumber);
+      scrollToIndexInList(bibleVersesList, verseNumber - 1);
+      smoothScrollToIndexInList(slideDeckBible, verseNumber - 1);
     });
 
     bibleVersesList.appendChild(verseButton);
   });
-
-  if (typeof highlightActiveInDecks === 'function' && liveState)
-  {
-    highlightActiveInDecks(liveState);
-  }
 }
 
 function renderChapterVersesText(bibleChapterVersesText)
 {
-  // currentPresentationType = 'bible';
-
-  if (!slideDeckBible) return;
   slideDeckBible.innerHTML = '';
 
-  if (!bibleChapterVersesText || bibleChapterVersesText.length === 0)
-  {
-    slideDeckBible.innerHTML = 'No verses available in this chapter';
-    return;
-  }
-
-  bibleChapterVersesText.forEach((verse) =>
+  bibleChapterVersesText.forEach((verseText) =>
   {
     const verseSlide = document.createElement('div');
     verseSlide.className = 'slide-card-vertical';
 
-    const isLive = liveState && liveState.verseInfo &&
-      Number(liveState.verseInfo.bookNum) === Number(verse.bookNum) &&
-      Number(liveState.verseInfo.chNum) === Number(verse.chNum) &&
-      Number(liveState.verseInfo.verseNum) === Number(verse.verseNum) &&
-      liveState.status === 'live';
-
-    if (isLive) verseSlide.classList.add('is-live');
-    if (Number(verse.verseNum) === Number(selectedVerseNumber)) verseSlide.classList.add('active');
+    // const isLive = liveState && liveState.verseInfo &&
+    //   Number(liveState.verseInfo.bookNum) === Number(verse.bookNum) &&
+    //   Number(liveState.verseInfo.chNum) === Number(verse.chNum) &&
+    //   Number(liveState.verseInfo.verseNum) === Number(verse.verseNum) &&
+    //   liveState.status === 'live';
 
     verseSlide.innerHTML = `
-      <span class="sc-live-pill" style="display: ${isLive ? 'inline-block' : 'none'};">LIVE</span>
-      <div class="sc-text-main"><span class="sc-verse-num">${verse.verseNum}</span>${escapeHtml(verse.word)}</div>
+      <span class="sc-live-pill" style="display: none">LIVE</span>
+      <div class="sc-text-main"><span class="sc-verse-num">${verseText.verseNum}</span>${escapeHtml(verseText.word)}</div>
     `;
 
     verseSlide.addEventListener('click', () =>
     {
-      presentBibleVerse(selectedBibleVersionId, verse);
+      presentBibleVerse(selectedBibleVersionId, verseText);
     });
 
     slideDeckBible.appendChild(verseSlide);
   });
 }
 
-function selectBibleVerse(targetVerseNumber)
-{
-  selectedVerseNumber = Number(targetVerseNumber);
-  saveLastBrowsedBible();
 
-  if (bibleVersesList)
-  {
-    for (let i = 0; i < bibleVersesList.children.length; i++)
-    {
-      bibleVersesList.children[i].classList.toggle('active', (i + 1) === selectedVerseNumber);
-    }
-  }
-
-  if (slideDeckBible)
-  {
-    for (let i = 0; i < slideDeckBible.children.length; i++)
-    {
-      slideDeckBible.children[i].classList.toggle('active', (i + 1) === selectedVerseNumber);
-    }
-    const targetCard = slideDeckBible.children[selectedVerseNumber - 1];
-    if (targetCard)
-    {
-      smoothScrollToElement(slideDeckBible, targetCard, 200, true);
-    }
-  }
-}
 
 function presentBibleVerse(bibleVersionId, bibleVerse)
 {
