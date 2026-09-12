@@ -10,28 +10,24 @@ const maxBibleChapterTextCache = 20; // Caps in-memory text cache to ~80-100 KB 
 async function loadBibleStructure(versionId)
 {
   if (bibleStructureCache.has(versionId)) return bibleStructureCache.get(versionId);
-  
 
   try
   {
-    const bibleVersionStructureFetchResult = await fetch(`/api/bible/${versionId}/structure`);
+    const bibleVersionStructureFetchResult = await fetch(`/api/bible/versions?versionId=${encodeURIComponent(versionId)}&returnBibleStructure=true`);
     if (bibleVersionStructureFetchResult.ok)
     {
       const bibleVersionStructureJson = await bibleVersionStructureFetchResult.json();
-      const bibleVersionStructure = bibleVersionStructureJson.books || [];
+      const bibleVersionStructure = (bibleVersionStructureJson.bibleStructure && bibleVersionStructureJson.bibleStructure.books) || [];
       bibleStructureCache.set(versionId, bibleVersionStructure);
       return bibleVersionStructure;
     }
     else
     {
-    		//Log error but don't throw, just return null
-    		conslole.warn(`Failed to fetch Bible structure for ${versionId}:`, bibleVersionStructureFetchResult.statusText);
-    		if (bibleBooksList)  bibleBooksList.innerHTML = '';
+      console.warn(`Failed to fetch Bible structure for ${versionId}:`, bibleVersionStructureFetchResult.statusText);
+      if (bibleBooksList)  bibleBooksList.innerHTML = '';
       if (bibleChaptersList) bibleChaptersList.innerHTML = '';
       if (bibleVersesList) bibleVersesList.innerHTML = '';
-      
     }
-    
   }
   catch (err)
   {
@@ -45,13 +41,13 @@ async function initBible()
 {
   try
   {
-    const bibleVersionsFetchResult = await fetch('/api/bible/versions');
-    bibleVersions = await bibleVersionsFetchResult.json();
+    const bibleVersionsFetchResult = await fetch('/api/bible/versions?returnVersion=true');
+    const json = await bibleVersionsFetchResult.json();
+    bibleVersions = json.versions || (Array.isArray(json) ? json : []);
     
     renderBibleVersionDropdown(bibleVersions);
-    
 
-    //Get selected version from localStorage or first available or first
+    // Get selected version from localStorage or first available or first
     const targetBibleVersion = bibleVersions.find(bibleVersion => bibleVersion.id === selectedBibleVersionId && bibleVersion.available) || bibleVersions.find(bibleVersion => bibleVersion.available) || bibleVersions[0];
     if (targetBibleVersion)
     {
@@ -61,12 +57,11 @@ async function initBible()
       // Load Bible structure (chapter/verse counts) for this version
       await loadBibleStructure(selectedBibleVersionId);
       
-      await loadBibleBooks();
+      await loadBibleBooks(selectedBibleVersionId);
     }
 
     // Version dropdown change listener
     addChangeEventToBibleVersionDropdown();
-    
 
     renderRecentVersesStrip();
   }
@@ -80,7 +75,7 @@ async function loadBibleBooks(targetVersionId)
 {
   try
   {
-    const bibleBooksFetchResult = await fetch(`/api/bible/${targetVersionId}/books`);
+    const bibleBooksFetchResult = await fetch(`/api/bible/versions?versionId=${encodeURIComponent(targetVersionId)}&returnBibleStructure=true`);
     if (!bibleBooksFetchResult.ok)
     {
       const errorData = await bibleBooksFetchResult.json().catch(() => ({}));
@@ -90,8 +85,21 @@ async function loadBibleBooks(targetVersionId)
       return;
     }
     const bibleBooksJson = await bibleBooksFetchResult.json();
-    selectedBibleVersionBooks = bibleBooksJson.books || [];
-    renderBibleBooksList(bibleBooksJson.books);
+    const struct = bibleBooksJson.bibleStructure || {};
+    const bookNames = struct.bookNames || [];
+    const books = bookNames.map((bName, idx) => {
+      const bNum = idx + 1;
+      const vCounts = (struct.books && struct.books[idx]) ? struct.books[idx] : [];
+      return {
+        bookNum: bNum,
+        name: bName,
+        chapterCount: vCounts.length || 1,
+        verseCounts: vCounts
+      };
+    });
+
+    selectedBibleVersionBooks = books;
+    renderBibleBooksList(books);
 
     let initialBook = null;
     const bookNumberToFind = (targetBookNumber !== null && targetBookNumber !== undefined) ? targetBookNumber : 1;
@@ -178,7 +186,7 @@ async function fetchAndloadVerseSlides(targetVersionId, targetBookNumber, target
 
   try
   {
-    const chapterTextFetchResult = await fetch(`/api/bible/${localBibleVersionId}/text?bookNum=${localBookNumber}&chNum=${localChapterNumber}`);
+    const chapterTextFetchResult = await fetch(`/api/bible/versions?versionId=${encodeURIComponent(localBibleVersionId)}&bookNumber=${localBookNumber}&chapterNumber=${localChapterNumber}`);
     
     // Guard against race conditions if user navigated away before response returned
     if (localFetchId !== currentBibleChapterTextFetchId) return;
@@ -191,19 +199,20 @@ async function fetchAndloadVerseSlides(targetVersionId, targetBookNumber, target
       return;
     }
 
-    const chapterTextJson = await chapterTextFetchResult.json();
-    if (chapterTextJson && chapterTextJson.verses && chapterTextJson.verses.length > 0)
+    const json = await chapterTextFetchResult.json();
+    const chapterTexts = json.chapterTexts;
+    if (chapterTexts && chapterTexts.verses && chapterTexts.verses.length > 0)
     {
-      //Add to cache
+      // Add to cache
       if (bibleChapterTextCache.size >= maxBibleChapterTextCache)
       {
         const oldestKey = bibleChapterTextCache.keys().next().value;
         if (oldestKey) bibleChapterTextCache.delete(oldestKey);
       }
       const cacheKey = `${localBibleVersionId}:${localBookNumber}:${localChapterNumber}`;
-      bibleChapterTextCache.set(cacheKey, chapterTextJson);
+      bibleChapterTextCache.set(cacheKey, chapterTexts);
 
-      renderChapterVersesText(chapterTextJson.verses);
+      renderChapterVersesText(chapterTexts.verses);
     }
     else
     {

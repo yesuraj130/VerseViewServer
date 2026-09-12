@@ -859,259 +859,133 @@ app.get('/api/categories', (req, res) =>
 });
 
 // ---------------------------------------------------------------------------
-// 6. Bible Metadata (version.json) & Cascading Scripture Endpoints
+// 6. Unified Bible API (versions, structure, chapter texts)
 // ---------------------------------------------------------------------------
+function parseBoolParam(val)
+{
+  if (val === undefined || val === null) return undefined;
+  if (typeof val === 'boolean') return val;
+  const s = String(val).trim().toLowerCase();
+  if (s === 'true' || s === '1' || s === 'yes') return true;
+  if (s === 'false' || s === '0' || s === 'no') return false;
+  return undefined;
+}
+
 app.get('/api/bible/versions', (req, res) =>
 {
   try
   {
     const versions = getVersionMetadata();
-    res.json(versions);
-  }
-  catch (err)
-  {
-    res.status(500).json({ error: err.message });
-  }
-});
 
-app.get('/api/bible/:version/books', (req, res) =>
-{
-  try
-  {
-    const versionId = req.params.version;
-    const versions = getVersionMetadata();
-    const ver = versions.find(v => v.id === versionId || v.file === versionId || v.dbFile === versionId);
-    const structure = getBibleStructure(versionId);
+    const rawReturnVersion = req.query.returnVersion ?? req.query.returnVersions;
+    const rawReturnStructure = req.query.returnBibleStructure ?? req.query.returnbibleStructure ?? req.query['return bibleStructure'] ?? req.query.returnStructure ?? req.query.bibleStructure;
 
-    if (ver && ver.books && ver.books.length > 0)
+    const parsedReturnVersion = parseBoolParam(rawReturnVersion);
+    const parsedReturnStructure = parseBoolParam(rawReturnStructure);
+
+    const versionId = req.query.versionId || req.query.version || null;
+    const rawBook = req.query.bookNumber ?? req.query.bookNum;
+    const rawChapter = req.query.chapterNumber ?? req.query.chapterNum ?? req.query.chNum;
+    const rawVerse = req.query.verseNumber ?? req.query.verseNum;
+
+    const bookNumber = (rawBook !== undefined && rawBook !== null && rawBook !== '') ? Number(rawBook) : null;
+    const chapterNumber = (rawChapter !== undefined && rawChapter !== null && rawChapter !== '') ? Number(rawChapter) : null;
+    const verseNumber = (rawVerse !== undefined && rawVerse !== null && rawVerse !== '') ? Number(rawVerse) : null;
+
+    let shouldReturnVersion;
+    if (parsedReturnVersion !== undefined)
     {
-      const books = ver.books.map((b, idx) =>
-      {
-        const bNum = idx + 1;
-        const struct = structure ? structure.get(bNum) : null;
-        return {
-          bookNum: bNum,
-          name: b,
-          chapterCount: struct ? struct.chapterCount : 1,
-          verseCounts: struct ? struct.verseCounts : []
-        };
-      });
-
-      return res.json({
-        version: ver,
-        books
-      });
+      shouldReturnVersion = parsedReturnVersion;
     }
-
-    const db = getBibleDb(versionId);
-    if (!db)
+    else
     {
-      return res.status(404).json({ error: `Bible database for '${versionId}' not found in data/.` });
-    }
-
-    const rows = db.prepare('SELECT DISTINCT bookNum FROM words ORDER BY bookNum').all();
-    const books = rows.map(r =>
-    {
-      const struct = structure ? structure.get(r.bookNum) : null;
-      return {
-        bookNum: r.bookNum,
-        name: `Book ${r.bookNum}`,
-        chapterCount: struct ? struct.chapterCount : 1,
-        verseCounts: struct ? struct.verseCounts : []
-      };
-    });
-
-    res.json({
-      version: ver || { id: versionId, name: versionId },
-      books
-    });
-  }
-  catch (err)
-  {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/bible/:version/structure', (req, res) =>
-{
-  try
-  {
-    const versionId = req.params.version;
-    const structure = getBibleStructure(versionId);
-    
-    // Build the books array with chapter/verse counts for each book from database
-    const books = [];
-    for (let bookNum = 1; bookNum <= 66; bookNum++)
-    {
-      const struct = structure ? structure.get(bookNum) : null;
-      
-      if (struct && struct.verseCounts && struct.verseCounts.length > 0)
+      if (parsedReturnStructure === undefined && !(bookNumber && chapterNumber))
       {
-        // Use actual verse counts from database
-        books.push(struct.verseCounts);
+        shouldReturnVersion = true;
+      }
+      else
+      {
+        shouldReturnVersion = false;
       }
     }
-    
-    res.json({ books });
-  }
-  catch (err)
-  {
-    res.status(500).json({ error: err.message });
-  }
-});
 
-app.get('/api/bible/:version/chapters', (req, res) =>
-{
-  try
-  {
-    const versionId = req.params.version;
-    const bookNum = Number(req.query.bookNum);
-    if (!bookNum) return res.status(400).json({ error: 'bookNum query param required' });
+    const shouldReturnStructure = parsedReturnStructure === true;
 
-    const structure = getBibleStructure(versionId);
-    const struct = structure ? structure.get(bookNum) : null;
-    const chapterCount = struct ? struct.chapterCount : 1;
-
-    const chapters = Array.from({ length: chapterCount }, (_, i) => i + 1);
-    res.json(chapters);
-  }
-  catch (err)
-  {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/bible/:version/verses', (req, res) =>
-{
-  try
-  {
-    const versionId = req.params.version;
-    const bookNum = Number(req.query.bookNum);
-    const chNum = Number(req.query.chNum);
-    if (!bookNum || !chNum)
+    let bibleStructure = null;
+    if (shouldReturnStructure && versionId)
     {
-      return res.status(400).json({ error: 'bookNum and chNum required' });
+      const structure = getBibleStructure(versionId);
+      const books = [];
+      for (let bNum = 1; bNum <= 66; bNum++)
+      {
+        const struct = structure ? structure.get(bNum) : null;
+        if (struct && struct.verseCounts && struct.verseCounts.length > 0)
+        {
+          books.push(struct.verseCounts);
+        }
+      }
+      const ver = versions.find(v => v.id === versionId || v.file === versionId || v.dbFile === versionId);
+      let bookNames = (ver && Array.isArray(ver.books) && ver.books.length > 0) ? ver.books : [];
+      if (bookNames.length === 0)
+      {
+        bookNames = books.map((_, idx) => `Book ${idx + 1}`);
+      }
+
+      bibleStructure = {
+        books,
+        bookNames
+      };
     }
 
-    const structure = getBibleStructure(versionId);
-    const struct = structure ? structure.get(bookNum) : null;
-    let verseCount = (struct && struct.verseCounts && struct.verseCounts[chNum - 1]) || 0;
-
-    if (!verseCount)
+    let chapterTexts = null;
+    if (versionId && bookNumber && chapterNumber)
     {
       const db = getBibleDb(versionId);
       if (db)
       {
-        const rows = db.prepare(
-          'SELECT DISTINCT verseNum FROM words WHERE bookNum = ? AND chNum = ? ORDER BY verseNum'
-        ).all(bookNum, chNum);
-        return res.json(rows.map(r => r.verseNum));
+        let rows;
+        if (verseNumber)
+        {
+          rows = db.prepare(
+            'SELECT wordId, word, bookNum, chNum, verseNum FROM words WHERE bookNum = ? AND chNum = ? AND verseNum = ? ORDER BY verseNum'
+          ).all(bookNumber, chapterNumber, verseNumber);
+        }
+        else
+        {
+          rows = db.prepare(
+            'SELECT wordId, word, bookNum, chNum, verseNum FROM words WHERE bookNum = ? AND chNum = ? ORDER BY verseNum'
+          ).all(bookNumber, chapterNumber);
+        }
+
+        const verseRows = rows.map(r => ({
+          ...r,
+          versionId
+        }));
+
+        chapterTexts = {
+          version: versionId,
+          bookNum: bookNumber,
+          chNum: chapterNumber,
+          verses: verseRows
+        };
       }
-      verseCount = 30;
     }
 
-    const verses = Array.from({ length: verseCount }, (_, i) => i + 1);
-    res.json(verses);
-  }
-  catch (err)
-  {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/bible/:version/text', (req, res) =>
-{
-  try
-  {
-    const versionId = req.params.version;
-    const bookNum = Number(req.query.bookNum);
-    const chNum = Number(req.query.chNum);
-    const verseNum = req.query.verseNum !== undefined && req.query.verseNum !== '' ? Number(req.query.verseNum) : null;
-
-    if (!bookNum || !chNum)
+    const response = {};
+    if (shouldReturnVersion)
     {
-      return res.status(400).json({ error: 'bookNum and chNum required' });
+      response.versions = versions;
+    }
+    if (shouldReturnStructure)
+    {
+      response.bibleStructure = bibleStructure;
+    }
+    if (chapterTexts)
+    {
+      response.chapterTexts = chapterTexts;
     }
 
-    const versions = getVersionMetadata();
-    const ver = versions.find(v => v.id === versionId || v.file === versionId || v.dbFile === versionId);
-    const versionName = ver ? ver.name : versionId;
-    let bookName = `Book ${bookNum}`;
-    if (ver && ver.books && ver.books[bookNum - 1])
-    {
-      bookName = ver.books[bookNum - 1];
-    }
-
-    const db = getBibleDb(versionId);
-    if (!db)
-    {
-      return res.status(404).json({ error: `Bible database for '${versionId}' not found.` });
-    }
-
-    let rows;
-    if (verseNum)
-    {
-      rows = db.prepare(
-        'SELECT wordId, word, bookNum, chNum, verseNum FROM words WHERE bookNum = ? AND chNum = ? AND verseNum = ? ORDER BY verseNum'
-      ).all(bookNum, chNum, verseNum);
-    }
-    else
-    {
-      rows = db.prepare(
-        'SELECT wordId, word, bookNum, chNum, verseNum FROM words WHERE bookNum = ? AND chNum = ? ORDER BY verseNum'
-      ).all(bookNum, chNum);
-    }
-
-    res.json({
-      version: versionId,
-      versionName,
-      bookNum,
-      bookName,
-      chNum,
-      verseNum,
-      verses: rows
-    });
-  }
-  catch (err)
-  {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// API: Quick Bible Search
-app.get('/api/bible/:version/search', (req, res) =>
-{
-  try
-  {
-    const versionId = req.params.version;
-    const q = req.query.q ? String(req.query.q).trim() : '';
-    if (!q) return res.json([]);
-
-    const versions = getVersionMetadata();
-    const ver = versions.find(v => v.id === versionId || v.file === versionId || v.dbFile === versionId);
-    const bookList = (ver && ver.books) ? ver.books : [];
-
-    const db = getBibleDb(versionId);
-    if (!db)
-    {
-      return res.status(404).json({ error: `Bible database for '${versionId}' not found.` });
-    }
-
-    const rows = db.prepare(
-      'SELECT wordId, word, bookNum, chNum, verseNum FROM words WHERE word LIKE ? LIMIT 50'
-    ).all(`%${q}%`);
-
-    const results = rows.map(r =>
-    {
-      const bName = bookList[r.bookNum - 1] || `Book ${r.bookNum}`;
-      return {
-        ...r,
-        bookName: bName,
-        reference: `${bName} ${r.chNum}:${r.verseNum}`
-      };
-    });
-
-    res.json(results);
+    res.json(response);
   }
   catch (err)
   {
@@ -1201,6 +1075,12 @@ app.get('/display', (req, res) =>
 {
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.sendFile(path.join(__dirname, 'public', 'display', 'index.html'));
+});
+
+// 404 for unhandled API routes
+app.all('/api/*', (req, res) =>
+{
+  res.status(404).json({ error: 'Endpoint not found' });
 });
 
 // Fallback to public index
