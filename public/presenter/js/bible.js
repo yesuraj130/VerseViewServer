@@ -22,6 +22,16 @@ async function loadBibleStructure(versionId)
       bibleStructureCache.set(versionId, bibleVersionStructure);
       return bibleVersionStructure;
     }
+    else
+    {
+    		//Log error but don't throw, just return null
+    		conslole.warn(`Failed to fetch Bible structure for ${versionId}:`, bibleVersionStructureFetchResult.statusText);
+    		if (bibleBooksList)  bibleBooksList.innerHTML = '';
+      if (bibleChaptersList) bibleChaptersList.innerHTML = '';
+      if (bibleVersesList) bibleVersesList.innerHTML = '';
+      
+    }
+    
   }
   catch (err)
   {
@@ -37,18 +47,9 @@ async function initBible()
   {
     const bibleVersionsFetchResult = await fetch('/api/bible/versions');
     bibleVersions = await bibleVersionsFetchResult.json();
-
-    if (bibleVersionSelectionDropdown)
-    {
-      bibleVersionSelectionDropdown.innerHTML = '';
-      bibleVersions.forEach((bibleVersion) =>
-      {
-        const bibleVersionOption = document.createElement('option');
-        bibleVersionOption.value = bibleVersion.id;
-        bibleVersionOption.textContent = bibleVersion.available ? bibleVersion.name : `${bibleVersion.name} (DB missing)`;
-        bibleVersionSelectionDropdown.appendChild(bibleVersionOption);
-      });
-    }
+    
+    renderBibleVersionDropdown(bibleVersions);
+    
 
     //Get selected version from localStorage or first available or first
     const targetBibleVersion = bibleVersions.find(bibleVersion => bibleVersion.id === selectedBibleVersionId && bibleVersion.available) || bibleVersions.find(bibleVersion => bibleVersion.available) || bibleVersions[0];
@@ -60,24 +61,12 @@ async function initBible()
       // Load Bible structure (chapter/verse counts) for this version
       await loadBibleStructure(selectedBibleVersionId);
       
-      await loadBibleBooks(selectedBibleVersionId, selectedBookNumber, selectedChapterNumber, selectedVerseNumber);
+      await loadBibleBooks();
     }
 
     // Version dropdown change listener
-    if (bibleVersionSelectionDropdown)
-    {
-      bibleVersionSelectionDropdown.addEventListener('change', async (e) =>
-      {
-        selectedBibleVersionId = e.target.value;
-        bibleChapterTextCache.clear();
-        const verObj = bibleVersions.find(v => v.id === selectedBibleVersionId);
-        
-        // Load Bible structure for new version
-        await loadBibleStructure(selectedBibleVersionId);
-        
-        await loadBibleBooks(selectedBibleVersionId, selectedBookNumber, selectedChapterNumber, selectedVerseNumber);
-      });
-    }
+    addChangeEventToBibleVersionDropdown();
+    
 
     renderRecentVersesStrip();
   }
@@ -87,7 +76,7 @@ async function initBible()
   }
 }
 
-async function loadBibleBooks(targetVersionId, targetBookNumber, targetChapterNumber, targetVerseNumber)
+async function loadBibleBooks(targetVersionId)
 {
   try
   {
@@ -282,6 +271,45 @@ function setSelectedIndexInList(container, activeIndex)
     }
   }
 }
+
+function renderBibleVersionDropdown(bibleVersions)
+{
+		  
+   
+      bibleVersionSelectionDropdown.innerHTML = '';
+      bibleVersions.forEach((bibleVersion) =>
+      {
+        const bibleVersionOption = document.createElement('option');
+        bibleVersionOption.value = bibleVersion.id;
+        bibleVersionOption.textContent = bibleVersion.available ? bibleVersion.name : `${bibleVersion.name} (DB missing)`;
+        bibleVersionSelectionDropdown.appendChild(bibleVersionOption);
+      });
+    
+}
+
+function addChangeEventToBibleVersionDropdown()
+{
+		    bibleVersionSelectionDropdown.addEventListener('change', async (e) =>
+      {
+      		if (selectedBibleVersionId === e.target.value) return;
+      		
+        selectedBibleVersionId = e.target.value;
+        bibleChapterTextCache.clear();
+       	
+        
+        // Load Bible structure for new version
+        await loadBibleStructure(selectedBibleVersionId);
+        
+        await loadBibleBooks(selectedBibleVersionId, selectedBookNumber, selectedChapterNumber, selectedVerseNumber);
+        selectBibleBook(selectedBookNumber);
+      		selectBibleChapter(selectedChapterNumber);
+      		selectBibleVerse(selectedVerseNumber);
+      		selectVerseSlide(selectedVerseNumber);
+      		
+      });
+      
+}
+
 
 function renderBibleBooksList(bibleBooks)
 {
