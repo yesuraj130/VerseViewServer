@@ -78,19 +78,8 @@ async function initBible()
         }
 
         const bookNames = struct.bookNames || [];
-        const books = bookNames.map((bName, idx) => {
-          const bNum = idx + 1;
-          const vCounts = (struct.books && struct.books[idx]) ? struct.books[idx] : [];
-          return {
-            bookNum: bNum,
-            name: bName,
-            chapterCount: vCounts.length || 1,
-            verseCounts: vCounts
-          };
-        });
-
-        selectedBibleVersionBooks = books;
-        renderBibleBooksList(books);
+        selectedBibleVersionBooks = bookNames;
+        renderBibleBooksList(bookNames);
 
         await selectBibleBook(initialBookNumber, initialChapterNumber, initialVerseNumber);
         scrollToIndexInList(bibleBooksList, initialBookNumber - 1);
@@ -134,29 +123,13 @@ async function loadBibleBooks(targetVersionId, targetBookNumber, targetChapterNu
     const bibleBooksJson = await bibleBooksFetchResult.json();
     const struct = bibleBooksJson.bibleStructure || {};
     const bookNames = struct.bookNames || [];
-    const books = bookNames.map((bName, idx) => {
-      const bNum = idx + 1;
-      const vCounts = (struct.books && struct.books[idx]) ? struct.books[idx] : [];
-      return {
-        bookNum: bNum,
-        name: bName,
-        chapterCount: vCounts.length || 1,
-        verseCounts: vCounts
-      };
-    });
 
-    selectedBibleVersionBooks = books;
-    renderBibleBooksList(books);
+    selectedBibleVersionBooks = bookNames;
+    renderBibleBooksList(bookNames);
 
-    let initialBook = null;
-    if (bookNum) initialBook = selectedBibleVersionBooks.find(book => Number(book.bookNum) === Number(bookNum));
-    if (!initialBook) initialBook = selectedBibleVersionBooks.find(book => Number(book.bookNum) === 0) || selectedBibleVersionBooks[0];
-    
-    if (initialBook)
-    {
-      await selectBibleBook(initialBook.bookNum, chapterNum, verseNum);
-      scrollToIndexInList(bibleBooksList, initialBook.bookNum - 1);
-    }
+    const initialBookNum = (bookNum >= 1 && bookNum <= bookNames.length) ? bookNum : 1;
+    await selectBibleBook(initialBookNum, chapterNum, verseNum);
+    scrollToIndexInList(bibleBooksList, initialBookNum - 1);
   }
   catch (err)
   {
@@ -377,23 +350,24 @@ function addChangeEventToBibleVersionDropdown()
 }
 
 
-function renderBibleBooksList(bibleBooks)
+function renderBibleBooksList(books)
 {
   bibleBooksList.innerHTML = '';
 
-  //change to foreach loop to avoid issues with let in for loop and closures
-  bibleBooks.forEach((book) =>
+  books.forEach((book, idx) =>
   {
+    const bookNum = (typeof book === 'object' && book !== null && book.bookNum) ? Number(book.bookNum) : (idx + 1);
+    const bookName = typeof book === 'string' ? book : (book && book.name ? book.name : `Book ${bookNum}`);
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'book-btn book-item';
-    button.title = `${book.name}`;
-    button.innerHTML = `${escapeHtml(book.name.trim())}`;
+    button.title = `${bookName}`;
+    button.innerHTML = `${escapeHtml(bookName.trim())}`;
 
     button.addEventListener('click', () =>
     {
-      if (selectedBookNumber === book.bookNum) return;
-      selectBibleBook(book.bookNum);
+      if (selectedBookNumber === bookNum) return;
+      selectBibleBook(bookNum);
 
       selectBibleChapter(1);
       scrollToIndexInList(bibleChaptersList, 0);
@@ -517,7 +491,7 @@ function presentBibleVerse(bibleVersionId, bibleVerse)
   }
 
   const book = selectedBibleVersionBooks[bibleVerse.bookNum - 1];
-  const bookName = book ? book.name : '';
+  const bookName = typeof book === 'string' ? book : (book && book.name ? book.name : '');
   addRecentVerse({
     versionId: bibleVersionId,
     bookNum: bibleVerse.bookNum,
