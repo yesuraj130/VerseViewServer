@@ -34,7 +34,6 @@ function saveLastBrowsedSong(songId)
 // Bible Application State
 let bibleVersions = [];
 let selectedBibleVersionId = 'tamil';
-let selectedBibleVersionBooks = [];
 let selectedBookNumber = 1;
 let selectedChapterNumber = 1;
 let selectedVerseNumber = 1;
