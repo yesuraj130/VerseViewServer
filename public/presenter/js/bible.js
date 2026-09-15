@@ -223,11 +223,6 @@ function selectVerseSlide(targetVerseNumber)
 //#region Rendering
 function renderBibleVersionsDropdown(bibleVersions)
 {
-  renderBibleVersionDropdown(bibleVersions);
-}
-
-function renderBibleVersionDropdown(bibleVersions)
-{
   bibleVersionSelectionDropdown.innerHTML = '';
   bibleVersions.forEach((bibleVersion) =>
   {
@@ -327,15 +322,11 @@ function renderBibleChaptersList(chaptersCount)
   }
 }
 
-function renderBibleVersesList(verseNumbers)
+function renderBibleVersesList(versesCount)
 {
   bibleVersesList.innerHTML = '';
 
-  const list = typeof verseNumbers === 'number'
-    ? Array.from({ length: verseNumbers }, (_, i) => i + 1)
-    : (Array.isArray(verseNumbers) ? verseNumbers : []);
-
-  list.forEach((verseNumber) =>
+  for (let verseNumber = 1; verseNumber <= versesCount; verseNumber++)
   {
     const verseButton = document.createElement('button');
     verseButton.type = 'button';
@@ -352,7 +343,7 @@ function renderBibleVersesList(verseNumbers)
     });
 
     bibleVersesList.appendChild(verseButton);
-  });
+  }
 }
 
 function renderBibleVersesSlides(bibleChapterVersesText)
