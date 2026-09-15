@@ -924,16 +924,9 @@ app.get('/api/bible/versions', (req, res) =>
           books.push(struct.verseCounts);
         }
       }
-      const ver = versions.find(v => v.id === versionId || v.file === versionId || v.dbFile === versionId);
-      let bookNames = (ver && Array.isArray(ver.books) && ver.books.length > 0) ? ver.books : [];
-      if (bookNames.length === 0)
-      {
-        bookNames = books.map((_, idx) => `Book ${idx + 1}`);
-      }
 
       bibleStructure = {
-        books,
-        bookNames
+        books
       };
     }
 

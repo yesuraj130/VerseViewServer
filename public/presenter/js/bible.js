@@ -28,6 +28,7 @@ async function initBible()
     if (localFetchId === currentBibleChapterTextFetchId)
     {
       loadBibleVersions();
+      addChangeEventToBibleVersionDropdown();
       selectBibleVersion(localVersionId);
 
       loadBibleBooks();
@@ -59,17 +60,33 @@ function loadBibleVersions()
 
 function loadBibleBooks()
 {
-  const selectedBibleVersionStructure = bibleStructureCache.get(selectedBibleVersionId);
-  if (selectedBibleVersionStructure) renderBibleBooksList(selectedBibleVersionStructure.bookNames);
-  else console.warn(`Bible structure not available for version ${selectedBibleVersionId}`);
+  const selectedVersion = bibleVersionsCache ? bibleVersionsCache.find(v => v.id === selectedBibleVersionId) : null;
+  const bookNames = selectedVersion ? (selectedVersion.booknames || selectedVersion.books) : null;
+  if (bookNames && bookNames.length > 0)
+  {
+    renderBibleBooksList(bookNames);
+  }
+  else
+  {
+    const selectedBibleVersionStructure = bibleStructureCache.get(selectedBibleVersionId);
+    if (selectedBibleVersionStructure && selectedBibleVersionStructure.bookNames)
+    {
+      renderBibleBooksList(selectedBibleVersionStructure.bookNames);
+    }
+    else
+    {
+      console.warn(`Book names not available for version ${selectedBibleVersionId}`);
+    }
+  }
 }
 
 function loadBibleChapter()
 {
   const selectedBibleVersionStructure = bibleStructureCache.get(selectedBibleVersionId);
-  if (selectedBibleVersionStructure && selectedBibleVersionStructure[selectedBookNumber - 1])
+  const books = selectedBibleVersionStructure?.books || (Array.isArray(selectedBibleVersionStructure) ? selectedBibleVersionStructure : null);
+  if (books && books[selectedBookNumber - 1])
   {
-    const chaptersCount = selectedBibleVersionStructure[selectedBookNumber - 1].length;
+    const chaptersCount = books[selectedBookNumber - 1].length;
     renderBibleChaptersList(chaptersCount);
   }
   else
@@ -82,9 +99,10 @@ function loadBibleVersesList()
 {
   // Load verses for the selected chapter
   const selectedBibleVersionStructure = bibleStructureCache.get(selectedBibleVersionId);
-  if (selectedBibleVersionStructure && selectedBibleVersionStructure[selectedBookNumber - 1] && selectedBibleVersionStructure[selectedBookNumber - 1][selectedChapterNumber - 1])
+  const books = selectedBibleVersionStructure?.books || (Array.isArray(selectedBibleVersionStructure) ? selectedBibleVersionStructure : null);
+  if (books && books[selectedBookNumber - 1] && books[selectedBookNumber - 1][selectedChapterNumber - 1])
   {
-    const verseCount = selectedBibleVersionStructure[selectedBookNumber - 1][selectedChapterNumber - 1];
+    const verseCount = books[selectedBookNumber - 1][selectedChapterNumber - 1];
     renderBibleVersesList(verseCount);
   }
   else
@@ -170,7 +188,7 @@ async function fetchAndloadVerseSlides(targetVersionId, targetBookNumber, target
 function selectBibleVersion(targetVersionId)
 {
   selectedBibleVersionId = targetVersionId;
-  bibleVersionSelectionDropdown.value = bibleVersion.id;
+  if (bibleVersionSelectionDropdown) bibleVersionSelectionDropdown.value = targetVersionId;
   saveLastBrowsedBible();
 }
 
@@ -203,6 +221,11 @@ function selectVerseSlide(targetVerseNumber)
 //#endregion
 
 //#region Rendering
+function renderBibleVersionsDropdown(bibleVersions)
+{
+  renderBibleVersionDropdown(bibleVersions);
+}
+
 function renderBibleVersionDropdown(bibleVersions)
 {
   bibleVersionSelectionDropdown.innerHTML = '';
@@ -308,7 +331,11 @@ function renderBibleVersesList(verseNumbers)
 {
   bibleVersesList.innerHTML = '';
 
-  verseNumbers.forEach((verseNumber) =>
+  const list = typeof verseNumbers === 'number'
+    ? Array.from({ length: verseNumbers }, (_, i) => i + 1)
+    : (Array.isArray(verseNumbers) ? verseNumbers : []);
+
+  list.forEach((verseNumber) =>
   {
     const verseButton = document.createElement('button');
     verseButton.type = 'button';
