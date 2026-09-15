@@ -37,21 +37,7 @@ let selectedBibleVersionId = 'tamil';
 let selectedBookNumber = 1;
 let selectedChapterNumber = 1;
 let selectedVerseNumber = 1;
-
-// Restore Last Browsed Bible from LocalStorage
-try
-{
-  const savedLastBible = localStorage.getItem('last_browsed_bible');
-  if (savedLastBible)
-  {
-    const parsed = JSON.parse(savedLastBible);
-    if (parsed.versionId) selectedBibleVersionId = parsed.versionId;
-    if (parsed.bookNum) selectedBookNumber = Number(parsed.bookNum);
-    if (parsed.chapterNum) selectedChapterNumber = Number(parsed.chapterNum);
-    if (parsed.verseNum) selectedVerseNumber = Number(parsed.verseNum);
-  }
-}
-catch (e) {}
+let recentVerses = [];
 
 function saveLastBrowsedBible()
 {
@@ -65,18 +51,6 @@ function saveLastBrowsedBible()
     }));
   }
   catch (e) {}
-}
-
-// Persistent Recent Verses
-let recentVerses = [];
-try
-{
-  const savedRecent = localStorage.getItem('recent_bible_verses') || localStorage.getItem('verseview_recent_verses');
-  if (savedRecent) recentVerses = JSON.parse(savedRecent);
-}
-catch (e)
-{
-  recentVerses = [];
 }
 
 // ---------------------------------------------------------------------------
@@ -97,14 +71,15 @@ const songListContainer = document.getElementById('song-list-container');
 const songSearchInput = document.getElementById('song-search-input');
 const buttonClearSongSearch = document.getElementById('btn-clear-song-search');
 
-const bibleVersionSelectionDropdown = document.getElementById('bibleVersionSelectionDropdown');
-const bibleRecentStrip = document.getElementById('bible-recent-strip');
-const bibleBooksList = document.getElementById('bible-books-list');
-const bibleChaptersList = document.getElementById('bible-chapters-list');
-const bibleVersesList = document.getElementById('bible-verses-list');
+// Bible DOM References (Assigned inside initBible)
+let bibleVersionSelectionDropdown = null;
+let bibleRecentStrip = null;
+let bibleBooksList = null;
+let bibleChaptersList = null;
+let bibleVersesList = null;
+let slideDeckBible = null;
 
 const slideDeckSongs = document.getElementById('slide-deck-songs');
-const slideDeckBible = document.getElementById('slide-deck-bible');
 
 const activeSongTitle = document.getElementById('active-song-title');
 const songUnicodeDeckBadge = document.getElementById('song-unicode-deck-badge');

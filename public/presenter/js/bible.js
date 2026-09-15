@@ -8,8 +8,46 @@ const bibleChapterTextCache = new Map(); // Cached from /api/bible/${versionId}/
 const maxBibleChapterTextCache = 20; // Caps in-memory text cache to ~80-100 KB total
 
 
+function loadBibleLocalStorage()
+{
+  try
+  {
+    const savedLastBible = localStorage.getItem('last_browsed_bible');
+    if (savedLastBible)
+    {
+      const parsed = JSON.parse(savedLastBible);
+      if (parsed.versionId) selectedBibleVersionId = parsed.versionId;
+      if (parsed.bookNum) selectedBookNumber = Number(parsed.bookNum);
+      if (parsed.chapterNum) selectedChapterNumber = Number(parsed.chapterNum);
+      if (parsed.verseNum) selectedVerseNumber = Number(parsed.verseNum);
+    }
+  }
+  catch (e) {}
+
+  try
+  {
+    const savedRecent = localStorage.getItem('recent_bible_verses') || localStorage.getItem('verseview_recent_verses');
+    if (savedRecent) recentVerses = JSON.parse(savedRecent);
+  }
+  catch (e)
+  {
+    recentVerses = [];
+  }
+}
+
 async function initBible()
 {
+  // Assign Bible DOM elements
+  bibleVersionSelectionDropdown = document.getElementById('bibleVersionSelectionDropdown');
+  bibleRecentStrip = document.getElementById('bible-recent-strip');
+  bibleBooksList = document.getElementById('bible-books-list');
+  bibleChaptersList = document.getElementById('bible-chapters-list');
+  bibleVersesList = document.getElementById('bible-verses-list');
+  slideDeckBible = document.getElementById('slide-deck-bible');
+
+  // Read Bible configuration from LocalStorage
+  loadBibleLocalStorage();
+
   try
   {
     const localVersionId = selectedBibleVersionId;
