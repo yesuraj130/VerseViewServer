@@ -256,10 +256,10 @@ function renderBibleBooksList(booksNames)
 {
   bibleBooksList.innerHTML = '';
 
-  let bookNumber = 0;
-  booksNames.forEach(bookName =>
+  for (let i = 0; i < booksNames.length; i++)
   {
-    bookNumber++;
+    const bookNumber = i + 1;
+    const bookName = booksNames[i];
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'book-btn book-item';
@@ -288,7 +288,7 @@ function renderBibleBooksList(booksNames)
     });
 
     bibleBooksList.appendChild(button);
-  }); 
+  } 
 }
 
 function renderBibleChaptersList(chaptersCount)
