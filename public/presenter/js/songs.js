@@ -3,6 +3,8 @@
 // ===========================================================================
 
 let songsCache = null;
+let selectedSongId = 1;
+let selectedSongSlide = 0;
 const songSlidesTextCache = new Map(); // Cached from /api/songs/${songId}
 const maxSongSlidesTextCache = 50; // Caps in-memory song cache to ~50 songs
 let currentSongSlidesFetchId = 0;
@@ -15,8 +17,7 @@ function loadSongLocalStorage()
     const savedSongId = localStorage.getItem('last_browsed_song_id');
     if (savedSongId)
     {
-      selectedSongId = Number(savedSongId);
-      lastBrowsedSongId = Number(savedSongId);
+      selectedSongId = savedSongId;
     }
   }
   catch (e) {}
@@ -50,24 +51,16 @@ async function initSongs()
     const songsFetchResult = await fetch(songsFetchUrl);
     const songsFetchResultJson = await songsFetchResult.json();
 
-    songsCache = songsFetchResultJson || [];
+    songsCache = songsFetchResultJson;
 
     if (localFetchId === currentSongSlidesFetchId)
     {
       loadSongsList();
 
-      let targetSongId = localSongId;
-      if (!targetSongId && songsCache.length > 0)
-      {
-        targetSongId = songsCache[0].id;
-      }
+      setSelectedDataItemInList(songListContainer, 'data-id', localSongId);
+      scrollToDataItemInList(songListContainer, 'data-id', localSongId);
 
-      if (targetSongId)
-      {
-        selectSong(targetSongId);
-        const isLoaded = await loadSongSlides();
-        if (isLoaded && slideDeckSongs) setSelectedIndexInList(slideDeckSongs, 0);
-      }
+      await loadSongSlides();
     }
   }
   catch (err)
@@ -77,7 +70,7 @@ async function initSongs()
 }
 
 //#region Loading
-function loadSongsList(songSearchText = '')
+function loadSongsList(songSearchQuery)
 {
   if (!songsCache)
   {
@@ -85,21 +78,21 @@ function loadSongsList(songSearchText = '')
     return;
   }
 
-  const query = (songSearchText || '').trim().toLowerCase();
-  let songsToRender = songsCache;
-
-  if (query)
+  if (songSearchQuery && songSearchQuery.trim().length > 0)
   {
-    songsToRender = songsCache.filter(song =>
+    const songsToRender = songsCache.filter(song =>
     {
       const name = (song.name || '').toLowerCase();
       const firstLine = (song.firstLine || '').toLowerCase();
       const cat = (song.cat || '').toLowerCase();
-      return name.includes(query) || firstLine.includes(query) || cat.includes(query);
+      return name.includes(songSearchQuery) || firstLine.includes(songSearchQuery) || cat.includes(songSearchQuery);
     });
+    renderSongsList(songsToRender);
   }
-
-  renderSongsList(songsToRender);
+  else
+  {
+    renderSongsList(songsCache);
+  }
 }
 
 async function reloadSongsCache()
@@ -117,8 +110,7 @@ async function reloadSongsCache()
 
 async function loadSongSlides()
 {
-  if (!selectedSongId) return false;
-  const cachedSong = songSlidesTextCache.get(Number(selectedSongId));
+  const cachedSong = songSlidesTextCache.get(selectedSongId);
   if (cachedSong && cachedSong.slides && cachedSong.slides.length > 0)
   {
     renderSongSlides(cachedSong);
@@ -145,7 +137,7 @@ async function fetchAndLoadSongSlides(targetSongId)
 
     if (!songFetchResult.ok)
     {
-      if (slideDeckSongs) slideDeckSongs.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 48px;">Error loading song slides.</div>';
+      if (slideDeckSongs) slideDeckSongs.innerHTML = 'Error loading song slides';
       console.error(`Failed to fetch song ${localSongId}:`, songFetchResult.statusText);
       return false;
     }
@@ -166,7 +158,7 @@ async function fetchAndLoadSongSlides(targetSongId)
     }
     else
     {
-      if (slideDeckSongs) slideDeckSongs.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 48px;">No slides available.</div>';
+      if (slideDeckSongs) slideDeckSongs.innerHTML = 'No slides available.';
       return false;
     }
   }
@@ -181,73 +173,39 @@ async function fetchAndLoadSongSlides(targetSongId)
 //#region Selection
 function selectSong(targetSongId)
 {
-  selectedSongId = Number(targetSongId);
+  selectedSongId = targetSongId;
   saveLastBrowsedSong(targetSongId);
-
-  if (songListContainer)
-  {
-    const songItems = songListContainer.children;
-    for (let i = 0; i < songItems.length; i++)
-    {
-      const item = songItems[i];
-      const isMatch = Number(item.getAttribute('data-id')) === selectedSongId;
-      item.classList.toggle('selected', isMatch);
-      if (isMatch)
-      {
-        item.scrollIntoView({ block: 'nearest', behavior: 'auto' });
-      }
-    }
-  }
 }
 
 function selectSongSlide(targetSlideIndex)
 {
-  if (!slideDeckSongs) return;
+  selectedSongSlide = targetSlideIndex;
   setSelectedIndexInList(slideDeckSongs, targetSlideIndex - 1);
-  smoothScrollToIndexInList(slideDeckSongs, targetSlideIndex - 1);
 }
 //#endregion
 
 //#region Rendering
-function getSongFontFamily(fontName)
-{
-  const f = (fontName || '').trim();
-  if (!f || f === 'Tamil Bible' || f === 'Tamil-Ananthi' || f === 'Latha' || f === 'Mukta Malar' || f === 'Baloo Thambi' || f === 'Baloo Thambi 2')
-  {
-    return `'Baloo Thambi 2', 'Baloo Thambi', 'Mukta Malar', 'Noto Sans Tamil', var(--font-display)`;
-  }
-  return `"${f}", 'Baloo Thambi 2', 'Baloo Thambi', 'Mukta Malar', var(--font-display)`;
-}
 
 function renderSongsList(songs)
 {
-  if (!songListContainer) return;
   songListContainer.innerHTML = '';
 
   if (!songs || songs.length === 0)
   {
-    songListContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 32px 16px;">No songs found.</div>';
+    songListContainer.innerHTML = 'No songs found';
     return;
   }
 
-  for (let i = 0; i < songs.length; i++)
+  songs.forEach((song) =>
   {
-    const song = songs[i];
     const item = document.createElement('div');
     item.className = 'song-item';
     item.setAttribute('data-id', song.id);
 
-    if (selectedSongId && Number(selectedSongId) === Number(song.id))
-    {
-      item.classList.add('selected');
-    }
-    if (liveState && liveState.status === 'live' && liveState.type === 'song' && Number(liveState.songId) === Number(song.id))
-    {
-      item.classList.add('is-live-active');
-    }
-
-    const songFontFamily = getSongFontFamily(song.font);
-    const displayName = song.name || 'Untitled';
+    if (selectedSongId === song.id) item.classList.add('selected');
+    
+    const songFontFamily = `'Baloo Thambi 2', 'Baloo Thambi', 'Mukta Malar', 'Noto Sans Tamil', var(--font-display)`;
+    const displayName = song.name;
     const previewLine = song.firstLine ? escapeHtml(song.firstLine) : '&nbsp;';
 
     item.innerHTML = `
@@ -266,60 +224,38 @@ function renderSongsList(songs)
       const isLoaded = await loadSongSlides();
       if (isLoaded && slideDeckSongs)
       {
-        setSelectedIndexInList(slideDeckSongs, 0);
-        smoothScrollToIndexInList(slideDeckSongs, 0);
+        selectSongSlide(0);
       }
     });
 
     songListContainer.appendChild(item);
-  }
+  });
 }
 
 function renderSongSlides(song)
 {
-  if (!slideDeckSongs) return;
   slideDeckSongs.innerHTML = '';
 
-  const slides = song.slides || [];
-
-  if (activeSongTitle)
-  {
-    activeSongTitle.textContent = song.name || 'Untitled';
-    activeSongTitle.style.fontFamily = getSongFontFamily(song.font);
-  }
-  if (activeSlideCountIndicator)
-  {
-    activeSlideCountIndicator.textContent = `${slides.length} slides`;
-  }
-  if (buttonDeckEditSong)
-  {
-    buttonDeckEditSong.style.display = 'inline-flex';
-  }
-
+  activeSongTitle.textContent = song.name;
+  activeSongTitle.style.fontFamily = `'Baloo Thambi 2', 'Baloo Thambi', 'Mukta Malar', 'Noto Sans Tamil', var(--font-display)`;
+  
+  const slides = song.slides;
   if (slides.length === 0)
   {
-    slideDeckSongs.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 48px;">This song has no slides.</div>';
+    slideDeckSongs.innerHTML = 'This song has no slides.';
     return;
   }
 
-  updateSongDeckColumnWidth();
+  //updateSongDeckColumnWidth();
 
-  const songFontFamily = getSongFontFamily(song.font);
+  const songFontFamily = `'Baloo Thambi 2', 'Baloo Thambi', 'Mukta Malar', 'Noto Sans Tamil', var(--font-display)`;
 
   slides.forEach((slide) =>
   {
     const card = document.createElement('div');
     card.className = 'slide-card';
 
-    const isLive = liveState &&
-      liveState.status === 'live' &&
-      liveState.type === 'song' &&
-      Number(liveState.songId) === Number(song.id) &&
-      Number(liveState.slideIndex) === Number(slide.slideIndex);
-
-    if (isLive) card.classList.add('active-live');
-
-    const lines = slide.lines || [];
+    const lines = slide.lines;
     const linesHtml = lines.map(line => `<div>${escapeHtml(line)}</div>`).join('');
 
     card.innerHTML = `
@@ -332,41 +268,21 @@ function renderSongSlides(song)
     card.addEventListener('click', () =>
     {
       selectSongSlide(slide.slideIndex);
-      presentSlide(song, slide.slideIndex);
+      presentSlide(slide);
     });
 
     slideDeckSongs.appendChild(card);
   });
 }
-
-function updateSongDeckColumnWidth()
-{
-  const targetContainer = document.getElementById('slide-deck-songs') || slideDeckSongs;
-  if (!targetContainer) return;
-
-  const isMobile = window.innerWidth <= 768;
-  if (isMobile)
-  {
-    targetContainer.style.setProperty('--song-deck-col-width', '100%');
-    targetContainer.classList.add('wrap-lines');
-    targetContainer.classList.add('mobile-single-col');
-  }
-  else
-  {
-    targetContainer.classList.remove('mobile-single-col');
-    targetContainer.style.setProperty('--song-deck-col-width', '280px');
-    targetContainer.classList.remove('wrap-lines');
-  }
-}
 //#endregion
 
-function presentSlide(song, slideIndex)
+function presentSlide(slide)
 {
   const songId = (song && song.id !== undefined) ? song.id : song;
   const payload = {
     type: 'song',
-    songId: songId,
-    slideIndex: slideIndex
+    songId: slide.songId,
+    slideIndex: slide.slideIndex
   };
 
   if (socket)
@@ -386,7 +302,6 @@ function presentSlide(song, slideIndex)
 //#region List Scrolling and Selection
 function scrollToIndexInList(container, index)
 {
-  if (!container) return;
   if (index === 0) container.scrollTop = 0;
   else 
   {
@@ -397,7 +312,6 @@ function scrollToIndexInList(container, index)
 
 function smoothScrollToIndexInList(container, index)
 {
-  if (!container) return;
   const targetChild = container.children[index];
   if (targetChild && typeof smoothScrollToElement === 'function')
   {
@@ -407,11 +321,34 @@ function smoothScrollToIndexInList(container, index)
 
 function setSelectedIndexInList(container, activeIndex)
 {
-  if (!container) return;
   const items = container.children;
   for (let i = 0; i < items.length; i++)
   {
     items[i].classList.toggle('active', i === activeIndex);
+  }
+}
+function setSelectedDataItemInList(container, attributeName, attributeValue)
+{
+  const items = container.children;
+  for (let i = 0; i < items.length; i++)
+  {
+    const item = items[i];
+    const isMatch = Number(item.getAttribute(attributeName)) === attributeValue;
+    item.classList.toggle('selected', isMatch);
+  }
+}
+function scrollToDataItemInList(container, attributeName, attributeValue)
+{
+  const items = container.children;
+  for (let i = 0; i < items.length; i++)
+  {
+    const item = items[i];
+    const isMatch = Number(item.getAttribute(attributeName)) === attributeValue;
+    if (isMatch)
+    {
+      item.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+      break;
+    }
   }
 }
 //#endregion
@@ -419,19 +356,9 @@ function setSelectedIndexInList(container, activeIndex)
 //#region Song Search & Editor Dialog
 function initSongSearchEvents()
 {
-  if (!songSearchInput) return;
-
-  const updateClearBtn = () =>
-  {
-    if (buttonClearSongSearch)
-    {
-      buttonClearSongSearch.style.display = songSearchInput.value ? 'flex' : 'none';
-    }
-  };
-
   songSearchInput.addEventListener('input', () =>
   {
-    updateClearBtn();
+    buttonClearSongSearch.style.display = songSearchInput.value ? 'flex' : 'none';   
     loadSongsList(songSearchInput.value);
   });
 
@@ -440,9 +367,7 @@ function initSongSearchEvents()
     buttonClearSongSearch.addEventListener('click', () =>
     {
       songSearchInput.value = '';
-      updateClearBtn();
       songSearchInput.focus();
-      loadSongsList('');
     });
   }
 }
@@ -656,8 +581,3 @@ async function deleteSong(songId)
   }
 }
 //#endregion
-
-window.addEventListener('resize', () =>
-{
-  updateSongDeckColumnWidth();
-});

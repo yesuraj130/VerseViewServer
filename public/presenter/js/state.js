@@ -7,29 +7,9 @@ const socket = (typeof io !== 'undefined') ? io() : null;
 
 // Application State
 let liveState = null;
-let selectedSongId = null;
-let lastBrowsedSongId = null;
 
-// Restore Last Browsed Song ID from LocalStorage
-try
-{
-  const savedSongId = localStorage.getItem('last_browsed_song_id');
-  if (savedSongId)
-  {
-    lastBrowsedSongId = Number(savedSongId);
-  }
-}
-catch (e) {}
 
-function saveLastBrowsedSong(songId)
-{
-  try
-  {
-    lastBrowsedSongId = Number(songId);
-    localStorage.setItem('last_browsed_song_id', songId);
-  }
-  catch (e) {}
-}
+
 
 // Bible Application State
 let bibleVersions = [];
