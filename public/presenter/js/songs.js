@@ -77,41 +77,41 @@ async function initSongs()
 }
 
 //#region Loading
-function loadSongsList()
+function loadSongsList(songSearchText = '')
 {
-  if (songsCache) renderSongsList(songsCache);
-  else console.warn('Songs cache not available');
+  if (!songsCache)
+  {
+    console.warn('Songs cache not available');
+    return;
+  }
+
+  const query = (songSearchText || '').trim().toLowerCase();
+  let songsToRender = songsCache;
+
+  if (query)
+  {
+    songsToRender = songsCache.filter(song =>
+    {
+      const name = (song.name || '').toLowerCase();
+      const firstLine = (song.firstLine || '').toLowerCase();
+      const cat = (song.cat || '').toLowerCase();
+      return name.includes(query) || firstLine.includes(query) || cat.includes(query);
+    });
+  }
+
+  renderSongsList(songsToRender);
 }
 
-async function loadSongs(songSearchText = '')
+async function reloadSongsCache()
 {
   try
   {
-    let url = '/api/songs';
-    if (songSearchText) url += `?q=${encodeURIComponent(songSearchText)}`;
-
-    const songsSearchFetchResult = await fetch(url);
-    const songsSearchResultJson = await songsSearchFetchResult.json();
-
-    songsCache = songsSearchResultJson || [];
-    renderSongsList(songsCache);
-
-    if (!selectedSongId && songsCache.length > 0)
-    {
-      let songToSelect = songsCache[0];
-      if (lastBrowsedSongId)
-      {
-        const match = songsCache.find(s => Number(s.id) === Number(lastBrowsedSongId));
-        if (match) songToSelect = match;
-      }
-      selectSong(songToSelect.id, false);
-      const isLoaded = await loadSongSlides();
-      if (isLoaded && slideDeckSongs) setSelectedIndexInList(slideDeckSongs, 0);
-    }
+    const res = await fetch('/api/songs');
+    songsCache = (await res.json()) || [];
   }
   catch (err)
   {
-    console.error('Error loading songs:', err);
+    console.error('Error reloading songs cache:', err);
   }
 }
 
@@ -422,7 +422,6 @@ function setSelectedIndexInList(container, activeIndex)
 //#endregion
 
 //#region Song Search & Editor Dialog
-let songSearchDebounce = null;
 function initSongSearchEvents()
 {
   if (!songSearchInput) return;
@@ -438,11 +437,7 @@ function initSongSearchEvents()
   songSearchInput.addEventListener('input', () =>
   {
     updateClearBtn();
-    clearTimeout(songSearchDebounce);
-    songSearchDebounce = setTimeout(() =>
-    {
-      loadSongs(songSearchInput.value);
-    }, 200);
+    loadSongsList(songSearchInput.value);
   });
 
   if (buttonClearSongSearch)
@@ -452,7 +447,7 @@ function initSongSearchEvents()
       songSearchInput.value = '';
       updateClearBtn();
       songSearchInput.focus();
-      loadSongs('');
+      loadSongsList('');
     });
   }
 }
@@ -581,7 +576,8 @@ function initSongEditorEvents()
         const saved = await res.json();
         songSlidesTextCache.set(Number(saved.id), saved);
         closeEditSongDialog();
-        await loadSongs(songSearchInput ? songSearchInput.value : '');
+        await reloadSongsCache();
+        loadSongsList(songSearchInput ? songSearchInput.value : '');
         selectSong(saved.id, false);
         await loadSongSlides();
       }
@@ -655,7 +651,8 @@ async function deleteSong(songId)
         if (buttonDeckEditSong) buttonDeckEditSong.style.display = 'none';
         if (activeSlideCountIndicator) activeSlideCountIndicator.textContent = '0 slides';
       }
-      await loadSongs(songSearchInput ? songSearchInput.value : '');
+      await reloadSongsCache();
+      loadSongsList(songSearchInput ? songSearchInput.value : '');
     }
   }
   catch (err)
