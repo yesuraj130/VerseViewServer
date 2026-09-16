@@ -114,7 +114,8 @@ async function jumpToLiveSlide()
     switchTab('songs');
     if (!selectedSongId || Number(selectedSongId) !== Number(liveState.songId))
     {
-      await selectSong(liveState.songId);
+      selectSong(liveState.songId);
+      await loadSongSlides();
     }
     const slideIdx = Number(liveState.slideIndex) || 1;
 

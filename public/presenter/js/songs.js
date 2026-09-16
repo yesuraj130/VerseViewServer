@@ -64,7 +64,7 @@ async function initSongs()
 
       if (targetSongId)
       {
-        selectSong(targetSongId, false);
+        selectSong(targetSongId);
         const isLoaded = await loadSongSlides();
         if (isLoaded && slideDeckSongs) setSelectedIndexInList(slideDeckSongs, 0);
       }
@@ -179,7 +179,7 @@ async function fetchAndLoadSongSlides(targetSongId)
 //#endregion
 
 //#region Selection
-async function selectSong(targetSongId, autoLoadSlides = true)
+function selectSong(targetSongId)
 {
   selectedSongId = Number(targetSongId);
   saveLastBrowsedSong(targetSongId);
@@ -197,11 +197,6 @@ async function selectSong(targetSongId, autoLoadSlides = true)
         item.scrollIntoView({ block: 'nearest', behavior: 'auto' });
       }
     }
-  }
-
-  if (autoLoadSlides)
-  {
-    await loadSongSlides();
   }
 }
 
@@ -267,7 +262,7 @@ function renderSongsList(songs)
     item.addEventListener('click', async () =>
     {
       if (selectedSongId === Number(song.id)) return;
-      selectSong(song.id, false);
+      selectSong(song.id);
       const isLoaded = await loadSongSlides();
       if (isLoaded && slideDeckSongs)
       {
@@ -578,7 +573,7 @@ function initSongEditorEvents()
         closeEditSongDialog();
         await reloadSongsCache();
         loadSongsList(songSearchInput ? songSearchInput.value : '');
-        selectSong(saved.id, false);
+        selectSong(saved.id);
         await loadSongSlides();
       }
       catch (err)
