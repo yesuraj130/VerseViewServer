@@ -56,7 +56,6 @@ async function initSongs()
 
   try
   {
-    const localSongId = selectedSongId;
     const localFetchId = ++currentSongSlidesFetchId;
 
     const songsFetchUrl = '/api/songs';
@@ -65,12 +64,17 @@ async function initSongs()
 
     songsCache = songsFetchResultJson;
 
+    if (Array.isArray(songsFetchResultJson) && songsFetchResultJson.length > 0)
+    {
+      selectedSongId = songsFetchResultJson[0].id;
+    }
+
     if (localFetchId === currentSongSlidesFetchId)
     {
       loadSongsList();
 
-      setSelectedDataItemInList(songListContainer, 'data-id', localSongId);
-      scrollToDataItemInList(songListContainer, 'data-id', localSongId);
+      setSelectedDataItemInList(songListContainer, 'data-id', selectedSongId);
+      scrollToDataItemInList(songListContainer, 'data-id', selectedSongId);
 
       await loadSongSlides();
     }
@@ -278,7 +282,7 @@ function renderSongSlides(song)
     const linesHtml = lines.map(line => `<div>${escapeHtml(line)}</div>`).join('');
 
     card.innerHTML = `
-      <span class="slide-card-badge" style="${isLive ? 'display: inline-block;' : 'display: none;'}">LIVE</span>
+      <span class="slide-card-badge">LIVE</span>
       <div class="slide-card-content" style="font-family: ${songFontFamily};">
         ${linesHtml}
       </div>
@@ -295,13 +299,14 @@ function renderSongSlides(song)
 }
 //#endregion
 
-function presentSlide(slide)
+function presentSlide(slide, slideIndexOverride)
 {
-  const songId = (song && song.id !== undefined) ? song.id : song;
+  const targetSongId = slide ? (slide.songId || slide.songid || slide.id || selectedSongId) : selectedSongId;
+  const targetSlideIndex = slideIndexOverride !== undefined ? slideIndexOverride : (slide ? slide.slideIndex : 1);
   const payload = {
     type: 'song',
-    songId: slide.songId,
-    slideIndex: slide.slideIndex
+    songId: targetSongId,
+    slideIndex: targetSlideIndex
   };
 
   if (socket)

@@ -722,6 +722,8 @@ app.get('/api/songs/:id', (req, res) =>
       {
         slides.push({
           slideIndex: slides.length + 1,
+          songId: song.id,
+          songid: song.id,
           rawSlide: s,
           lines: lines
         });
