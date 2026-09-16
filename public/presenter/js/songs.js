@@ -106,14 +106,15 @@ function loadSongsList(songSearchQuery)
     return;
   }
 
-  if (songSearchQuery && songSearchQuery.trim().length > 0)
+  const query = (songSearchQuery || '').trim().toLowerCase();
+
+  if (query.length > 0)
   {
     const songsToRender = songsCache.filter(song =>
     {
       const name = (song.name || '').toLowerCase();
-      const firstLine = (song.firstLine || '').toLowerCase();
-      const cat = (song.cat || '').toLowerCase();
-      return name.includes(songSearchQuery) || firstLine.includes(songSearchQuery) || cat.includes(songSearchQuery);
+      const title2 = (song.title2 || '').toLowerCase();
+      return name.includes(query) || title2.includes(query);
     });
     renderSongsList(songsToRender);
   }

@@ -96,7 +96,7 @@
         <aside class="browser-pane">
           <div class="search-box">
             <div class="search-input-wrapper">
-              <input type="text" id="song-search-input" class="input-search" placeholder="Search title, tags, or number...">
+              <input type="text" id="song-search-input" class="input-search" placeholder="Search song title or alternate title...">
               <button type="button" id="btn-clear-song-search" class="btn-search-clear" title="Clear search" style="display: none;">&times;</button>
             </div>
           </div>
@@ -199,28 +199,18 @@
           </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 10px;">
-          <div class="form-group">
-            <label class="form-label" for="edit-song-category-textbox">Category</label>
-            <input type="text" id="edit-song-category-textbox" class="input-text" placeholder="e.g. Hymns, Worship, Sunday School">
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="edit-song-font-textbox">Font Name</label>
-            <input type="text" id="edit-song-font-textbox" class="input-text" list="font-list-options" placeholder="e.g. Arial, Baloo Thambi, Latha">
-            <datalist id="font-list-options">
-              <option value="Baloo Thambi 2">
-              <option value="Baloo Thambi">
-              <option value="Mukta Malar">
-              <option value="Arial">
-              <option value="Calibri">
-              <option value="Times New Roman">
-              <option value="Tamil Bible">
-            </datalist>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="edit-song-tags-textbox">Searchable Tags</label>
-            <input type="text" id="edit-song-tags-textbox" class="input-text" placeholder="e.g. PRAISE, EASTER, COMMUNION">
-          </div>
+        <div class="form-group" style="margin-bottom: 10px;">
+          <label class="form-label" for="edit-song-font-textbox">Font Name</label>
+          <input type="text" id="edit-song-font-textbox" class="input-text" list="font-list-options" placeholder="e.g. Arial, Baloo Thambi, Latha">
+          <datalist id="font-list-options">
+            <option value="Baloo Thambi 2">
+            <option value="Baloo Thambi">
+            <option value="Mukta Malar">
+            <option value="Arial">
+            <option value="Calibri">
+            <option value="Times New Roman">
+            <option value="Tamil Bible">
+          </datalist>
         </div>
 
         <div class="form-group" style="flex-grow: 1; display: flex; flex-direction: column;">

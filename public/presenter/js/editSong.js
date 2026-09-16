@@ -32,9 +32,7 @@ function openAddSongDialog()
   if (editSongDialogHeading) editSongDialogHeading.textContent = 'Add New Song';
   if (editSongTitleTextbox) editSongTitleTextbox.value = '';
   if (editSongSecondaryTitleTextbox) editSongSecondaryTitleTextbox.value = '';
-  if (editSongCategoryTextbox) editSongCategoryTextbox.value = '';
   if (editSongFontTextbox) editSongFontTextbox.value = '';
-  if (editSongTagsTextbox) editSongTagsTextbox.value = '';
   if (editSongLyricsTextarea) editSongLyricsTextarea.value = '';
   if (buttonDeleteSongDialog) buttonDeleteSongDialog.style.display = 'none';
   if (editSongDialog) editSongDialog.style.display = 'flex';
@@ -64,9 +62,7 @@ async function openEditSongDialog(songId)
     if (editSongDialogHeading) editSongDialogHeading.textContent = 'Edit Song';
     if (editSongTitleTextbox) editSongTitleTextbox.value = song.name || '';
     if (editSongSecondaryTitleTextbox) editSongSecondaryTitleTextbox.value = song.title2 || '';
-    if (editSongCategoryTextbox) editSongCategoryTextbox.value = song.cat || '';
     if (editSongFontTextbox) editSongFontTextbox.value = song.font || '';
-    if (editSongTagsTextbox) editSongTagsTextbox.value = song.tags || '';
     if (editSongLyricsTextarea) editSongLyricsTextarea.value = lyricsToTextareaValue(song.lyrics || '');
 
     if (buttonDeleteSongDialog)
@@ -100,9 +96,7 @@ async function handleSaveSong()
 {
   const title = editSongTitleTextbox ? editSongTitleTextbox.value.trim() : '';
   const title2 = editSongSecondaryTitleTextbox ? editSongSecondaryTitleTextbox.value.trim() : '';
-  const cat = editSongCategoryTextbox ? editSongCategoryTextbox.value.trim() || 'General' : 'General';
   const font = editSongFontTextbox ? editSongFontTextbox.value.trim() : '';
-  const tags = editSongTagsTextbox ? editSongTagsTextbox.value.trim() : '';
   const songId = editSongIdHiddenInput ? editSongIdHiddenInput.value : '';
   const lyrics = textareaValueToLyrics(editSongLyricsTextarea ? editSongLyricsTextarea.value : '');
 
@@ -123,9 +117,7 @@ async function handleSaveSong()
   const payload = {
     name: title,
     title2,
-    cat,
     font,
-    tags,
     lyrics
   };
 
