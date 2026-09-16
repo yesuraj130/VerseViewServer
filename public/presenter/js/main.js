@@ -6,6 +6,6 @@ document.addEventListener('DOMContentLoaded', () =>
 {
   initResizer();
   initTabNavigation();
-  loadSongs();
+  initSongs();
   initBible();
 });

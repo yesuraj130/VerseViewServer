@@ -67,9 +67,16 @@ const buttonNextSlide = document.getElementById('btn-next-slide');
 
 const tabButtons = document.querySelectorAll('.tab-btn');
 
-const songListContainer = document.getElementById('song-list-container');
-const songSearchInput = document.getElementById('song-search-input');
-const buttonClearSongSearch = document.getElementById('btn-clear-song-search');
+// Song DOM References (Assigned inside initSongs)
+let songListContainer = null;
+let songSearchInput = null;
+let buttonClearSongSearch = null;
+let slideDeckSongs = null;
+let slideDeckContainer = null;
+let activeSongTitle = null;
+let songUnicodeDeckBadge = null;
+let activeSlideCountIndicator = null;
+let buttonDeckEditSong = null;
 
 // Bible DOM References (Assigned inside initBible)
 let bibleVersionSelectionDropdown = null;
@@ -78,13 +85,6 @@ let bibleBooksList = null;
 let bibleChaptersList = null;
 let bibleVersesList = null;
 let slideDeckBible = null;
-
-const slideDeckSongs = document.getElementById('slide-deck-songs');
-
-const activeSongTitle = document.getElementById('active-song-title');
-const songUnicodeDeckBadge = document.getElementById('song-unicode-deck-badge');
-const activeSlideCountIndicator = document.getElementById('active-slide-count-indicator');
-const buttonDeckEditSong = document.getElementById('btn-deck-edit-song');
 
 // Song Add / Edit Dialog Elements
 const editSongDialog = document.getElementById('edit-song-dialog');
