@@ -7,32 +7,32 @@ const bibleStructureCache = new Map(); // Cached from /api/bible/{versionId}/str
 const bibleChapterTextCache = new Map(); // Cached from /api/bible/${versionId}/text
 const maxBibleChapterTextCache = 20; // Caps in-memory text cache to ~80-100 KB total
 
+// Bible Application State
+let selectedBibleVersionId = 'tamil';
+let selectedBookNumber = 1;
+let selectedChapterNumber = 1;
+let selectedVerseNumber = 1;
+let recentVerses = null;
+
+// DOM Elements
+let bibleVersionSelectionDropdown = null;
+let bibleRecentStrip = null;
+let bibleBooksList = null;
+let bibleChaptersList = null;
+let bibleVersesList = null;
+let slideDeckBible = null;
+
 
 function loadBibleLocalStorage()
 {
   try
   {
-    const savedLastBible = localStorage.getItem('last_browsed_bible');
-    if (savedLastBible)
-    {
-      const parsed = JSON.parse(savedLastBible);
-      if (parsed.versionId) selectedBibleVersionId = parsed.versionId;
-      if (parsed.bookNum) selectedBookNumber = Number(parsed.bookNum);
-      if (parsed.chapterNum) selectedChapterNumber = Number(parsed.chapterNum);
-      if (parsed.verseNum) selectedVerseNumber = Number(parsed.verseNum);
-    }
+     selectedBibleVersionId = localStorage.getItem('selectedBibleVersionId');
+     selectedBookNumber = Number(localStorage.getItem('selectedBookNumber'));
+     selectedChapterNumber = Number(localStorage.getItem('selectedChapterNumber'));
+     selectedVerseNumber = Number(localStorage.getItem('selectedVerseNumber'));   
   }
   catch (e) {}
-
-  try
-  {
-    const savedRecent = localStorage.getItem('recent_bible_verses') || localStorage.getItem('verseview_recent_verses');
-    if (savedRecent) recentVerses = JSON.parse(savedRecent);
-  }
-  catch (e)
-  {
-    recentVerses = [];
-  }
 }
 
 async function initBible()
@@ -226,35 +226,38 @@ async function fetchAndloadVerseSlides(targetVersionId, targetBookNumber, target
 function selectBibleVersion(targetVersionId)
 {
   selectedBibleVersionId = targetVersionId;
-  if (bibleVersionSelectionDropdown) bibleVersionSelectionDropdown.value = targetVersionId;
-  saveLastBrowsedBible();
+  localStorage.setItem('selectedBibleVersionId', selectedBibleVersionId);
+
+  bibleVersionSelectionDropdown.value = targetVersionId;
 }
 
 function selectBibleBook(targetBookNumber)
 {
   selectedBookNumber = targetBookNumber;
+  localStorage.setItem('selectedBookNumber', selectedBookNumber);
+
   setSelectedIndexInList(bibleBooksList, targetBookNumber - 1);
-  saveLastBrowsedBible();
 }
 
 function selectBibleChapter(targetChapterNumber)
 {  
   selectedChapterNumber = targetChapterNumber;
+  localStorage.setItem('selectedChapterNumber', selectedChapterNumber);
+
   setSelectedIndexInList(bibleChaptersList, targetChapterNumber - 1);
-  saveLastBrowsedBible();
 }
 
 function selectBibleVerse(targetVerseNumber)
 {
   selectedVerseNumber = targetVerseNumber;
+  localStorage.setItem('selectedVerseNumber', selectedVerseNumber);
+  
   setSelectedIndexInList(bibleVersesList, targetVerseNumber - 1);
-  saveLastBrowsedBible();
 }
 
 function selectVerseSlide(targetVerseNumber)
 {
   setSelectedIndexInList(slideDeckBible, targetVerseNumber - 1);
-  smoothScrollToIndexInList(slideDeckBible, targetVerseNumber - 1);
 }
 //#endregion
 
@@ -392,13 +395,7 @@ function renderBibleVersesSlides(bibleChapterVersesText)
   {
     const verseSlide = document.createElement('div');
     verseSlide.className = 'slide-card-vertical';
-
-    // const isLive = liveState && liveState.verseInfo &&
-    //   Number(liveState.verseInfo.bookNum) === Number(verse.bookNum) &&
-    //   Number(liveState.verseInfo.chNum) === Number(verse.chNum) &&
-    //   Number(liveState.verseInfo.verseNum) === Number(verse.verseNum) &&
-    //   liveState.status === 'live';
-
+    
     verseSlide.innerHTML = `
       <span class="sc-live-pill" style="display: none">LIVE</span>
       <div class="sc-text-main"><span class="sc-verse-num">${verseText.verseNum}</span>${escapeHtml(verseText.word)}</div>

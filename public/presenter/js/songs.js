@@ -3,31 +3,28 @@
 // ===========================================================================
 
 let songsCache = null;
-let selectedSongId = 1;
+let selectedSongId = 0;
 let selectedSongSlide = 0;
 const songSlidesTextCache = new Map(); // Cached from /api/songs/${songId}
 const maxSongSlidesTextCache = 50; // Caps in-memory song cache to ~50 songs
 let currentSongSlidesFetchId = 0;
+
+// Song DOM References (Assigned inside initSongs)
+let songListContainer = null;
+let songSearchInput = null;
+let buttonClearSongSearch = null;
+let slideDeckSongs = null;
+let slideDeckContainer = null;
+let activeSongTitle = null;
+let activeSlideCountIndicator = null;
+let buttonDeckEditSong = null;
 
 
 function loadSongLocalStorage()
 {
   try
   {
-    const savedSongId = localStorage.getItem('last_browsed_song_id');
-    if (savedSongId)
-    {
-      selectedSongId = savedSongId;
-    }
-  }
-  catch (e) {}
-}
-
-function saveLastBrowsedSong(targetSongId)
-{
-  try
-  {
-    localStorage.setItem('last_browsed_song_id', targetSongId);
+      selectedSongId = Number(localStorage.getItem('selectedSongId'));
   }
   catch (e) {}
 }
@@ -49,10 +46,7 @@ async function initSongs()
 
   // Attach search and editor event listeners
   initSongSearchEvents();
-  if (typeof initSongEditorEvents === 'function')
-  {
-    initSongEditorEvents();
-  }
+  initSongEditorEvents();
 
   try
   {
@@ -62,11 +56,10 @@ async function initSongs()
     const songsFetchResult = await fetch(songsFetchUrl);
     const songsFetchResultJson = await songsFetchResult.json();
 
-    songsCache = songsFetchResultJson;
-
-    if (Array.isArray(songsFetchResultJson) && songsFetchResultJson.length > 0)
+    if (songsFetchResultJson && songsFetchResultJson.length > 0)
     {
-      selectedSongId = songsFetchResultJson[0].id;
+      songsCache = songsFetchResultJson;
+      if (selectedSongId === 0) selectedSongId = songsFetchResultJson[0].id;
     }
 
     if (localFetchId === currentSongSlidesFetchId)
@@ -82,6 +75,25 @@ async function initSongs()
   catch (err)
   {
     console.error('Error initializing Songs system:', err);
+  }
+}
+
+async function reloadSongsCache()
+{
+  try
+  {
+    const songsFetchUrl = '/api/songs';
+    const songsFetchResult = await fetch(songsFetchUrl);
+    const songsFetchResultJson = await songsFetchResult.json();
+
+    if (songsFetchResultJson && songsFetchResultJson.length > 0)
+    {
+      songsCache = songsFetchResultJson;
+    }
+  }
+  catch (err)
+  {
+    console.error('Error reloading songs cache:', err);
   }
 }
 
@@ -108,19 +120,6 @@ function loadSongsList(songSearchQuery)
   else
   {
     renderSongsList(songsCache);
-  }
-}
-
-async function reloadSongsCache()
-{
-  try
-  {
-    const res = await fetch('/api/songs');
-    songsCache = (await res.json()) || [];
-  }
-  catch (err)
-  {
-    console.error('Error reloading songs cache:', err);
   }
 }
 
@@ -190,7 +189,9 @@ async function fetchAndLoadSongSlides(targetSongId)
 function selectSong(targetSongId)
 {
   selectedSongId = targetSongId;
-  saveLastBrowsedSong(targetSongId);
+  localStorage.setItem('selectedSongId', selectedSongId);
+
+  setSelectedDataItemInList(songListContainer, 'data-id', selectedSongId);
 }
 
 function selectSongSlide(targetSlideIndex)
@@ -392,6 +393,8 @@ function initSongSearchEvents()
     {
       songSearchInput.value = '';
       songSearchInput.focus();
+      buttonClearSongSearch.style.display = 'none';   
+      loadSongsList('');
     });
   }
 }

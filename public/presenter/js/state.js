@@ -8,31 +8,6 @@ const socket = (typeof io !== 'undefined') ? io() : null;
 // Application State
 let liveState = null;
 
-
-
-
-// Bible Application State
-let bibleVersions = [];
-let selectedBibleVersionId = 'tamil';
-let selectedBookNumber = 1;
-let selectedChapterNumber = 1;
-let selectedVerseNumber = 1;
-let recentVerses = [];
-
-function saveLastBrowsedBible()
-{
-  try
-  {
-    localStorage.setItem('last_browsed_bible', JSON.stringify({
-      versionId: selectedBibleVersionId,
-      bookNum: selectedBookNumber,
-      chapterNum: selectedChapterNumber,
-      verseNum: selectedVerseNumber
-    }));
-  }
-  catch (e) {}
-}
-
 // ---------------------------------------------------------------------------
 // Cached DOM Elements
 // ---------------------------------------------------------------------------
@@ -47,23 +22,7 @@ const buttonNextSlide = document.getElementById('btn-next-slide');
 
 const tabButtons = document.querySelectorAll('.tab-btn');
 
-// Song DOM References (Assigned inside initSongs)
-let songListContainer = null;
-let songSearchInput = null;
-let buttonClearSongSearch = null;
-let slideDeckSongs = null;
-let slideDeckContainer = null;
-let activeSongTitle = null;
-let activeSlideCountIndicator = null;
-let buttonDeckEditSong = null;
 
-// Bible DOM References (Assigned inside initBible)
-let bibleVersionSelectionDropdown = null;
-let bibleRecentStrip = null;
-let bibleBooksList = null;
-let bibleChaptersList = null;
-let bibleVersesList = null;
-let slideDeckBible = null;
 
 // Song Add / Edit Dialog Elements
 const editSongDialog = document.getElementById('edit-song-dialog');
