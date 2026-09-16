@@ -171,7 +171,7 @@ function switchTab(tabId)
 }
 
 // ---------------------------------------------------------------------------
-// 3. Draggable Workspace Resizer Splitter (Desktop & Mobile Both Splitbar)
+// 3. Draggable Workspace Resizer Splitter (Pointer Events + setPointerCapture)
 // ---------------------------------------------------------------------------
 function initResizer()
 {
@@ -191,73 +191,80 @@ function initResizer()
     workspace.style.setProperty('--mobile-browser-pane-height', savedMobileHeight);
   }
 
-  let isDragging = false;
-  let isMobileHorizontalDrag = false;
-  let activeResizer = null;
-  let startPos = 0;
-  let startDim = 0;
-  let containerDim = 0;
-
-  function onDragStart(e)
+  resizers.forEach((resizer) =>
   {
-    const resizer = e.currentTarget;
-    const parentTab = resizer.closest('.workspace-tab-view');
-    isMobileHorizontalDrag = window.innerWidth <= 768;
+    let isDragging = false;
+    let isMobileHorizontalDrag = false;
+    let startPos = 0;
+    let startDim = 0;
+    let containerDim = 0;
 
-    isDragging = true;
-    activeResizer = resizer;
-    resizer.classList.add('dragging');
-    document.body.style.userSelect = 'none';
+    resizer.addEventListener('pointerdown', (e) =>
+    {
+      // Only handle primary button / touch contact
+      if (e.button !== 0 && e.pointerType === 'mouse') return;
 
-    if (isMobileHorizontalDrag)
-    {
-      document.body.style.cursor = 'row-resize';
-      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      startPos = clientY;
-      const browserPane = parentTab.querySelector('.browser-pane');
-      startDim = browserPane ? browserPane.getBoundingClientRect().height : 180;
-      containerDim = parentTab.getBoundingClientRect().height;
-    }
-    else
-    {
-      document.body.style.cursor = 'col-resize';
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      startPos = clientX;
-      const currentWidth = parseInt(getComputedStyle(workspace).getPropertyValue('--left-panel-width') || '420', 10);
-      startDim = currentWidth || 420;
-    }
-  }
+      isDragging = true;
+      resizer.setPointerCapture(e.pointerId);
+      resizer.classList.add('dragging');
+      document.body.style.userSelect = 'none';
 
-  function onDragMove(e)
-  {
-    if (!isDragging) return;
+      isMobileHorizontalDrag = window.innerWidth <= 768;
+      const parentTab = resizer.closest('.workspace-tab-view');
 
-    if (isMobileHorizontalDrag)
-    {
-      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      const deltaY = clientY - startPos;
-      const minH = 80;
-      const maxH = containerDim > 0 ? containerDim - 80 : 500;
-      const newHeight = Math.min(Math.max(minH, startDim + deltaY), maxH);
-      workspace.style.setProperty('--mobile-browser-pane-height', `${newHeight}px`);
-    }
-    else
-    {
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const deltaX = clientX - startPos;
-      const newWidth = Math.min(Math.max(260, startDim + deltaX), 850);
-      workspace.style.setProperty('--left-panel-width', `${newWidth}px`);
-      if (typeof updateSongDeckColumnWidth === 'function') updateSongDeckColumnWidth();
-    }
-  }
+      if (isMobileHorizontalDrag)
+      {
+        document.body.style.cursor = 'row-resize';
+        startPos = e.clientY;
+        const browserPane = parentTab ? parentTab.querySelector('.browser-pane') : null;
+        startDim = browserPane ? browserPane.getBoundingClientRect().height : 180;
+        containerDim = parentTab ? parentTab.getBoundingClientRect().height : 0;
+      }
+      else
+      {
+        document.body.style.cursor = 'col-resize';
+        startPos = e.clientX;
+        const currentWidth = parseInt(getComputedStyle(workspace).getPropertyValue('--left-panel-width') || '420', 10);
+        startDim = currentWidth || 420;
+      }
+    });
 
-  function onDragEnd()
-  {
-    if (isDragging)
+    resizer.addEventListener('pointermove', (e) =>
     {
+      if (!isDragging) return;
+
+      if (isMobileHorizontalDrag)
+      {
+        const deltaY = e.clientY - startPos;
+        const minH = 80;
+        const maxH = containerDim > 0 ? containerDim - 80 : 500;
+        const newHeight = Math.min(Math.max(minH, startDim + deltaY), maxH);
+        workspace.style.setProperty('--mobile-browser-pane-height', `${newHeight}px`);
+      }
+      else
+      {
+        const deltaX = e.clientX - startPos;
+        const newWidth = Math.min(Math.max(260, startDim + deltaX), 850);
+        workspace.style.setProperty('--left-panel-width', `${newWidth}px`);
+        if (typeof updateSongDeckColumnWidth === 'function') updateSongDeckColumnWidth();
+      }
+    });
+
+    function endDrag(e)
+    {
+      if (!isDragging) return;
       isDragging = false;
-      if (activeResizer) activeResizer.classList.remove('dragging');
-      activeResizer = null;
+
+      try
+      {
+        if (resizer.hasPointerCapture(e.pointerId))
+        {
+          resizer.releasePointerCapture(e.pointerId);
+        }
+      }
+      catch (err) {}
+
+      resizer.classList.remove('dragging');
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
 
@@ -274,17 +281,8 @@ function initResizer()
         if (finalWidth) localStorage.setItem('presenter_left_panel_width', finalWidth);
       }
     }
-  }
 
-  resizers.forEach((resizer) =>
-  {
-    resizer.addEventListener('mousedown', onDragStart);
-    resizer.addEventListener('touchstart', onDragStart, { passive: true });
+    resizer.addEventListener('pointerup', endDrag);
+    resizer.addEventListener('pointercancel', endDrag);
   });
-
-  window.addEventListener('mousemove', onDragMove);
-  window.addEventListener('touchmove', onDragMove, { passive: true });
-  window.addEventListener('mouseup', onDragEnd);
-  window.addEventListener('touchend', onDragEnd);
-  window.addEventListener('touchcancel', onDragEnd);
 }

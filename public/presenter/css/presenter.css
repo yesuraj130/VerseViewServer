@@ -161,6 +161,7 @@
   flex-shrink: 0;
   transition: background-color 0.15s ease;
   z-index: 5;
+  touch-action: none;
 }
 .resizer-handle:hover, .resizer-handle.dragging { background-color: var(--color-blue); }
 
