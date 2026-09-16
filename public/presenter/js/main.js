@@ -4,6 +4,7 @@
 
 document.addEventListener('DOMContentLoaded', () =>
 {
+  initControls();
   initResizer();
   initTabNavigation();
   initSongs();

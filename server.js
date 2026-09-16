@@ -491,6 +491,97 @@ io.on('connection', (socket) =>
     broadcastState();
   });
 
+  // Action: Previous Slide or Verse (Server-Managed Navigation)
+  socket.on('action:previous', () =>
+  {
+    if (!currentState || currentState.status !== 'live' || currentState.type === 'none') return;
+
+    if (currentState.type === 'song' && currentState.songId)
+    {
+      const currentIdx = Number(currentState.slideIndex) || 1;
+      const prevIdx = Math.max(1, currentIdx - 1);
+      if (prevIdx !== currentIdx)
+      {
+        currentState = resolveLiveState({
+          type: 'song',
+          songId: currentState.songId,
+          slideIndex: prevIdx
+        });
+        broadcastState();
+      }
+    }
+    else if (currentState.type === 'bible' && currentState.verseInfo)
+    {
+      const vInfo = currentState.verseInfo;
+      const currentVerse = Number(vInfo.verseNum) || 1;
+      const prevVerse = Math.max(1, currentVerse - 1);
+      if (prevVerse !== currentVerse)
+      {
+        currentState = resolveLiveState({
+          type: 'bible',
+          verseInfo: {
+            ...vInfo,
+            verseNum: prevVerse
+          }
+        });
+        broadcastState();
+      }
+    }
+  });
+
+  // Action: Next Slide or Verse (Server-Managed Navigation)
+  socket.on('action:next', () =>
+  {
+    if (!currentState || currentState.status !== 'live' || currentState.type === 'none') return;
+
+    if (currentState.type === 'song' && currentState.songId)
+    {
+      const currentIdx = Number(currentState.slideIndex) || 1;
+      const totalSlides = Number(currentState.totalSlides) || 1;
+      const nextIdx = Math.min(totalSlides, currentIdx + 1);
+      if (nextIdx !== currentIdx)
+      {
+        currentState = resolveLiveState({
+          type: 'song',
+          songId: currentState.songId,
+          slideIndex: nextIdx
+        });
+        broadcastState();
+      }
+    }
+    else if (currentState.type === 'bible' && currentState.verseInfo)
+    {
+      const vInfo = currentState.verseInfo;
+      const currentVerse = Number(vInfo.verseNum) || 1;
+      let maxVerse = 150;
+      const db = getBibleDb(vInfo.version);
+      if (db)
+      {
+        try
+        {
+          const row = db.prepare('SELECT MAX(verseNum) as maxVerse FROM words WHERE bookNum = ? AND chNum = ?').get(vInfo.bookNum, vInfo.chNum);
+          if (row && row.maxVerse) maxVerse = Number(row.maxVerse);
+        }
+        catch (e)
+        {
+          console.error('Error fetching max verse in action:next:', e);
+        }
+      }
+      const nextVerse = Math.min(maxVerse, currentVerse + 1);
+      if (nextVerse !== currentVerse)
+      {
+        currentState = resolveLiveState({
+          type: 'bible',
+          verseInfo: {
+            ...vInfo,
+            verseNum: nextVerse
+          }
+        });
+        broadcastState();
+      }
+    }
+  });
+
   // Action: Clear Screen (Sets state to No Slide Presented)
   socket.on('action:clear', () =>
   {

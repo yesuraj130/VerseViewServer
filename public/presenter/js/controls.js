@@ -2,6 +2,12 @@
 // Presenter Console — Controls, Hotkeys, Tabs & Workspace Resizer
 // ===========================================================================
 
+// Controls DOM References (Assigned inside initControls)
+let buttonClear = null;
+let buttonPreviousSlide = null;
+let buttonNextSlide = null;
+let liveIndicatorPill = null;
+
 // ---------------------------------------------------------------------------
 // 1. Toolbar Actions
 // ---------------------------------------------------------------------------
@@ -12,97 +18,32 @@ function triggerClear()
 
 function triggerPrevious()
 {
-  // Only control what is currently LIVE (Song or Scripture). If not live, do nothing.
-  if (!liveState || liveState.status !== 'live') return;
-
-  if (liveState.type === 'song' && liveState.songId)
-  {
-    const currentIdx = Number(liveState.slideIndex) || 1;
-    const prevIdx = Math.max(1, currentIdx - 1);
-    presentSlide({ id: liveState.songId }, prevIdx);
-  }
-  else if (liveState.type === 'bible' && liveState.verseInfo)
-  {
-    const vInfo = liveState.verseInfo;
-    const prevVerse = Math.max(1, Number(vInfo.verseNum) - 1);
-    presentBibleVerse(vInfo.version || selectedBibleVersionId, {
-      bookNum: vInfo.bookNum,
-      chNum: vInfo.chNum,
-      verseNum: prevVerse
-    });
-    if (Number(selectedBookNumber) === Number(vInfo.bookNum) && Number(selectedChapterNumber) === Number(vInfo.chNum))
-    {
-      selectBibleVerse(prevVerse, false);
-    }
-  }
+  if (socket) socket.emit('action:previous');
 }
 
 function triggerNext()
 {
-  // Only control what is currently LIVE (Song or Scripture). If not live, do nothing.
-  if (!liveState || liveState.status !== 'live') return;
-
-  if (liveState.type === 'song' && liveState.songId)
-  {
-    const currentIdx = Number(liveState.slideIndex) || 1;
-    const currentCachedSong = (liveState.songId && songSlidesTextCache.get(Number(liveState.songId))) ||
-      (selectedSongId && songSlidesTextCache.get(Number(selectedSongId)));
-    const total = Number(liveState.totalSlides) || ((currentCachedSong && currentCachedSong.slides) ? currentCachedSong.slides.length : (currentIdx + 1));
-    const nextIdx = Math.min(total, currentIdx + 1);
-    presentSlide({ id: liveState.songId }, nextIdx);
-  }
-  else if (liveState.type === 'bible' && liveState.verseInfo)
-  {
-    const vInfo = liveState.verseInfo;
-    const currentVerse = Number(vInfo.verseNum) || 1;
-    const totalVerses = (Number(selectedBookNumber) === Number(vInfo.bookNum) && Number(selectedChapterNumber) === Number(vInfo.chNum))
-      ? ((bibleVersesList && bibleVersesList.children.length) || (slideDeckBible && slideDeckBible.children.length) || 150)
-      : 150;
-    const nextVerse = Math.min(totalVerses, currentVerse + 1);
-    presentBibleVerse(vInfo.version || selectedBibleVersionId, {
-      bookNum: vInfo.bookNum,
-      chNum: vInfo.chNum,
-      verseNum: nextVerse
-    });
-    if (Number(selectedBookNumber) === Number(vInfo.bookNum) && Number(selectedChapterNumber) === Number(vInfo.chNum))
-    {
-      selectBibleVerse(nextVerse, false);
-    }
-  }
+  if (socket) socket.emit('action:next');
 }
 
-// Global Keyboard Navigation Shortcuts
-window.addEventListener('keydown', (e) =>
+function initControls()
 {
-  const targetTag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
-  if (targetTag === 'input' || targetTag === 'textarea' || targetTag === 'select' || (e.target && e.target.isContentEditable))
-  {
-    return;
-  }
+  // Assign Controls DOM elements
+  buttonClear = document.getElementById('btn-clear');
+  buttonPreviousSlide = document.getElementById('btn-prev-slide');
+  buttonNextSlide = document.getElementById('btn-next-slide');
+  liveIndicatorPill = document.getElementById('live-indicator-pill');
 
-  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ')
-  {
-    e.preventDefault();
-    triggerNext();
-  }
-  else if (e.key === 'ArrowLeft' || e.key === 'PageUp')
-  {
-    e.preventDefault();
-    triggerPrevious();
-  }
-  else if (e.key === 'Escape')
-  {
-    triggerClear();
-  }
-});
+  initControlsEvent();
+}
 
-// Event Listeners for Toolbar Buttons
-if (buttonClear) buttonClear.addEventListener('click', triggerClear);
-if (buttonPreviousSlide) buttonPreviousSlide.addEventListener('click', triggerPrevious);
-if (buttonNextSlide) buttonNextSlide.addEventListener('click', triggerNext);
-
-// Event Listeners
-if (liveIndicatorPill) liveIndicatorPill.addEventListener('click', jumpToLiveSlide);
+function initControlsEvent()
+{
+  buttonClear.addEventListener('click', triggerClear);
+  buttonPreviousSlide.addEventListener('click', triggerPrevious);
+  buttonNextSlide.addEventListener('click', triggerNext);
+  liveIndicatorPill.addEventListener('click', jumpToLiveSlide);
+}
 
 // Jump to active live slide on clicking live indicator
 async function jumpToLiveSlide()
@@ -168,72 +109,8 @@ async function jumpToLiveSlide()
 // ---------------------------------------------------------------------------
 // 2. Tab Navigation System
 // ---------------------------------------------------------------------------
-// ---------------------------------------------------------------------------
-// Header Collapse Toggle System
-// ---------------------------------------------------------------------------
-function updateCollapseButtons(collapsed)
-{
-  const buttonCollapseHeader = document.getElementById('btn-collapse-header');
-  if (buttonCollapseHeader)
-  {
-    if (collapsed)
-    {
-      buttonCollapseHeader.classList.add('collapsed');
-      buttonCollapseHeader.setAttribute('title', 'Expand Header & Tabs');
-      buttonCollapseHeader.setAttribute('aria-label', 'Expand Header & Tabs');
-      buttonCollapseHeader.innerHTML = `
-        <svg class="vv-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="6 9 12 15 18 9"></polyline>
-        </svg>
-      `;
-    }
-    else
-    {
-      buttonCollapseHeader.classList.remove('collapsed');
-      buttonCollapseHeader.setAttribute('title', 'Collapse Header & Tabs');
-      buttonCollapseHeader.setAttribute('aria-label', 'Collapse Header & Tabs');
-      buttonCollapseHeader.innerHTML = `
-        <svg class="vv-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="18 15 12 9 6 15"></polyline>
-        </svg>
-      `;
-    }
-  }
-}
-
-function initHeaderCollapseToggle()
-{
-  const buttonCollapseHeader = document.getElementById('btn-collapse-header');
-  const appContainer = document.querySelector('.presenter-app');
-  if (!appContainer || !buttonCollapseHeader) return;
-
-  try
-  {
-    const isCollapsed = localStorage.getItem('presenter_header_collapsed') === 'true';
-    if (isCollapsed)
-    {
-      appContainer.classList.add('header-collapsed');
-      updateCollapseButtons(true);
-    }
-  }
-  catch (e) {}
-
-  buttonCollapseHeader.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const collapsed = appContainer.classList.toggle('header-collapsed');
-    updateCollapseButtons(collapsed);
-    try
-    {
-      localStorage.setItem('presenter_header_collapsed', collapsed ? 'true' : 'false');
-    }
-    catch (e) {}
-  });
-}
-
 function initTabNavigation()
 {
-  initHeaderCollapseToggle();
-
   tabButtons.forEach((btn) =>
   {
     btn.addEventListener('click', () =>

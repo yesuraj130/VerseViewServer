@@ -12,13 +12,9 @@ let liveState = null;
 // Cached DOM Elements
 // ---------------------------------------------------------------------------
 const serverStatusDot = document.getElementById('server-status-dot');
-const liveIndicatorPill = document.getElementById('live-indicator-pill');
 const liveStatusBadge = document.getElementById('live-status-badge');
 const liveTitleText = document.getElementById('live-title-text');
 const liveLineText = document.getElementById('live-line-text');
-const buttonClear = document.getElementById('btn-clear');
-const buttonPreviousSlide = document.getElementById('btn-prev-slide');
-const buttonNextSlide = document.getElementById('btn-next-slide');
 
 const tabButtons = document.querySelectorAll('.tab-btn');
 
