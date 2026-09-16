@@ -74,7 +74,6 @@ let buttonClearSongSearch = null;
 let slideDeckSongs = null;
 let slideDeckContainer = null;
 let activeSongTitle = null;
-let songUnicodeDeckBadge = null;
 let activeSlideCountIndicator = null;
 let buttonDeckEditSong = null;
 

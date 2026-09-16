@@ -31,7 +31,6 @@ async function initSongs()
   slideDeckSongs = document.getElementById('slide-deck-songs');
   slideDeckContainer = slideDeckSongs;
   activeSongTitle = document.getElementById('active-song-title');
-  songUnicodeDeckBadge = document.getElementById('song-unicode-deck-badge');
   activeSlideCountIndicator = document.getElementById('active-slide-count-indicator');
   buttonDeckEditSong = document.getElementById('btn-deck-edit-song');
 
@@ -253,7 +252,6 @@ function renderSongsList(songs)
     }
 
     const songFontFamily = getSongFontFamily(song.font);
-    const isConverted = Boolean(song.isConverted);
     const displayName = song.name || 'Untitled';
     const previewLine = song.firstLine ? escapeHtml(song.firstLine) : '&nbsp;';
 
@@ -261,7 +259,6 @@ function renderSongsList(songs)
       <div class="song-item-info">
         <div class="song-item-name" style="font-family: ${songFontFamily};">
           <span class="song-name-text">${escapeHtml(displayName)}</span>
-          ${isConverted ? '<span class="song-unicode-tag" title="Converted to Unicode">Unicode</span>' : ''}
         </div>
         <div class="song-item-preview" style="font-family: ${songFontFamily};">${previewLine}</div>
       </div>
@@ -294,10 +291,6 @@ function renderSongSlides(song)
   {
     activeSongTitle.textContent = song.name || 'Untitled';
     activeSongTitle.style.fontFamily = getSongFontFamily(song.font);
-  }
-  if (songUnicodeDeckBadge)
-  {
-    songUnicodeDeckBadge.style.display = song.isConverted ? 'inline-flex' : 'none';
   }
   if (activeSlideCountIndicator)
   {
@@ -661,7 +654,6 @@ async function deleteSong(songId)
         if (activeSongTitle) activeSongTitle.textContent = 'Select a Song';
         if (buttonDeckEditSong) buttonDeckEditSong.style.display = 'none';
         if (activeSlideCountIndicator) activeSlideCountIndicator.textContent = '0 slides';
-        if (songUnicodeDeckBadge) songUnicodeDeckBadge.style.display = 'none';
       }
       await loadSongs(songSearchInput ? songSearchInput.value : '');
     }

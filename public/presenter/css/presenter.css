@@ -203,7 +203,6 @@
 .deck-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--color-font); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .deck-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .slide-counter { font-size: 11px; font-weight: 700; color: var(--color-font-muted); background: var(--bg-card); padding: 2px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); }
-.badge-unicode-deck { font-size: 10px; font-weight: 700; color: var(--color-blue-light); background: rgba(2, 132, 199, 0.15); border: 1px solid var(--color-blue); padding: 1px 6px; border-radius: var(--radius-sm); }
 .badge-type, .badge-cat { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); color: var(--color-font-muted); }
 
 /* 6. Slide Decks & Cards */
@@ -327,7 +326,6 @@
 .song-item.selected .song-item-name { color: #ffffff; }
 .song-item-preview { font-size: 11px; color: var(--color-font-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .song-item.selected .song-item-preview { color: #e0f2fe; }
-.song-unicode-tag { font-size: 9px; font-weight: 700; padding: 1px 4px; border-radius: 3px; background: rgba(2, 132, 199, 0.2); color: var(--color-blue-light); border: 1px solid var(--color-blue); }
 
 /* 8. Bible Browser */
 .quick-ref-box { padding: 8px 10px; border-bottom: 1px solid var(--border-subtle); display: flex; gap: 6px; background: var(--color-canvas); }
