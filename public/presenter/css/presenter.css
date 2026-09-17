@@ -413,10 +413,7 @@
 }
 
 .slide-card.selected,
-.slide-card-vertical.selected,
-.slide-card.active,
-.slide-card.active-card,
-.slide-card-vertical.active
+.slide-card-vertical.selected
 {
   border-color: var(--color-blue-light);
   box-shadow: 0 0 10px var(--color-blue-glow);
@@ -424,11 +421,7 @@
 }
 
 .slide-card.live,
-.slide-card.is-live,
-.slide-card.active-live,
-.slide-card-vertical.live,
-.slide-card-vertical.is-live,
-.slide-card-vertical.active-live
+.slide-card-vertical.live
 {
   border-color: var(--color-green);
   box-shadow: 0 0 12px var(--color-green-glow);
@@ -477,11 +470,7 @@
 }
 
 .slide-card.live .slide-card-badge,
-.slide-card.is-live .slide-card-badge,
-.slide-card.active-live .slide-card-badge,
-.slide-card-vertical.live .sc-live-pill,
-.slide-card-vertical.is-live .sc-live-pill,
-.slide-card-vertical.active-live .sc-live-pill
+.slide-card-vertical.live .sc-live-pill
 {
   display: inline-block;
 }
@@ -550,9 +539,7 @@
   color: #ffffff;
 }
 
-.song-item.live,
-.song-item.is-live,
-.song-item.is-live-active
+.song-item.live
 {
   outline: 2px solid var(--color-green);
   outline-offset: -2px;
@@ -693,8 +680,6 @@
 .num-btn
 {
   height: 28px;
-  min-height: 28px;
-  min-width: 0;
   width: 100%;
   display: flex;
   align-items: center;
@@ -704,19 +689,15 @@
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: background-color 0.12s ease, border-color 0.12s ease;
   user-select: none;
-  box-sizing: border-box;
-  margin: 0;
-  line-height: 1.3;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
 }
 
 .book-btn
 {
   justify-content: flex-start;
   font-weight: 700;
-  padding: 0 0 0 4px;
-  text-align: left;
+  padding-left: 4px;
   white-space: nowrap;
   overflow: hidden;
 }
@@ -725,8 +706,6 @@
 {
   justify-content: center;
   font-weight: 600;
-  padding: 0;
-  text-align: center;
 }
 
 .book-btn:hover,
@@ -738,9 +717,7 @@
 }
 
 .book-btn.selected,
-.num-btn.selected,
-.book-btn.active,
-.num-btn.active
+.num-btn.selected
 {
   background: var(--color-blue);
   border-color: var(--color-blue-light);
@@ -750,31 +727,11 @@
 }
 
 .book-btn.live,
-.num-btn.live,
-.book-btn.is-live,
-.num-btn.is-live,
-.book-btn.is-live-active,
-.num-btn.is-live-active
+.num-btn.live
 {
   outline: 2px solid var(--color-green);
   outline-offset: -1px;
   box-shadow: 0 0 8px var(--color-green-glow);
-}
-
-.book-btn.selected.live,
-.num-btn.selected.live,
-.book-btn.selected.is-live,
-.num-btn.selected.is-live,
-.book-btn.selected.is-live-active,
-.num-btn.selected.is-live-active,
-.book-btn.active.is-live-active,
-.num-btn.active.is-live-active
-{
-  background: var(--color-blue);
-  border-color: var(--color-blue-light);
-  outline: 2px solid var(--color-green);
-  outline-offset: -1px;
-  box-shadow: 0 0 10px var(--color-green-glow);
 }
 
 /* 10. Modals & Forms */
