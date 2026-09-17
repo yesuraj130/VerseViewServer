@@ -7,6 +7,11 @@ const socket = (typeof io !== 'undefined') ? io() : null;
 
 // Application State
 let liveState = null;
+var selectedBibleVersionId = 'tamil';
+var selectedBookNumber = 1;
+var selectedChapterNumber = 1;
+var selectedVerseNumber = 1;
+var selectedBibleVersionBooks = null;
 
 // ---------------------------------------------------------------------------
 // Cached DOM Elements
@@ -37,6 +42,49 @@ const buttonDeleteSongDialog = document.getElementById('btn-delete-song-dialog')
 // ---------------------------------------------------------------------------
 // Common Utility Functions
 // ---------------------------------------------------------------------------
+function getStorageItem(key, defaultValue = null)
+{
+  try
+  {
+    const val = localStorage.getItem(key);
+    if (val === null || val === undefined || val === 'null' || val === 'undefined')
+    {
+      return defaultValue;
+    }
+    return val;
+  }
+  catch (e)
+  {
+    return defaultValue;
+  }
+}
+
+function getNumericStorageItem(key, defaultValue = 1)
+{
+  const val = Number(getStorageItem(key, defaultValue));
+  return (val && val > 0) ? val : defaultValue;
+}
+
+function setStorageItem(key, value)
+{
+  try
+  {
+    if (value === null || value === undefined)
+    {
+      localStorage.removeItem(key);
+    }
+    else
+    {
+      localStorage.setItem(key, String(value));
+    }
+  }
+  catch (e) {}
+}
+
+window.getStorageItem = getStorageItem;
+window.getNumericStorageItem = getNumericStorageItem;
+window.setStorageItem = setStorageItem;
+
 function escapeHtml(str)
 {
   if (!str) return '';

@@ -225,7 +225,7 @@ function highlightActiveInDecks(state)
     const bookChildren = bibleBooksList.children;
     for (let i = 0; i < bookChildren.length; i++)
     {
-      const bookObj = selectedBibleVersionBooks ? selectedBibleVersionBooks[i] : null;
+      const bookObj = (typeof selectedBibleVersionBooks !== 'undefined' && selectedBibleVersionBooks) ? selectedBibleVersionBooks[i] : null;
       const bNum = bookObj ? Number(bookObj.bookNum) : (i + 1);
       const isLiveBook = liveVerse && bNum === Number(liveVerse.bookNum);
       bookChildren[i].classList.toggle('live', !!isLiveBook);

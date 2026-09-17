@@ -77,13 +77,13 @@ async function jumpToLiveSlide()
   {
     switchTab('bible');
     const verseInfo = liveState.verseInfo;
-    const bibleVersionId = verseInfo.versionId || selectedBibleVersionId;
+    const bibleVersionId = verseInfo.version || verseInfo.versionId || selectedBibleVersionId;
 
     if (bibleVersionId !== selectedBibleVersionId)
     {
       selectedBibleVersionId = bibleVersionId;
+      setStorageItem('selectedBibleVersionId', selectedBibleVersionId);
       if (bibleVersionSelectionDropdown) bibleVersionSelectionDropdown.value = bibleVersionId;
-      saveLastBrowsedBible();
       await loadBibleBooks(selectedBibleVersionId, verseInfo.bookNum, verseInfo.chNum, verseInfo.verseNum);
     }
     else
@@ -98,7 +98,9 @@ async function jumpToLiveSlide()
       }
       else if (Number(selectedVerseNumber) !== Number(verseInfo.verseNum))
       {
-        selectBibleVerse(verseInfo.verseNum, false);
+        selectBibleVerse(verseInfo.verseNum, true);
+        scrollToIndexInList(bibleVersesList, Number(verseInfo.verseNum) - 1);
+        smoothScrollToIndexInList(slideDeckBible, Number(verseInfo.verseNum) - 1);
       }
     }
   }

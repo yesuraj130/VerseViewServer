@@ -976,14 +976,25 @@ app.get('/api/bible/versions', (req, res) =>
     const parsedReturnVersion = parseBoolParam(rawReturnVersion);
     const parsedReturnStructure = parseBoolParam(rawReturnStructure);
 
-    const versionId = req.query.versionId || req.query.version || null;
+    let versionId = req.query.versionId || req.query.version || null;
+    if (versionId === 'null' || versionId === 'undefined' || versionId === '')
+    {
+      versionId = null;
+    }
+
     const rawBook = req.query.bookNumber ?? req.query.bookNum;
     const rawChapter = req.query.chapterNumber ?? req.query.chapterNum ?? req.query.chNum;
     const rawVerse = req.query.verseNumber ?? req.query.verseNum;
 
-    const bookNumber = (rawBook !== undefined && rawBook !== null && rawBook !== '') ? Number(rawBook) : null;
-    const chapterNumber = (rawChapter !== undefined && rawChapter !== null && rawChapter !== '') ? Number(rawChapter) : null;
-    const verseNumber = (rawVerse !== undefined && rawVerse !== null && rawVerse !== '') ? Number(rawVerse) : null;
+    const bookNumber = (rawBook !== undefined && rawBook !== null && rawBook !== '' && rawBook !== '0' && rawBook !== 0) ? Number(rawBook) : null;
+    const chapterNumber = (rawChapter !== undefined && rawChapter !== null && rawChapter !== '' && rawChapter !== '0' && rawChapter !== 0) ? Number(rawChapter) : null;
+    const verseNumber = (rawVerse !== undefined && rawVerse !== null && rawVerse !== '' && rawVerse !== '0' && rawVerse !== 0) ? Number(rawVerse) : null;
+
+    if (!versionId && (parsedReturnStructure === true || (bookNumber && chapterNumber)))
+    {
+      const availableVer = versions.find(v => v.available);
+      versionId = availableVer ? availableVer.id : 'tamil';
+    }
 
     let shouldReturnVersion;
     if (parsedReturnVersion !== undefined)
