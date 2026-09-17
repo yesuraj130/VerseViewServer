@@ -350,7 +350,7 @@ function setSelectedIndexInList(container, activeIndex)
   const items = container.children;
   for (let i = 0; i < items.length; i++)
   {
-    items[i].classList.toggle('active', i === activeIndex);
+    items[i].classList.toggle('selected', i === activeIndex);
   }
 }
 function setSelectedDataItemInList(container, attributeName, attributeValue)

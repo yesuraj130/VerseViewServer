@@ -64,7 +64,7 @@ async function jumpToLiveSlide()
     {
       for (let i = 0; i < slideDeckSongs.children.length; i++)
       {
-        slideDeckSongs.children[i].classList.toggle('active-card', (i + 1) === slideIdx);
+        slideDeckSongs.children[i].classList.toggle('selected', (i + 1) === slideIdx);
       }
       const targetSongSlide = slideDeckSongs.children[slideIdx - 1];
       if (targetSongSlide)

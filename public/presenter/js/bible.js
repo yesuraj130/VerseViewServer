@@ -460,7 +460,7 @@ function setSelectedIndexInList(container, activeIndex)
     const verseButtons = container.children;
     for (let i = 0; i < verseButtons.length; i++)
     {
-      verseButtons[i].classList.toggle('active', i === activeIndex);
+      verseButtons[i].classList.toggle('selected', i === activeIndex);
     }
 }
 //#endregion
