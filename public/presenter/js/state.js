@@ -21,7 +21,7 @@ const liveStatusBadge = document.getElementById('live-status-badge');
 const liveTitleText = document.getElementById('live-title-text');
 const liveLineText = document.getElementById('live-line-text');
 
-const tabButtons = document.querySelectorAll('.tab-btn');
+const tabButtons = document.querySelectorAll('.tab-button, .tab-btn');
 
 
 

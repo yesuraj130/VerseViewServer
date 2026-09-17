@@ -181,8 +181,7 @@ function highlightActiveInDecks(state)
       const card = slideDeckSongsEl.children[i];
       const active = isThisSong && (i + 1) === Number(state.slideIndex);
       card.classList.toggle('live', active);
-      card.classList.toggle('active-live', active);
-      const badge = card.querySelector('.slide-card-badge');
+      const badge = card.querySelector('.slide-card-badge, .sc-live-pill');
       if (badge) badge.style.display = active ? 'inline-block' : 'none';
     }
   }
@@ -196,7 +195,6 @@ function highlightActiveInDecks(state)
       const songId = Number(it.getAttribute('data-id'));
       const isLiveSong = isLive && state.type === 'song' && Number(state.songId) === songId;
       it.classList.toggle('live', isLiveSong);
-      it.classList.toggle('is-live-active', isLiveSong);
     });
   }
 
@@ -213,8 +211,7 @@ function highlightActiveInDecks(state)
       const isLiveVerse = isCurrentChapter && (i + 1) === Number(liveVerse.verseNum);
 
       card.classList.toggle('live', !!isLiveVerse);
-      card.classList.toggle('is-live', !!isLiveVerse);
-      const livePill = card.querySelector('.sc-live-pill');
+      const livePill = card.querySelector('.slide-card-badge, .sc-live-pill');
       if (livePill) livePill.style.display = isLiveVerse ? 'inline-block' : 'none';
     }
   }
@@ -229,7 +226,6 @@ function highlightActiveInDecks(state)
       const bNum = bookObj ? Number(bookObj.bookNum) : (i + 1);
       const isLiveBook = liveVerse && bNum === Number(liveVerse.bookNum);
       bookChildren[i].classList.toggle('live', !!isLiveBook);
-      bookChildren[i].classList.toggle('is-live-active', !!isLiveBook);
     }
   }
 
@@ -241,7 +237,6 @@ function highlightActiveInDecks(state)
     {
       const isLiveChapter = isLiveBook && (i + 1) === Number(liveVerse.chNum);
       bibleChaptersList.children[i].classList.toggle('live', !!isLiveChapter);
-      bibleChaptersList.children[i].classList.toggle('is-live-active', !!isLiveChapter);
     }
   }
 
@@ -256,7 +251,7 @@ function highlightActiveInDecks(state)
     {
       const isLiveVerseBtn = isLiveChapter && (i + 1) === Number(liveVerse.verseNum);
       bibleVersesList.children[i].classList.toggle('live', !!isLiveVerseBtn);
-      bibleVersesList.children[i].classList.toggle('is-live-active', !!isLiveVerseBtn);
     }
+  }
   }
 }

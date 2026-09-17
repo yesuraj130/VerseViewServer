@@ -587,11 +587,11 @@ function renderBibleVersesSlides(bibleChapterVersesText)
   bibleChapterVersesText.forEach((verseText) =>
   {
     const verseSlide = document.createElement('div');
-    verseSlide.className = 'slide-card-vertical';
+    verseSlide.className = 'slide-card';
 
     verseSlide.innerHTML = `
-      <span class="sc-live-pill" style="display: none">LIVE</span>
-      <div class="sc-text-main"><span class="sc-verse-num">${verseText.verseNum}</span>${escapeHtml(verseText.word)}</div>
+      <span class="slide-card-badge" style="display: none">LIVE</span>
+      <div class="slide-card-content"><span class="verse-number">${verseText.verseNum}</span>${escapeHtml(verseText.word)}</div>
     `;
 
     verseSlide.addEventListener('click', () =>

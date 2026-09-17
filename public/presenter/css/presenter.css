@@ -97,6 +97,7 @@
   line-height: 1.25;
 }
 
+.live-subtitle,
 .live-sub
 {
   font-family: var(--font-display);
@@ -141,6 +142,7 @@
   flex-shrink: 0;
 }
 
+.control-group,
 .ctrl-group
 {
   display: flex;
@@ -148,6 +150,7 @@
   gap: 4px;
 }
 
+.control-button,
 .ctrl-btn,
 .btn-icon-only,
 .btn-nav
@@ -167,6 +170,7 @@
   transition: background-color 0.12s ease, border-color 0.12s ease;
 }
 
+.control-button:hover,
 .ctrl-btn:hover,
 .btn-icon-only:hover,
 .btn-nav:hover
@@ -176,6 +180,7 @@
   color: #ffffff;
 }
 
+.control-button:active,
 .ctrl-btn:active,
 .btn-icon-only:active,
 .btn-nav:active
@@ -183,12 +188,14 @@
   transform: translateY(1px);
 }
 
+.control-select-wrapper,
 .ctrl-select-wrapper
 {
   display: inline-flex;
   align-items: center;
 }
 
+.control-select,
 .ctrl-select
 {
   height: 32px;
@@ -203,6 +210,7 @@
   cursor: pointer;
 }
 
+.control-select:focus,
 .ctrl-select:focus
 {
   border-color: var(--color-blue-light);
@@ -219,7 +227,6 @@
   padding: 0 12px;
   height: 38px;
   flex-shrink: 0;
-  transition: all 0.2s ease;
 }
 
 .tabs-left
@@ -228,6 +235,7 @@
   gap: 4px;
 }
 
+.tab-button,
 .tab-btn
 {
   background: transparent;
@@ -238,14 +246,16 @@
   font-weight: 600;
   padding: 8px 14px;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, border-color 0.12s ease;
 }
 
+.tab-button:hover,
 .tab-btn:hover
 {
   color: var(--color-font);
 }
 
+.tab-button.active,
 .tab-btn.active
 {
   color: #ffffff;
@@ -441,6 +451,7 @@
   width: 100%;
 }
 
+.verse-number,
 .sc-verse-num
 {
   font-weight: 700;
@@ -470,6 +481,8 @@
 }
 
 .slide-card.live .slide-card-badge,
+.slide-card.live .sc-live-pill,
+.slide-card-vertical.live .slide-card-badge,
 .slide-card-vertical.live .sc-live-pill
 {
   display: inline-block;
@@ -493,6 +506,7 @@
   align-items: center;
 }
 
+.search-clear-button,
 .btn-search-clear
 {
   position: absolute;
@@ -505,6 +519,7 @@
   padding: 0 4px;
 }
 
+.search-clear-button:hover,
 .btn-search-clear:hover
 {
   color: #ffffff;
@@ -560,11 +575,6 @@
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-}
-
-.song-item.selected .song-item-name
-{
-  color: #ffffff;
 }
 
 .song-item-preview
@@ -667,6 +677,7 @@
   align-content: start;
 }
 
+.numbers-grid,
 .nums-grid
 {
   display: grid;
@@ -721,7 +732,6 @@
   background: var(--color-blue);
   border-color: var(--color-blue-light);
   color: #ffffff;
-  font-weight: 700;
   box-shadow: 0 0 8px var(--color-blue-glow);
 }
 
@@ -925,6 +935,7 @@
     grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
   }
 
+  .numbers-grid,
   .nums-grid
   {
     grid-template-columns: repeat(2, 1fr);
