@@ -519,7 +519,7 @@ function renderBibleBooksList(booksNames)
     const bookName = booksNames[i];
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'book-btn book-item';
+    button.className = 'book-button book-item';
     button.title = `${bookName}`;
     button.innerHTML = `${escapeHtml(bookName.trim())}`;
 
@@ -542,7 +542,7 @@ function renderBibleChaptersList(chaptersCount)
   {
     const chapterButton = document.createElement('button');
     chapterButton.type = 'button';
-    chapterButton.className = 'num-btn';
+    chapterButton.className = 'number-button';
     chapterButton.textContent = chapterNumber;
 
     chapterButton.addEventListener('click', async () =>
@@ -564,7 +564,7 @@ function renderBibleVersesList(versesCount)
   {
     const verseButton = document.createElement('button');
     verseButton.type = 'button';
-    verseButton.className = 'num-btn';
+    verseButton.className = 'number-button';
     verseButton.textContent = verseNumber;
 
     verseButton.addEventListener('click', () =>
