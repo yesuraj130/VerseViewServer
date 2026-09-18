@@ -456,15 +456,30 @@
   flex-grow: 1;
   overflow-y: auto;
   background: var(--color-panel);
+  position: relative;
+}
+
+.virtual-spacer-top,
+.virtual-spacer-bottom
+{
+  width: 100%;
+  flex-shrink: 0;
+  pointer-events: none;
 }
 
 .song-searchresult
 {
-  padding: 8px 10px;
+  height: 42px;
+  box-sizing: border-box;
+  padding: 4px 8px;
   border-bottom: 1px solid var(--border-subtle);
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   transition: background-color 0.12s ease;
   user-select: none;
+  flex-shrink: 0;
 }
 
 .song-searchresult:hover
@@ -494,16 +509,18 @@
 
 .song-searchresult-name
 {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
+  line-height: 1.25;
   color: var(--color-font);
 }
 
 .song-searchresult-previewfirstline
 {
   font-size: 11px;
+  line-height: 1.2;
   color: var(--color-font-muted);
-  margin-top: 2px;
+  margin-top: 0;
 }
 
 .song-searchresult.selected .song-searchresult-name
@@ -519,9 +536,9 @@
 /* 9. Bible Browser */
 .recent-strip
 {
+  display: none; /* Hidden for now, will enable once implemented */
   padding: 4px 10px;
   border-bottom: 1px solid var(--border-subtle);
-  display: flex;
   align-items: center;
   gap: 4px;
   overflow-x: auto;

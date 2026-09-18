@@ -122,8 +122,13 @@ if (socket)
   socket.on('display:update', (state) =>
   {
     liveState = state;
+    window.liveState = state;
     updateLiveMonitor(state);
     highlightActiveInDecks(state);
+    if (typeof updateVirtualSongList === 'function')
+    {
+      updateVirtualSongList(true);
+    }
   });
 
   socket.on('stats:update', (stats) =>

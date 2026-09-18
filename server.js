@@ -690,8 +690,8 @@ function extractFirstLine(lyrics, font = '')
     const lines = clean.split(/<BR>|\r?\n/i).map(l => l.replace(/<[^>]*>/g, '').trim()).filter(Boolean);
     if (lines.length > 0)
     {
-      const first = lines[0];
-      return isTamilBibleFont(font) ? baminiToUnicode(first) : first;
+      const fullFirstSlide = lines.join(' ').replace(/\s+/g, ' ').trim();
+      return isTamilBibleFont(font) ? baminiToUnicode(fullFirstSlide) : fullFirstSlide;
     }
   }
   return '';
