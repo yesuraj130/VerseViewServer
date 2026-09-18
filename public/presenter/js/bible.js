@@ -608,6 +608,7 @@ function renderBibleVersesSlides(bibleChapterVersesText)
 
 function presentBibleVerse(bibleVerse)
 {
+  selectVerseSlide(bibleVerse.verseNum);
   const payload = {
     type: 'bible',
     verseInfo: {

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Presenter Console Unified Stylesheet
+   Presenter Console Unified Minimal Stylesheet
    ========================================================================== */
 
 /* 1. App Shell & Layout */
@@ -8,14 +8,19 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
-  background-color: var(--color-canvas);
+  color: var(--color-font);
+}
+
+.presenter-app a,
+.presenter-app button
+{
   color: var(--color-font);
 }
 
 .presenter-header
 {
-  background-color: var(--color-canvas);
   height: 52px;
   padding: 0 14px;
   display: flex;
@@ -39,6 +44,7 @@
 {
   display: inline-flex;
   align-items: center;
+  color: var(--color-font);
   text-decoration: none;
   user-select: none;
 }
@@ -77,30 +83,34 @@
 
 .live-pill-meta
 {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+  overflow: hidden;
+}
+
+.live-title,
+.live-subtitle
+{
+  display: block;
+  font-family: var(--font-display);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.25;
 }
 
 .live-title
 {
-  font-family: var(--font-display);
   font-size: 13px;
   font-weight: 700;
   color: var(--color-font);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.25;
 }
 
 .live-subtitle
 {
-  font-family: var(--font-display);
   font-size: 11px;
   color: var(--color-font-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.25;
 }
 
 .live-badge
@@ -112,6 +122,7 @@
   border-radius: var(--radius-sm);
   text-transform: uppercase;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .badge-live
@@ -198,7 +209,6 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: var(--color-canvas);
   border-bottom: 1px solid var(--border-subtle);
   padding: 0 12px;
   height: 38px;
@@ -249,7 +259,6 @@
 {
   display: none;
   flex: 1;
-  height: 100%;
 }
 
 .tab-item.active
@@ -273,7 +282,6 @@
 .slides-pane
 {
   flex-grow: 1;
-  background-color: var(--color-canvas);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -316,7 +324,6 @@
   font-size: 15px;
   font-weight: 700;
   color: var(--color-font);
-  margin: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -331,7 +338,6 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  background-color: var(--color-canvas);
 }
 
 #slide-deck-songs,
@@ -339,7 +345,6 @@
 {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(var(--song-deck-col-width, 240px), 1fr));
-  gap: 4px;
   align-content: start;
 }
 
@@ -348,10 +353,12 @@
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
-  padding: 4px 6px;
+  padding: 6px 8px;
   cursor: pointer;
   position: relative;
   min-height: 38px;
+  height: auto;
+  flex-shrink: 0;
   overflow: hidden;
   transition: background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
   user-select: none;
@@ -398,7 +405,6 @@
   position: absolute;
   top: 8px;
   right: 10px;
-  font-family: var(--font-family);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -426,7 +432,6 @@
   align-items: center;
   padding: 8px 10px;
   border-bottom: 1px solid var(--border-subtle);
-  background: var(--color-canvas);
 }
 
 .search-clear-button
@@ -451,7 +456,6 @@
   flex-grow: 1;
   overflow-y: auto;
   background: var(--color-panel);
-  position: relative;
 }
 
 .song-searchresult
@@ -480,23 +484,31 @@
   outline-offset: -2px;
 }
 
+.song-searchresult-name,
+.song-searchresult-previewfirstline
+{
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .song-searchresult-name
 {
   font-size: 13px;
   font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: var(--color-font);
 }
 
 .song-searchresult-previewfirstline
 {
   font-size: 11px;
   color: var(--color-font-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   margin-top: 2px;
+}
+
+.song-searchresult.selected .song-searchresult-name
+{
+  color: #ffffff;
 }
 
 .song-searchresult.selected .song-searchresult-previewfirstline
@@ -513,7 +525,6 @@
   align-items: center;
   gap: 4px;
   overflow-x: auto;
-  background: var(--color-canvas);
 }
 
 .bible-columns-container
@@ -521,8 +532,6 @@
   flex-grow: 1;
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
-  min-height: 0;
-  min-width: 0;
   height: 100%;
   overflow: hidden;
   background: var(--color-panel);
@@ -532,9 +541,6 @@
 {
   display: flex;
   flex-direction: column;
-  min-height: 0;
-  min-width: 0;
-  height: 100%;
   overflow: hidden;
   border-right: 1px solid var(--border-subtle);
 }
@@ -566,8 +572,6 @@
   align-content: start;
   flex-grow: 1;
   overflow-y: auto;
-  min-height: 0;
-  min-width: 0;
 }
 
 .books-grid
@@ -616,6 +620,7 @@
 {
   background: var(--bg-card-hover);
   border-color: #475569;
+  color: #ffffff;
 }
 
 .book-button.selected,
@@ -662,14 +667,19 @@
   overflow: hidden;
 }
 
-.dialog-header
+.dialog-header,
+.dialog-footer
 {
   padding: 12px 16px;
-  border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
-  justify-content: space-between;
   background-color: var(--color-canvas);
+}
+
+.dialog-header
+{
+  border-bottom: 1px solid var(--border-color);
+  justify-content: space-between;
 }
 
 .dialog-header h3
@@ -677,7 +687,6 @@
   font-size: 15px;
   font-weight: 700;
   color: var(--color-font);
-  margin: 0;
 }
 
 .dialog-body
@@ -692,13 +701,9 @@
 
 .dialog-footer
 {
-  padding: 12px 16px;
   border-top: 1px solid var(--border-color);
-  display: flex;
-  align-items: center;
   justify-content: flex-end;
   gap: 8px;
-  background-color: var(--color-canvas);
 }
 
 .form-group
@@ -739,12 +744,6 @@
 /* 11. Responsive Layout */
 @media (max-width: 768px)
 {
-  .presenter-app
-  {
-    height: 100vh;
-    height: 100dvh;
-  }
-
   .presenter-header
   {
     height: auto;
@@ -807,12 +806,6 @@
     width: 100%;
     height: 6px;
     cursor: row-resize;
-  }
-
-  .slides-pane
-  {
-    width: 100%;
-    flex-grow: 1;
   }
 
   #slide-deck-songs,
