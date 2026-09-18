@@ -50,7 +50,7 @@ function renderDisplayState(state)
   {
     const emptyLine = document.createElement('div');
     emptyLine.className = 'display-line';
-    emptyLine.textContent = '';
+    emptyLine.innerHTML = '&nbsp;';
     linesContainer.appendChild(emptyLine);
   }
   else
@@ -59,7 +59,16 @@ function renderDisplayState(state)
     {
       const lineEl = document.createElement('div');
       lineEl.className = 'display-line';
-      lineEl.textContent = line;
+      const trimmed = line ? line.trim() : '';
+      if (trimmed)
+      {
+        lineEl.textContent = line;
+      }
+      else
+      {
+        lineEl.innerHTML = '&nbsp;';
+        lineEl.classList.add('display-line-gap');
+      }
       linesContainer.appendChild(lineEl);
     });
   }

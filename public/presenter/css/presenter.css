@@ -394,6 +394,17 @@
   word-break: break-word;
 }
 
+.slide-card-content div
+{
+  min-height: 1.4em;
+}
+
+.slide-line-gap
+{
+  min-height: 1.4em;
+  user-select: none;
+}
+
 .verse-number
 {
   font-weight: 700;

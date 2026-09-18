@@ -6,24 +6,30 @@ function lyricsToTextareaValue(lyricsStr)
 {
   if (!lyricsStr) return '';
   const slides = lyricsStr.split('<slide>').filter(s => s.trim().length > 0);
-  return slides.map(s => s.replace(/<br\s*\/?>/gi, '\n').trim()).join('\n\n\n');
+  return slides.map(s => {
+    return s.replace(/<br\s*\/?>/gi, '\n').trim();
+  }).join('\n\n\n');
 }
 
 function textareaValueToLyrics(rawText)
 {
   if (!rawText || !rawText.trim()) return '';
+  // Slides are separated by 2 or more blank lines (two line spacer: \n\n\n+)
   const sections = rawText.split(/\r?\n(?:\s*\r?\n){2,}/);
-  return sections
+  const slides = sections
     .map(sec => sec.trim())
     .filter(Boolean)
     .map(sec => {
+      // Split into lines while preserving internal single line gaps
       const lines = sec.split(/\r?\n/).map(l => l.trim());
       while (lines.length > 0 && !lines[0]) lines.shift();
       while (lines.length > 0 && !lines[lines.length - 1]) lines.pop();
       return lines.join('<BR>');
     })
-    .filter(Boolean)
-    .join('<slide>');
+    .filter(Boolean);
+
+  if (slides.length === 0) return '';
+  return slides.join('<slide>') + '<slide>';
 }
 
 function openAddSongDialog()
@@ -140,7 +146,7 @@ async function handleSaveSong()
     }
 
     const saved = await res.json();
-    songSlidesTextCache.set(Number(saved.id), saved);
+    songSlidesTextCache.delete(Number(saved.id));
 
     closeEditSongDialog();
 

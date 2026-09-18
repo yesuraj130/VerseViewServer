@@ -182,7 +182,7 @@
       }
 
       const lines = Array.isArray(state.lines) ? state.lines : (state.rawSlide ? state.rawSlide.split('<BR>') : []);
-      hubPreviewLines.innerHTML = lines.map(l => '<div>' + escapeHtml(l) + '</div>').join('');
+      hubPreviewLines.innerHTML = lines.map(l => (l && l.trim()) ? ('<div>' + escapeHtml(l) + '</div>') : '<div style="min-height: 1.2em;">&nbsp;</div>').join('');
       hubPreviewRef.textContent = state.reference || state.title || '';
     }
 

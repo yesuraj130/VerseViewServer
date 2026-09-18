@@ -390,9 +390,11 @@ function resolveLiveState(payload)
         const targetRawSlide = rawSlides[validSlideIndex - 1] || '';
 
         const rawLines = targetRawSlide
-          ? targetRawSlide.split(/<BR>|\r?\n/i).map(l => l.replace(/<[^>]*>/g, '').trim()).filter(Boolean)
+          ? targetRawSlide.split(/<BR>|\r?\n/i).map(l => l.replace(/<[^>]*>/g, '').trim())
           : [];
-        const lines = rawLines.map(l => (isTamilBibleFont(row.font) ? baminiToUnicode(l) : l));
+        while (rawLines.length > 0 && !rawLines[0]) rawLines.shift();
+        while (rawLines.length > 0 && !rawLines[rawLines.length - 1]) rawLines.pop();
+        const lines = rawLines.map(l => (isTamilBibleFont(row.font) && l ? baminiToUnicode(l) : l));
 
         return {
           type: 'song',

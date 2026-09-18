@@ -387,7 +387,10 @@ function renderSongSlides(song)
     card.className = 'slide-card';
 
     const lines = slide.lines;
-    const linesHtml = lines.map(line => `<div>${escapeHtml(line)}</div>`).join('');
+    const linesHtml = lines.map(line => {
+      const trimmed = line ? line.trim() : '';
+      return trimmed ? `<div>${escapeHtml(line)}</div>` : `<div class="slide-line-gap">&nbsp;</div>`;
+    }).join('');
 
     card.innerHTML = `
       <span class="slide-card-badge">LIVE</span>
