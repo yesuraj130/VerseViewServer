@@ -14,9 +14,9 @@
     <!-- Top Header -->
     <header class="presenter-header" id="presenter-header">
       <div class="header-left">
-        <div class="header-logo" id="app-logo" title="Verse View Server">
+        <a class="application-tilte application-title" id="app-logo" title="Verse View Server" href="#">
           <span class="logo-main" data-app-title>Verse View Server</span>
-        </div>
+        </a>
 
         <!-- Live On-Air Monitor Pill -->
         <div class="live-pill" id="live-indicator-pill" title="Current Projection State">
@@ -29,7 +29,7 @@
       </div>
 
       <!-- Quick Action Controls -->
-      <div class="header-controls" id="controls-bar">
+      <div class="quick-action-controls" id="controls-bar">
         <div class="control-group">
           <a href="/" class="control-button" id="btn-home" title="Home" aria-label="Home">
             <svg class="vv-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
@@ -43,9 +43,7 @@
               <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
           </button>
-          <div class="control-select-wrapper" id="wrap-select-version" style="display: none;">
-            <select id="bibleVersionSelectionDropdown" class="control-select" title="Choose Bible Version"></select>
-          </div>
+          <select id="bibleVersionSelectionDropdown" class="bible-version-dropdown" title="Choose Bible Version" style="display: none;"></select>
         </div>
         <div class="control-group">
           <button type="button" class="control-button" id="btn-prev-slide" title="Previous Slide" aria-label="Previous Slide">
@@ -73,95 +71,77 @@
 
     <!-- Primary Workspace Tabs Bar -->
     <nav class="tabs-bar" id="tabs-bar">
-      <div class="tabs-left">
+      <div class="tabs-button-container">
         <button type="button" class="tab-button active" data-tab="songs" id="tab-btn-songs">Songs</button>
         <button type="button" class="tab-button" data-tab="bible" id="tab-btn-bible">Bible</button>
       </div>
     </nav>
 
     <!-- Main Workspace with Tab Views -->
-    <main class="presenter-workspace" id="presenter-workspace">
+    <main class="tabs-container" id="presenter-workspace">
       
       <!-- ==================== TAB 1: SONGS ==================== -->
-      <div class="workspace-tab-view active" id="workspace-songs">
-        <aside class="browser-pane">
-          <div class="search-box">
-            <div class="search-input-wrapper">
-              <input type="text" id="song-search-input" class="input-search" placeholder="Search song title or alternate title...">
-              <button type="button" id="btn-clear-song-search" class="search-clear-button" title="Clear search" style="display: none;">&times;</button>
-            </div>
+      <div class="tab-item active" id="workspace-songs">
+        <aside class="navigation-pane">
+          <div class="search-input-container">
+            <input type="text" id="song-search-input" class="input-search" placeholder="Search song title or alternate title...">
+            <button type="button" id="btn-clear-song-search" class="search-clear-button" title="Clear search" style="display: none;">&times;</button>
           </div>
 
-          <div class="song-list" id="song-list-container">
+          <div class="song-searchresults-list" id="song-list-container">
             <!-- Loaded dynamically -->
           </div>
         </aside>
 
         <div class="resizer-handle" title="Drag to resize panel"></div>
 
-        <section class="deck-pane" id="deck-pane-songs">
-          <div class="deck-header">
-            <div class="deck-meta">
-          <div class="deck-title-row">
-            <h2 class="deck-title" id="active-song-title">Select a Song</h2>
-          </div>
-            </div>
-
-            <div class="deck-actions">
-              <button type="button" class="control-button" id="btn-deck-edit-song" title="Edit current song lyrics" aria-label="Edit current song lyrics" style="display: none;">
-                <svg class="vv-icon" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                </svg>
-              </button>
-              <span class="slide-counter" id="active-slide-count-indicator">0 slides</span>
-            </div>
+        <section class="slides-pane" id="deck-pane-songs">
+          <div class="slides-list-header">
+            <h2 class="song-list-title" id="active-song-title">Select a Song</h2>
+            <button type="button" class="control-button" id="btn-deck-edit-song" title="Edit current song lyrics" aria-label="Edit current song lyrics" style="display: none;">
+              <svg class="vv-icon" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+            </button>
           </div>
 
-          <div class="slide-deck" id="slide-deck-songs">
+          <div class="slides-list" id="slide-deck-songs">
             <div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 48px;">Select a song from the library on the left.</div>
           </div>
         </section>
       </div>
 
       <!-- ==================== TAB 2: BIBLE ==================== -->
-      <div class="workspace-tab-view" id="workspace-bible">
-        <aside class="browser-pane">
+      <div class="tab-item" id="workspace-bible">
+        <aside class="navigation-pane">
 
           <div class="recent-strip" id="bible-recent-strip">
             <span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Recent:</span>
           </div>
 
-          <div class="bible-cols-container" id="bible-cols-container">
-            <div class="bible-col bible-col-books">
-              <div class="bible-col-header">
-                <div class="bible-col-title-row">
-                  <span class="bible-col-title">Book</span>
-                </div>
-              </div>
-              <div class="bible-col-list books-grid" id="bible-books-list"></div>
+          <div class="bible-columns-container" id="bible-cols-container">
+            <div class="bible-selection-column bible-col-books">
+              <div class="bible-selection-column-title">Book</div>
+              <div class="books-grid" id="bible-books-list"></div>
             </div>
 
-            <div class="bible-col bible-col-chapters">
-              <div class="bible-col-header">
-                <div class="bible-col-title-row"><span class="bible-col-title">Chapter</span></div>
-              </div>
-              <div class="bible-col-list numbers-grid" id="bible-chapters-list"></div>
+            <div class="bible-selection-column bible-col-chapters">
+              <div class="bible-selection-column-title">Chapter</div>
+              <div class="numbers-grid" id="bible-chapters-list"></div>
             </div>
 
-            <div class="bible-col bible-col-verses">
-              <div class="bible-col-header">
-                <div class="bible-col-title-row"><span class="bible-col-title">Verse</span></div>
-              </div>
-              <div class="bible-col-list numbers-grid" id="bible-verses-list"></div>
+            <div class="bible-selection-column bible-col-verses">
+              <div class="bible-selection-column-title">Verse</div>
+              <div class="numbers-grid" id="bible-verses-list"></div>
             </div>
           </div>
         </aside>
 
         <div class="resizer-handle" title="Drag to resize panel"></div>
 
-        <section class="deck-pane" id="deck-pane-bible">
-          <div class="slide-deck" id="slide-deck-bible">
+        <section class="slides-pane" id="deck-pane-bible">
+          <div class="slides-list" id="slide-deck-bible">
             <div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 32px 16px;">Select a Bible book and chapter on the left.</div>
           </div>
         </section>
@@ -171,13 +151,13 @@
   </div>
 
   <!-- Add / Edit Song Dialog -->
-  <div class="modal-backdrop" id="edit-song-dialog" style="display: none;">
-    <div class="modal-content song-editor-modal-content">
-      <div class="modal-header">
+  <div class="dialog-backdrop-cover" id="edit-song-dialog" style="display: none;">
+    <div class="dialog-content song-editor-dialog-content">
+      <div class="dialog-header">
         <h3 id="edit-song-dialog-heading">Add New Song</h3>
         <button id="btn-close-edit-song-dialog" class="btn-icon-tiny" style="font-size: 20px; color: #fff;">&times;</button>
       </div>
-      <div class="modal-body song-editor-modal-body">
+      <div class="dialog-body song-editor-dialog-body">
         <input type="hidden" id="edit-song-id-hidden-input">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
           <div class="form-group">
@@ -209,10 +189,10 @@
             <label class="form-label" for="edit-song-lyrics-textarea" style="margin-bottom: 0;">Lyrics &amp; Slides</label>
             <span style="font-size: 11px; color: var(--color-font-muted);">Separate slides with <strong>2 blank lines</strong> (two empty lines)</span>
           </div>
-          <textarea id="edit-song-lyrics-textarea" class="textarea-lyrics" style="flex-grow: 1; min-height: 240px; font-size: 13px; line-height: 1.5; outline: none; resize: vertical;" placeholder="Slide 1 line 1&#10;Slide 1 line 2&#10;&#10;&#10;Slide 2 line 1&#10;Slide 2 line 2"></textarea>
+          <textarea id="edit-song-lyrics-textarea" class="editsong-textbox" style="flex-grow: 1; min-height: 240px; font-size: 13px; line-height: 1.5; outline: none; resize: vertical;" placeholder="Slide 1 line 1&#10;Slide 1 line 2&#10;&#10;&#10;Slide 2 line 1&#10;Slide 2 line 2"></textarea>
         </div>
       </div>
-      <div class="modal-footer">
+      <div class="dialog-footer">
         <button type="button" class="btn-danger" id="btn-delete-song-dialog" style="display: none; margin-right: auto;">Delete Song</button>
         <button type="button" class="btn-secondary" id="btn-cancel-edit-song-dialog">Cancel</button>
         <button type="button" class="btn-primary" id="btn-save-song">Save Song</button>

@@ -16,7 +16,6 @@ let buttonClearSongSearch = null;
 let slideDeckSongs = null;
 let slideDeckContainer = null;
 let activeSongTitle = null;
-let activeSlideCountIndicator = null;
 let buttonDeckEditSong = null;
 
 
@@ -38,7 +37,6 @@ async function initSongs()
   slideDeckSongs = document.getElementById('slide-deck-songs');
   slideDeckContainer = slideDeckSongs;
   activeSongTitle = document.getElementById('active-song-title');
-  activeSlideCountIndicator = document.getElementById('active-slide-count-indicator');
   buttonDeckEditSong = document.getElementById('btn-deck-edit-song');
 
   // Read Song configuration from LocalStorage
@@ -217,7 +215,7 @@ function renderSongsList(songs)
   songs.forEach((song) =>
   {
     const item = document.createElement('div');
-    item.className = 'song-item';
+    item.className = 'song-searchresult';
     item.setAttribute('data-id', song.id);
 
     if (selectedSongId === song.id) item.classList.add('selected');
@@ -227,12 +225,10 @@ function renderSongsList(songs)
     const previewLine = song.firstLine ? escapeHtml(song.firstLine) : '&nbsp;';
 
     item.innerHTML = `
-      <div class="song-item-info">
-        <div class="song-item-name" style="font-family: ${songFontFamily};">
-          <span class="song-name-text">${escapeHtml(displayName)}</span>
-        </div>
-        <div class="song-item-preview" style="font-family: ${songFontFamily};">${previewLine}</div>
+      <div class="song-searchresult-name" style="font-family: ${songFontFamily};">
+        ${escapeHtml(displayName)}
       </div>
+      <div class="song-searchresult-previewfirstline" style="font-family: ${songFontFamily};">${previewLine}</div>
     `;
 
     item.addEventListener('click', async () =>
@@ -260,10 +256,6 @@ function renderSongSlides(song)
   if (buttonDeckEditSong) buttonDeckEditSong.style.display = 'inline-flex';
 
   const slides = song.slides;
-  if (activeSlideCountIndicator)
-  {
-    activeSlideCountIndicator.textContent = `${slides.length} slide${slides.length === 1 ? '' : 's'}`;
-  }
 
   if (slides.length === 0)
   {

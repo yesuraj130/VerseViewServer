@@ -171,7 +171,6 @@ async function deleteSong(songId)
         slideDeckSongs.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 48px;">Select a song from the library on the left.</div>';
         activeSongTitle.textContent = 'Select a Song';
         buttonDeckEditSong.style.display = 'none';
-        activeSlideCountIndicator.textContent = '0 slides';
       }
 
       await reloadSongsCache();

@@ -145,7 +145,7 @@ function switchTab(tabId)
 {
   tabButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === tabId));
   
-  const workspaceViews = document.querySelectorAll('.workspace-tab-view');
+  const workspaceViews = document.querySelectorAll('.tab-item, .workspace-tab-view');
   workspaceViews.forEach(v => v.classList.toggle('active', v.id === `workspace-${tabId}`));
 
   const buttonAddSong = document.getElementById('btn-open-add-song');
@@ -154,10 +154,10 @@ function switchTab(tabId)
     buttonAddSong.style.display = (tabId === 'songs') ? '' : 'none';
   }
 
-  const versionWrap = document.getElementById('wrap-select-version');
-  if (versionWrap)
+  const versionDropdown = document.getElementById('bibleVersionSelectionDropdown');
+  if (versionDropdown)
   {
-    versionWrap.style.display = (tabId === 'bible') ? 'inline-flex' : 'none';
+    versionDropdown.style.display = (tabId === 'bible') ? 'inline-flex' : 'none';
   }
 
   if (tabId === 'songs' && typeof updateVirtualSongList === 'function')
@@ -212,13 +212,13 @@ function initResizer()
       document.body.style.userSelect = 'none';
 
       isMobileHorizontalDrag = window.innerWidth <= 768;
-      const parentTab = resizer.closest('.workspace-tab-view');
+      const parentTab = resizer.closest('.tab-item, .workspace-tab-view');
 
       if (isMobileHorizontalDrag)
       {
         document.body.style.cursor = 'row-resize';
         startPos = e.clientY;
-        const browserPane = parentTab ? parentTab.querySelector('.browser-pane') : null;
+        const browserPane = parentTab ? parentTab.querySelector('.navigation-pane, .browser-pane') : null;
         startDim = browserPane ? browserPane.getBoundingClientRect().height : 180;
         containerDim = parentTab ? parentTab.getBoundingClientRect().height : 0;
       }

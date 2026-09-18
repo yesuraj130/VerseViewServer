@@ -181,7 +181,7 @@ function highlightActiveInDecks(state)
       const card = slideDeckSongsEl.children[i];
       const active = isThisSong && (i + 1) === Number(state.slideIndex);
       card.classList.toggle('live', active);
-      const badge = card.querySelector('.slide-card-badge, .sc-live-pill');
+      const badge = card.querySelector('.slide-card-badge');
       if (badge) badge.style.display = active ? 'inline-block' : 'none';
     }
   }
@@ -190,7 +190,7 @@ function highlightActiveInDecks(state)
   const songListContainer = document.getElementById('song-list-container');
   if (songListContainer)
   {
-    songListContainer.querySelectorAll('.song-item').forEach((it) =>
+    songListContainer.querySelectorAll('.song-searchresult, .song-item').forEach((it) =>
     {
       const songId = Number(it.getAttribute('data-id'));
       const isLiveSong = isLive && state.type === 'song' && Number(state.songId) === songId;
@@ -211,7 +211,7 @@ function highlightActiveInDecks(state)
       const isLiveVerse = isCurrentChapter && (i + 1) === Number(liveVerse.verseNum);
 
       card.classList.toggle('live', !!isLiveVerse);
-      const livePill = card.querySelector('.slide-card-badge, .sc-live-pill');
+      const livePill = card.querySelector('.slide-card-badge');
       if (livePill) livePill.style.display = isLiveVerse ? 'inline-block' : 'none';
     }
   }
@@ -253,5 +253,5 @@ function highlightActiveInDecks(state)
       bibleVersesList.children[i].classList.toggle('live', !!isLiveVerseBtn);
     }
   }
-  }
+  
 }
