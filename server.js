@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { Server } from 'socket.io';
 import { isTamilBibleFont, baminiToUnicode } from './lib/bamini.js';
-import { matchContiguousPhoneticPhrase, matchesQueryPhonetic, tokenizeText, getSoundKey, matchWithPrecomputedKeys } from './lib/tamilPhonetic.js';
+import { matchContiguousPhoneticPhrase, matchesQueryPhonetic, tokenizeText, getSoundKey, matchWithPrecomputedKeys, matchTokenInfosWithKeys, buildTargetTokenInfos } from './lib/tamilPhonetic.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -768,6 +768,102 @@ function buildSearchPattern(query)
   return str;
 }
 
+// ---------------------------------------------------------------------------
+// In-Memory Search Engine: Pre-computed phonetic sound keys & parsed slides
+// ---------------------------------------------------------------------------
+const songSearchIndex = new Map();
+
+function indexSongRecord(r)
+{
+  if (!r) return null;
+  const needsConversion = isTamilBibleFont(r.font);
+  const convertedLyrics = needsConversion ? baminiToUnicode(r.lyrics) : (r.lyrics || '');
+  const rawSlides = convertedLyrics.split('<slide>');
+  const slides = [];
+  let currentIdx = 0;
+
+  for (const s of rawSlides)
+  {
+    const clean = s.trim();
+    if (!clean) continue;
+    currentIdx++;
+
+    const tokens = tokenizeText(clean);
+    const rawLines = clean.split(/<BR>|\r?\n/i).map(l => l.replace(/<[^>]*>/g, '').trim()).filter(Boolean);
+    const indexedLines = rawLines.map(line => {
+      const lTokens = tokenizeText(line);
+      return {
+        line,
+        lineLower: line.toLowerCase(),
+        tokens: lTokens,
+        tokenInfos: buildTargetTokenInfos(lTokens)
+      };
+    });
+
+    slides.push({
+      slideIndex: currentIdx,
+      cleanSlide: clean,
+      cleanSlideLower: clean.toLowerCase(),
+      tokens,
+      tokenInfos: buildTargetTokenInfos(tokens),
+      lines: indexedLines
+    });
+  }
+
+  const nameTokens = tokenizeText(r.name || '');
+  const title2Tokens = r.title2 ? tokenizeText(r.title2) : [];
+  const tagsTokens = r.tags ? tokenizeText(r.tags) : [];
+
+  return {
+    id: Number(r.id),
+    name: r.name || '',
+    nameLower: (r.name || '').toLowerCase(),
+    nameTokens,
+    nameTokenInfos: buildTargetTokenInfos(nameTokens),
+
+    title2: r.title2 || '',
+    title2Lower: (r.title2 || '').toLowerCase(),
+    title2Tokens,
+    title2TokenInfos: buildTargetTokenInfos(title2Tokens),
+
+    cat: r.cat || 'General',
+    font: r.font || '',
+    tags: r.tags || '',
+    tagsLower: (r.tags || '').toLowerCase(),
+    tagsTokens,
+    tagsTokenInfos: buildTargetTokenInfos(tagsTokens),
+
+    lyrics: r.lyrics || '',
+    firstLine: extractFirstLine(r.lyrics, r.font),
+    slideCount: slides.length,
+    slides,
+    isConverted: Boolean(needsConversion)
+  };
+}
+
+function initSongSearchIndex()
+{
+  try
+  {
+    const t0 = Date.now();
+    const rows = smDb.prepare('SELECT id, name, title2, cat, font, tags, lyrics FROM sm').all();
+    songSearchIndex.clear();
+    for (const r of rows)
+    {
+      const indexed = indexSongRecord(r);
+      if (indexed)
+      {
+        songSearchIndex.set(indexed.id, indexed);
+      }
+    }
+    console.log(`In-memory song search index built: ${songSearchIndex.size} songs in ${Date.now() - t0}ms`);
+  }
+  catch (err)
+  {
+    console.error('Failed to build in-memory song search index:', err);
+  }
+}
+
 // API: Songs (songs.db / sm.db)
 app.get('/api/songs', (req, res) =>
 {
@@ -842,7 +938,7 @@ app.get('/api/songs', (req, res) =>
   }
 });
 
-// API: Full Song Content & Lyrics Search with Zero-Dictionary Strict Contiguous Phonetic Matcher & 100ms Stream Batches
+// API: Full Song Content & Lyrics Search with Pre-Computed Phonetic In-Memory Index
 app.get('/api/songs/search', async (req, res) =>
 {
   try
@@ -864,8 +960,10 @@ app.get('/api/songs/search', async (req, res) =>
       res.setHeader('X-Accel-Buffering', 'no');
     }
 
-    const stmt = smDb.prepare('SELECT id, name, title2, cat, font, tags, lyrics FROM sm');
-    const allRows = stmt.all();
+    // Precompute phonetic sound keys and lowercases for search query once
+    const qTokens = tokenizeText(q);
+    const qKeys = qTokens.map(t => getSoundKey(t)).filter(Boolean);
+    const qLower = q.toLowerCase();
 
     const matches = [];
     let batch = [];
@@ -887,103 +985,87 @@ app.get('/api/songs/search', async (req, res) =>
       }
     };
 
-    // Precompute phonetic sound keys for query
-    const qTokens = tokenizeText(q);
-    const qKeys = qTokens.map(t => getSoundKey(t)).filter(Boolean);
-
-    for (const r of allRows)
+    // Lazily build index if not yet populated
+    if (songSearchIndex.size === 0)
     {
-      const needsConversion = isTamilBibleFont(r.font);
-      const convertedLyrics = needsConversion ? baminiToUnicode(r.lyrics) : (r.lyrics || '');
-      const rawSlides = convertedLyrics.split('<slide>');
+      initSongSearchIndex();
+    }
 
+    for (const song of songSearchIndex.values())
+    {
       let songMatched = false;
       let matchedSlideIndex = 1;
       let matchedLine = '';
       let matchedTerm = '';
       let totalMatchesInSong = 0;
 
-      let currentSlideIdx = 0;
-      for (const s of rawSlides)
+      // 1. Search slides using pre-computed token sound keys
+      for (const s of song.slides)
       {
-        const cleanSlide = s.trim();
-        if (!cleanSlide) continue;
-        currentSlideIdx++;
-
-        // 1. Strict contiguous phrase search within this individual slide
-        const slideMatch = qKeys.length > 0
-          ? matchWithPrecomputedKeys(cleanSlide, qKeys, q)
-          : matchContiguousPhoneticPhrase(cleanSlide, q);
-
+        const slideMatch = matchTokenInfosWithKeys(s.tokenInfos, s.tokens, s.cleanSlideLower, qKeys, qLower);
         if (slideMatch.matched)
         {
           totalMatchesInSong++;
           if (!songMatched)
           {
             songMatched = true;
-            matchedSlideIndex = currentSlideIdx;
+            matchedSlideIndex = s.slideIndex;
             matchedTerm = slideMatch.matchedTokens.join(' ') || q;
 
-            // Find the specific line within the slide for the preview line
-            const lines = cleanSlide.split(/<BR>|\r?\n/i).map(l => l.replace(/<[^>]*>/g, '').trim()).filter(Boolean);
-            for (const line of lines)
+            // Find specific line within this slide for preview snippet
+            for (const l of s.lines)
             {
-              const lineMatch = qKeys.length > 0
-                ? matchWithPrecomputedKeys(line, qKeys, q)
-                : matchContiguousPhoneticPhrase(line, q);
+              const lineMatch = matchTokenInfosWithKeys(l.tokenInfos, l.tokens, l.lineLower, qKeys, qLower);
               if (lineMatch.matched)
               {
-                matchedLine = line;
+                matchedLine = l.line;
                 break;
               }
             }
-            if (!matchedLine && lines.length > 0)
+            if (!matchedLine && s.lines.length > 0)
             {
-              matchedLine = lines[0];
+              matchedLine = s.lines[0].line;
             }
           }
         }
       }
 
-      // 2. Check song title / alternate title / tags if no slide line matched
+      // 2. Check title / alternate title / tags if no slide matched
       if (!songMatched)
       {
-        const nameMatch = qKeys.length > 0
-          ? matchWithPrecomputedKeys(r.name || '', qKeys, q)
-          : matchContiguousPhoneticPhrase(r.name || '', q);
-        const title2Match = (r.title2 && qKeys.length > 0)
-          ? matchWithPrecomputedKeys(r.title2, qKeys, q)
-          : matchContiguousPhoneticPhrase(r.title2 || '', q);
-        const tagsMatch = (r.tags && qKeys.length > 0)
-          ? matchWithPrecomputedKeys(r.tags, qKeys, q)
-          : matchContiguousPhoneticPhrase(r.tags || '', q);
+        const nameMatch = matchTokenInfosWithKeys(song.nameTokenInfos, song.nameTokens, song.nameLower, qKeys, qLower);
+        const title2Match = song.title2Tokens.length > 0
+          ? matchTokenInfosWithKeys(song.title2TokenInfos, song.title2Tokens, song.title2Lower, qKeys, qLower)
+          : { matched: false };
+        const tagsMatch = song.tagsTokens.length > 0
+          ? matchTokenInfosWithKeys(song.tagsTokenInfos, song.tagsTokens, song.tagsLower, qKeys, qLower)
+          : { matched: false };
 
         if (nameMatch.matched || title2Match.matched || tagsMatch.matched)
         {
           songMatched = true;
           matchedSlideIndex = 1;
-          matchedLine = extractFirstLine(r.lyrics, r.font) || r.name;
-          matchedTerm = (nameMatch.matchedTokens.join(' ') || title2Match.matchedTokens.join(' ') || tagsMatch.matchedTokens.join(' ') || q);
+          matchedLine = song.firstLine || song.name;
+          matchedTerm = (nameMatch.matchedTokens || title2Match.matchedTokens || tagsMatch.matchedTokens || [q]).join(' ') || q;
           totalMatchesInSong = 1;
         }
       }
 
       if (songMatched)
       {
-        const slideCount = rawSlides.filter(s => s.trim().length > 0).length;
         const item = {
-          id: r.id,
-          name: r.name,
-          title2: r.title2 || '',
-          cat: r.cat || 'General',
-          font: r.font || '',
-          slideCount,
+          id: song.id,
+          name: song.name,
+          title2: song.title2,
+          cat: song.cat,
+          font: song.font,
+          slideCount: song.slideCount,
           matchedSlideIndex,
           matchedLine,
           matchedTerm,
           totalMatches: totalMatchesInSong,
-          firstLine: extractFirstLine(r.lyrics, r.font),
-          isConverted: Boolean(needsConversion)
+          firstLine: song.firstLine,
+          isConverted: song.isConverted
         };
 
         if (isStreamRequested)
@@ -996,11 +1078,14 @@ app.get('/api/songs/search', async (req, res) =>
             break;
           }
 
-          // Stream as a batch every 100ms or when batch size reaches 25
-          if (Date.now() - lastFlushTime >= 100 || batch.length >= 25)
+          // Immediate first batch delivery, then batch every 50ms or 25 items
+          const shouldFlush = (totalSent === 0 && batch.length >= 10) ||
+                              (Date.now() - lastFlushTime >= 50) ||
+                              (batch.length >= 25);
+          if (shouldFlush)
           {
             flushBatch();
-            await new Promise(resolve => setTimeout(resolve, 5));
+            await new Promise(resolve => setTimeout(resolve, 2));
           }
         }
         else
@@ -1115,6 +1200,8 @@ app.post('/api/songs', (req, res) =>
     const newId = Number(result.lastInsertRowid);
 
     const created = smDb.prepare('SELECT id, name, title2, cat, font, font2, key, notes, tags, lyrics, lyrics2 FROM sm WHERE id = ?').get(newId);
+    const indexed = indexSongRecord(created);
+    if (indexed) songSearchIndex.set(indexed.id, indexed);
     res.status(201).json(created);
   }
   catch (err)
@@ -1167,6 +1254,8 @@ app.put('/api/songs/:id', (req, res) =>
     }
 
     const updated = smDb.prepare('SELECT id, name, title2, cat, font, font2, key, notes, tags, lyrics, lyrics2 FROM sm WHERE id = ?').get(songId);
+    const indexed = indexSongRecord(updated);
+    if (indexed) songSearchIndex.set(indexed.id, indexed);
     res.json(updated);
   }
   catch (err)
@@ -1182,6 +1271,7 @@ app.delete('/api/songs/:id', (req, res) =>
     const songId = Number(req.params.id);
     const stmt = smDb.prepare('DELETE FROM sm WHERE id = ?');
     stmt.run(songId);
+    songSearchIndex.delete(songId);
     res.json({ success: true, deletedId: songId });
   }
   catch (err)
@@ -1472,6 +1562,7 @@ server.listen(PORT, '0.0.0.0', () =>
   console.log(`Using songs database: ${songsDbFileName}`);
   console.log(`Presenter Console available at: http://0.0.0.0:${PORT}/presenter/`);
   console.log(`Display Output available at:    http://0.0.0.0:${PORT}/display/`);
+  initSongSearchIndex();
 });
 
 // In production Cloud Run, additionally listen on 3000 if different from PORT for internal compatibility
