@@ -7,8 +7,16 @@ const socketDot = document.getElementById('display-socket-dot');
 const statusText = document.getElementById('display-status-text');
 const buttonToggleFullscreen = document.getElementById('btn-toggle-fs');
 
-// Initialize Socket.io
-const socket = (typeof io !== 'undefined') ? io() : null;
+// Initialize Socket.io with direct WebSocket transport and rapid reconnection
+const socket = (typeof io !== 'undefined') ? io({
+  transports: ['websocket'],
+  autoConnect: true,
+  reconnection: true,
+  reconnectionAttempts: Infinity,
+  reconnectionDelay: 500,
+  reconnectionDelayMax: 2000,
+  timeout: 10000
+}) : null;
 
 function renderDisplayState(state)
 {
@@ -163,36 +171,69 @@ else
   setInterval(fetchCurrentState, 500);
 }
 
-// Handle bfcache restoration (Back-Forward Cache)
+// Immediate wake-up reconnection handler for Projector/Display
+function handleDisplayWakeup()
+{
+  if (socket)
+  {
+    if (!socket.connected)
+    {
+      socket.connect();
+    }
+    else
+    {
+      socket.emit('get:state');
+    }
+  }
+  fetchCurrentState();
+}
+
+// 1. Detect when tab/screen wakes up or becomes visible
+document.addEventListener('visibilitychange', () =>
+{
+  if (document.visibilityState === 'visible')
+  {
+    handleDisplayWakeup();
+  }
+});
+
+// 2. Handle page restoration from memory/bfcache or standard page show
 window.addEventListener('pageshow', (event) =>
 {
   if (event.persisted)
   {
-    // Page was restored from bfcache: immediately clear stale slide and fetch fresh state from server
-    if (viewport)
-    {
-      viewport.classList.add('clear-mode');
-    }
-    if (linesContainer)
-    {
-      linesContainer.innerHTML = '';
-    }
-    if (displayRef)
-    {
-      displayRef.style.display = 'none';
-    }
     if (statusText)
     {
       statusText.textContent = 'Syncing...';
     }
-
-    if (socket && !socket.connected)
-    {
-      socket.connect();
-    }
-    fetchCurrentState();
   }
+  handleDisplayWakeup();
 });
+
+// 3. Window focus
+window.addEventListener('focus', () =>
+{
+  handleDisplayWakeup();
+});
+
+// 4. Device network restored
+window.addEventListener('online', () =>
+{
+  handleDisplayWakeup();
+});
+
+// 5. Timer drift detection (detects OS sleep / freeze even without visibility event)
+let lastDisplayHeartbeat = Date.now();
+setInterval(() =>
+{
+  const now = Date.now();
+  const elapsed = now - lastDisplayHeartbeat;
+  lastDisplayHeartbeat = now;
+  if (elapsed > 7000)
+  {
+    handleDisplayWakeup();
+  }
+}, 2000);
 
 // Fullscreen controls
 function toggleFullscreen()

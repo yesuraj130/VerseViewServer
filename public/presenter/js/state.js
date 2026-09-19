@@ -2,8 +2,16 @@
 // Presenter Console — State, DOM References & Common Utilities
 // ===========================================================================
 
-// Initialize Socket.io
-const socket = (typeof io !== 'undefined') ? io() : null;
+// Initialize Socket.io with direct WebSocket transport and rapid reconnection
+const socket = (typeof io !== 'undefined') ? io({
+  transports: ['websocket'],
+  autoConnect: true,
+  reconnection: true,
+  reconnectionAttempts: Infinity,
+  reconnectionDelay: 500,
+  reconnectionDelayMax: 2000,
+  timeout: 10000
+}) : null;
 
 // Application State
 let liveState = null;

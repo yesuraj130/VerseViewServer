@@ -506,14 +506,32 @@ function initSongSearchEvents()
 {
   if (!songSearchInput) return;
 
+  const updateClearButtonVisibility = () =>
+  {
+    if (buttonClearSongSearch)
+    {
+      buttonClearSongSearch.style.display = songSearchInput.value ? 'flex' : 'none';
+    }
+  };
+
+  updateClearButtonVisibility();
+
   songSearchInput.addEventListener('input', () =>
   {
     const query = songSearchInput.value;
-    if (buttonClearSongSearch)
-    {
-      buttonClearSongSearch.style.display = query ? 'flex' : 'none';
-    }
+    updateClearButtonVisibility();
     loadSongsList(query, true);
+  });
+
+  songSearchInput.addEventListener('keydown', (e) =>
+  {
+    if (e.key === 'Escape' && songSearchInput.value)
+    {
+      e.preventDefault();
+      songSearchInput.value = '';
+      updateClearButtonVisibility();
+      loadSongsList('', true);
+    }
   });
 
   if (buttonClearSongSearch)
@@ -522,7 +540,7 @@ function initSongSearchEvents()
     {
       songSearchInput.value = '';
       songSearchInput.focus();
-      buttonClearSongSearch.style.display = 'none';
+      updateClearButtonVisibility();
       loadSongsList('', true);
     });
   }

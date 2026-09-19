@@ -145,7 +145,15 @@
   </div>
 
   <script>
-    const hubSocket = (typeof io !== 'undefined') ? io() : null;
+    const hubSocket = (typeof io !== 'undefined') ? io({
+      transports: ['websocket'],
+      autoConnect: true,
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 2000,
+      timeout: 10000
+    }) : null;
     const hubLiveBadge = document.getElementById('hub-live-badge');
     const hubPreviewLines = document.getElementById('hub-preview-lines');
     const hubPreviewRef = document.getElementById('hub-preview-ref');
@@ -401,6 +409,30 @@
         }
       });
     }
+
+    function handleHubWakeup()
+    {
+      if (hubSocket)
+      {
+        if (!hubSocket.connected)
+        {
+          hubSocket.connect();
+        }
+        else
+        {
+          hubSocket.emit('get:state');
+        }
+      }
+      loadStats();
+    }
+
+    document.addEventListener('visibilitychange', () =>
+    {
+      if (document.visibilityState === 'visible') handleHubWakeup();
+    });
+    window.addEventListener('pageshow', handleHubWakeup);
+    window.addEventListener('focus', handleHubWakeup);
+    window.addEventListener('online', handleHubWakeup);
 
     // Load initial stats and client list
     async function loadStats()

@@ -65,33 +65,88 @@ if (serverStatusDot)
   });
 }
 
-// Handle bfcache restoration (Back-Forward Cache) for Presenter
-window.addEventListener('pageshow', async (event) =>
+// Sync presenter state with server (authoritative REST fallback)
+async function syncPresenterState()
 {
-  if (event.persisted)
+  try
   {
-    // Page was restored from bfcache: reconnect socket and fetch latest state
-    if (socket && !socket.connected)
+    const res = await fetch('/api/state');
+    if (res.ok)
     {
-      socket.connect();
-    }
-    try
-    {
-      const res = await fetch('/api/state');
-      if (res.ok)
+      const state = await res.json();
+      liveState = state;
+      window.liveState = state;
+      updateLiveMonitor(state);
+      highlightActiveInDecks(state);
+      if (typeof updateVirtualSongList === 'function')
       {
-        const state = await res.json();
-        liveState = state;
-        updateLiveMonitor(state);
-        highlightActiveInDecks(state);
+        updateVirtualSongList(true);
       }
     }
-    catch (err)
-    {
-      console.warn('Could not sync state after bfcache restore:', err);
-    }
+  }
+  catch (err)
+  {
+    console.warn('Could not sync presenter state:', err);
+  }
+}
+
+// Instant wake-up reconnection handler
+function handlePresenterWakeup()
+{
+  if (!socket) return;
+
+  if (!socket.connected)
+  {
+    socket.connect();
+  }
+  else
+  {
+    // If socket claims it is connected, emit get:state to verify link & pull fresh slide
+    socket.emit('get:state');
+  }
+
+  syncPresenterState();
+}
+
+// 1. Detect when tab/phone screen wakes up or becomes visible
+document.addEventListener('visibilitychange', () =>
+{
+  if (document.visibilityState === 'visible')
+  {
+    handlePresenterWakeup();
   }
 });
+
+// 2. Handle page restoration from bfcache or standard page show
+window.addEventListener('pageshow', (event) =>
+{
+  handlePresenterWakeup();
+});
+
+// 3. Window focus (user returns to browser or app window)
+window.addEventListener('focus', () =>
+{
+  handlePresenterWakeup();
+});
+
+// 4. Device network restored (WiFi reconnected after sleep)
+window.addEventListener('online', () =>
+{
+  handlePresenterWakeup();
+});
+
+// 5. Timer drift detection (detects OS sleep / freeze even without a visibility event)
+let lastPresenterHeartbeat = Date.now();
+setInterval(() =>
+{
+  const now = Date.now();
+  const elapsed = now - lastPresenterHeartbeat;
+  lastPresenterHeartbeat = now;
+  if (elapsed > 7000)
+  {
+    handlePresenterWakeup();
+  }
+}, 2000);
 
 if (socket)
 {
@@ -107,6 +162,7 @@ if (socket)
       role: 'presenter',
       screen: `${window.innerWidth}x${window.innerHeight}`
     });
+    socket.emit('get:state');
   });
 
   socket.on('disconnect', () =>
