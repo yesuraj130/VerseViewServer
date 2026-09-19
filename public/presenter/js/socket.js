@@ -274,11 +274,15 @@ if (socket)
 
   socket.on('display:update', (state) =>
   {
+    const prevSongId = lastLiveSongId;
     liveState = state;
     window.liveState = state;
     updateLiveMonitor(state);
     highlightActiveInDecks(state);
-    if (typeof updateVirtualSongList === 'function' && state.type === 'song' && state.songId !== lastLiveSongId)
+    
+    // If the live song changed or switched between song and scripture/clear, refresh the virtual list
+    const currentSongId = (state && state.status === 'live' && state.type === 'song') ? Number(state.songId) : null;
+    if (typeof updateVirtualSongList === 'function' && prevSongId !== currentSongId)
     {
       updateVirtualSongList(true);
     }
@@ -365,55 +369,69 @@ function highlightActiveInDecks(state)
   const isLive = state.status === 'live' && state.type !== 'none';
   const liveVerse = (isLive && state.type === 'bible' && state.verseInfo) ? state.verseInfo : null;
 
-  // 1. Song Slide Deck: direct index toggle without scanning entire deck
+  // 1. Song Slide Deck: direct index toggle and clean any non-active live cards
   const slideDeckSongsEl = document.getElementById('slide-deck-songs') || (typeof slideDeckContainer !== 'undefined' ? slideDeckContainer : null);
   if (slideDeckSongsEl)
   {
     const isThisSong = isLive && selectedSongId && Number(state.songId) === Number(selectedSongId);
     const targetIndex = isThisSong ? (Number(state.slideIndex) - 1) : -1;
-    const newActiveCard = (targetIndex >= 0 && targetIndex < slideDeckSongsEl.children.length)
-      ? slideDeckSongsEl.children[targetIndex]
-      : null;
 
-    if (lastLiveSongCard && lastLiveSongCard !== newActiveCard)
+    // Ensure any previously highlighted card in this deck is cleaned up
+    slideDeckSongsEl.querySelectorAll('.slide-card.live').forEach((card) =>
     {
-      lastLiveSongCard.classList.remove('live');
-      const oldBadge = lastLiveSongCard.querySelector('.slide-card-badge');
-      if (oldBadge) oldBadge.style.display = 'none';
-    }
+      if (!isThisSong || card !== slideDeckSongsEl.children[targetIndex])
+      {
+        card.classList.remove('live');
+        const badge = card.querySelector('.slide-card-badge');
+        if (badge) badge.style.display = 'none';
+      }
+    });
 
-    if (newActiveCard)
+    if (isThisSong && targetIndex >= 0 && targetIndex < slideDeckSongsEl.children.length)
     {
+      const newActiveCard = slideDeckSongsEl.children[targetIndex];
       newActiveCard.classList.add('live');
-      const newBadge = newActiveCard.querySelector('.slide-card-badge');
-      if (newBadge) newBadge.style.display = 'inline-block';
+      const badge = newActiveCard.querySelector('.slide-card-badge');
+      if (badge) badge.style.display = 'inline-block';
+      lastLiveSongCard = newActiveCard;
     }
-    lastLiveSongCard = newActiveCard;
+    else
+    {
+      lastLiveSongCard = null;
+    }
   }
 
-  // 2. Song Item in left list: direct update only when song ID changes
+  // 2. Song Item in left list (search results and songs list)
   const currentSongId = (isLive && state.type === 'song') ? Number(state.songId) : null;
-  if (currentSongId !== lastLiveSongId)
+  const songListContainer = document.getElementById('song-list-container');
+  if (songListContainer)
   {
-    const songListContainer = document.getElementById('song-list-container');
-    if (lastLiveSongItem)
+    // Remove live class from all items that do not match the current live song
+    songListContainer.querySelectorAll('.song-searchresult.live, .song-item.live').forEach((it) =>
     {
-      lastLiveSongItem.classList.remove('live');
-      lastLiveSongItem = null;
-    }
-    if (currentSongId && songListContainer)
+      if (!currentSongId || Number(it.getAttribute('data-id')) !== currentSongId)
+      {
+        it.classList.remove('live');
+      }
+    });
+
+    if (currentSongId)
     {
       const targetItem = songListContainer.querySelector(`.song-searchresult[data-id="${currentSongId}"], .song-item[data-id="${currentSongId}"]`);
-      if (targetItem)
+      if (targetItem && !targetItem.classList.contains('live'))
       {
         targetItem.classList.add('live');
-        lastLiveSongItem = targetItem;
       }
+      lastLiveSongItem = targetItem || null;
     }
-    lastLiveSongId = currentSongId;
+    else
+    {
+      lastLiveSongItem = null;
+    }
   }
+  lastLiveSongId = currentSongId;
 
-  // 3. Bible Chapter Slide Deck: direct index toggle without scanning entire chapter
+  // 3. Bible Chapter Slide Deck: direct index toggle and clean any non-active live cards
   if (typeof slideDeckBible !== 'undefined' && slideDeckBible)
   {
     const isCurrentChapter = liveVerse &&
@@ -421,24 +439,29 @@ function highlightActiveInDecks(state)
       Number(liveVerse.chNum) === Number(selectedChapterNumber);
 
     const targetVerseIndex = isCurrentChapter ? (Number(liveVerse.verseNum) - 1) : -1;
-    const newActiveBibleCard = (targetVerseIndex >= 0 && targetVerseIndex < slideDeckBible.children.length)
-      ? slideDeckBible.children[targetVerseIndex]
-      : null;
 
-    if (lastLiveBibleCard && lastLiveBibleCard !== newActiveBibleCard)
+    slideDeckBible.querySelectorAll('.slide-card.live').forEach((card) =>
     {
-      lastLiveBibleCard.classList.remove('live');
-      const oldBadge = lastLiveBibleCard.querySelector('.slide-card-badge');
-      if (oldBadge) oldBadge.style.display = 'none';
-    }
+      if (!isCurrentChapter || card !== slideDeckBible.children[targetVerseIndex])
+      {
+        card.classList.remove('live');
+        const badge = card.querySelector('.slide-card-badge');
+        if (badge) badge.style.display = 'none';
+      }
+    });
 
-    if (newActiveBibleCard)
+    if (isCurrentChapter && targetVerseIndex >= 0 && targetVerseIndex < slideDeckBible.children.length)
     {
+      const newActiveBibleCard = slideDeckBible.children[targetVerseIndex];
       newActiveBibleCard.classList.add('live');
-      const newBadge = newActiveBibleCard.querySelector('.slide-card-badge');
-      if (newBadge) newBadge.style.display = 'inline-block';
+      const badge = newActiveBibleCard.querySelector('.slide-card-badge');
+      if (badge) badge.style.display = 'inline-block';
+      lastLiveBibleCard = newActiveBibleCard;
     }
-    lastLiveBibleCard = newActiveBibleCard;
+    else
+    {
+      lastLiveBibleCard = null;
+    }
   }
 
   // 4. Bible Navigation Buttons (Book, Chapter, Verse): update only when key changes

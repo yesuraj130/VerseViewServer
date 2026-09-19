@@ -495,6 +495,11 @@ function renderSongSlides(song)
 
     slideDeckSongs.appendChild(card);
   });
+
+  if (typeof highlightActiveInDecks === 'function' && window.liveState)
+  {
+    highlightActiveInDecks(window.liveState);
+  }
 }
 
 function presentSlide(slide, slideIndexOverride)
