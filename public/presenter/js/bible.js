@@ -603,6 +603,11 @@ async function changeBibleVersion(targetVersionId)
       setSelectedIndexInList(slideDeckBible, selectedVerseNumber - 1);
       scrollToIndexInList(slideDeckBible, selectedVerseNumber - 1);
     }
+
+    if (typeof highlightActiveInDecks === 'function' && (window.liveState || (typeof liveState !== 'undefined' ? liveState : null)))
+    {
+      highlightActiveInDecks(window.liveState || liveState);
+    }
   }
   else
   {
@@ -698,10 +703,31 @@ function addChangeEventToBibleVersionDropdown()
   bibleVersionChangeHandlerAttached = true;
 }
 
+function isSameBibleVersion(v1, v2)
+{
+  if (!v1 || !v2) return false;
+  const clean1 = String(v1).replace(/\.db$/i, '').trim().toLowerCase();
+  const clean2 = String(v2).replace(/\.db$/i, '').trim().toLowerCase();
+  return clean1 === clean2;
+}
+
+function getLiveBibleVerseInfo()
+{
+  const state = window.liveState || (typeof liveState !== 'undefined' ? liveState : null);
+  if (state && state.status === 'live' && state.type === 'bible' && state.verseInfo)
+  {
+    return state.verseInfo;
+  }
+  return null;
+}
+
 function renderBibleBooksList(booksNames)
 {
   if (!bibleBooksList) return;
   bibleBooksList.innerHTML = '';
+
+  const liveVerse = getLiveBibleVerseInfo();
+  const isVersionLive = liveVerse && isSameBibleVersion(liveVerse.versionId || liveVerse.version, selectedBibleVersionId);
 
   for (let i = 0; i < booksNames.length; i++)
   {
@@ -712,6 +738,11 @@ function renderBibleBooksList(booksNames)
     button.className = 'book-button book-item';
     button.title = `${bookName}`;
     button.innerHTML = `${escapeHtml(bookName.trim())}`;
+
+    if (isVersionLive && Number(liveVerse.bookNum) === bookNumber)
+    {
+      button.classList.add('live');
+    }
 
     button.addEventListener('click', async () =>
     {
@@ -728,12 +759,21 @@ function renderBibleChaptersList(chaptersCount)
   if (!bibleChaptersList) return;
   bibleChaptersList.innerHTML = '';
 
+  const liveVerse = getLiveBibleVerseInfo();
+  const isVersionLive = liveVerse && isSameBibleVersion(liveVerse.versionId || liveVerse.version, selectedBibleVersionId);
+  const isCurrentBookLive = isVersionLive && Number(liveVerse.bookNum) === Number(selectedBookNumber);
+
   for (let chapterNumber = 1; chapterNumber <= chaptersCount; chapterNumber++)
   {
     const chapterButton = document.createElement('button');
     chapterButton.type = 'button';
     chapterButton.className = 'number-button';
     chapterButton.textContent = chapterNumber;
+
+    if (isCurrentBookLive && Number(liveVerse.chNum) === chapterNumber)
+    {
+      chapterButton.classList.add('live');
+    }
 
     chapterButton.addEventListener('click', async () =>
     {
@@ -750,12 +790,23 @@ function renderBibleVersesList(versesCount)
   if (!bibleVersesList) return;
   bibleVersesList.innerHTML = '';
 
+  const liveVerse = getLiveBibleVerseInfo();
+  const isVersionLive = liveVerse && isSameBibleVersion(liveVerse.versionId || liveVerse.version, selectedBibleVersionId);
+  const isCurrentChapterLive = isVersionLive &&
+    Number(liveVerse.bookNum) === Number(selectedBookNumber) &&
+    Number(liveVerse.chNum) === Number(selectedChapterNumber);
+
   for (let verseNumber = 1; verseNumber <= versesCount; verseNumber++)
   {
     const verseButton = document.createElement('button');
     verseButton.type = 'button';
     verseButton.className = 'number-button';
     verseButton.textContent = verseNumber;
+
+    if (isCurrentChapterLive && Number(liveVerse.verseNum) === verseNumber)
+    {
+      verseButton.classList.add('live');
+    }
 
     verseButton.addEventListener('click', () =>
     {
@@ -774,13 +825,25 @@ function renderBibleVersesSlides(bibleChapterVersesText)
   if (!slideDeckBible) return;
   slideDeckBible.innerHTML = '';
 
+  const liveVerse = getLiveBibleVerseInfo();
+  const isVersionLive = liveVerse && isSameBibleVersion(liveVerse.versionId || liveVerse.version, selectedBibleVersionId);
+  const isCurrentChapterLive = isVersionLive &&
+    Number(liveVerse.bookNum) === Number(selectedBookNumber) &&
+    Number(liveVerse.chNum) === Number(selectedChapterNumber);
+
   bibleChapterVersesText.forEach((verseText) =>
   {
     const verseSlide = document.createElement('div');
     verseSlide.className = 'slide-card';
 
+    const isThisVerseLive = isCurrentChapterLive && Number(liveVerse.verseNum) === Number(verseText.verseNum);
+    if (isThisVerseLive)
+    {
+      verseSlide.classList.add('live');
+    }
+
     verseSlide.innerHTML = `
-      <span class="slide-card-badge" style="display: none">LIVE</span>
+      <span class="slide-card-badge" style="display: ${isThisVerseLive ? 'inline-block' : 'none'};">LIVE</span>
       <div class="slide-card-content"><span class="verse-number">${verseText.verseNum}</span>${escapeHtml(verseText.word)}</div>
     `;
 
@@ -793,6 +856,11 @@ function renderBibleVersesSlides(bibleChapterVersesText)
 
     slideDeckBible.appendChild(verseSlide);
   });
+
+  if (typeof highlightActiveInDecks === 'function' && (window.liveState || (typeof liveState !== 'undefined' ? liveState : null)))
+  {
+    highlightActiveInDecks(window.liveState || liveState);
+  }
 }
 //#endregion
 

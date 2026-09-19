@@ -475,6 +475,7 @@ function resolveLiveState(payload)
       font2: '',
       verseInfo: {
         version: versionId,
+        versionId: versionId,
         bookNum,
         chNum,
         verseNum

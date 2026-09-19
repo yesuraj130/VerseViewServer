@@ -474,6 +474,17 @@ function renderSongSlides(song)
   {
     const card = document.createElement('div');
     card.className = 'slide-card';
+    card.setAttribute('data-slide-index', slide.slideIndex);
+
+    const isLiveSong = window.liveState && window.liveState.status === 'live' && window.liveState.type === 'song';
+    const isThisSlideLive = isLiveSong &&
+      Number(window.liveState.songId) === Number(song.id) &&
+      Number(window.liveState.slideIndex) === Number(slide.slideIndex);
+
+    if (isThisSlideLive)
+    {
+      card.classList.add('live');
+    }
 
     const lines = slide.lines;
     const linesHtml = lines.map(line => {
@@ -489,7 +500,7 @@ function renderSongSlides(song)
     }).join('');
 
     card.innerHTML = `
-      <span class="slide-card-badge">LIVE</span>
+      <span class="slide-card-badge" style="display: ${isThisSlideLive ? 'inline-block' : 'none'};">LIVE</span>
       <div class="slide-card-content" style="font-family: ${songFontFamily};">
         ${linesHtml}
       </div>
