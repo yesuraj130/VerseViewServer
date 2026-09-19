@@ -153,6 +153,26 @@
     updateInstallButtonState();
     updateFullscreenButtons();
 
+    // Auto-enter immersive fullscreen on first tap/interaction if launched in PWA mode
+    const autoFullscreenHandler = () => {
+      const displayModePWA = window.matchMedia('(display-mode: standalone)').matches ||
+                             window.matchMedia('(display-mode: fullscreen)').matches ||
+                             (window.navigator && window.navigator.standalone === true);
+      if (displayModePWA && !isFullscreen()) {
+        const docEl = document.documentElement;
+        if (docEl.requestFullscreen) {
+          docEl.requestFullscreen().catch(() => {});
+        } else if (docEl.webkitRequestFullscreen) {
+          docEl.webkitRequestFullscreen();
+        }
+      }
+      document.removeEventListener('click', autoFullscreenHandler);
+      document.removeEventListener('touchstart', autoFullscreenHandler);
+    };
+
+    document.addEventListener('click', autoFullscreenHandler, { once: true });
+    document.addEventListener('touchstart', autoFullscreenHandler, { once: true });
+
     document.querySelectorAll('[data-pwa-install-btn]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
