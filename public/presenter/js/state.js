@@ -13,6 +13,10 @@ const socket = (typeof io !== 'undefined') ? io({
   timeout: 10000
 }) : null;
 
+if (typeof window !== 'undefined') {
+  window.socket = socket;
+}
+
 // Application State
 let liveState = null;
 var selectedBibleVersionId = 'tamil';
