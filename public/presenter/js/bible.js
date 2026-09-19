@@ -196,6 +196,8 @@ let isBibleSearchEventsInitialized = false;
 
 function openBibleSearchDialog()
 {
+  initBibleSearchEvents();
+
   const dialog = document.getElementById('bible-search-dialog');
   const input = document.getElementById('bible-search-input');
   const badge = document.getElementById('bible-search-version-badge');
@@ -218,11 +220,6 @@ function openBibleSearchDialog()
     input.focus();
     input.select();
   }, 50);
-
-  if (input.value.trim())
-  {
-    executeBibleSearch(input.value.trim());
-  }
 }
 
 function closeBibleSearchDialog()
@@ -280,12 +277,6 @@ function initBibleSearchEvents()
       {
         btnClear.style.display = query.length > 0 ? 'inline-flex' : 'none';
       }
-
-      if (bibleSearchDebounceTimer) clearTimeout(bibleSearchDebounceTimer);
-      bibleSearchDebounceTimer = setTimeout(() =>
-      {
-        executeBibleSearch(query.trim());
-      }, 150);
     });
 
     input.addEventListener('keydown', (e) =>
@@ -296,12 +287,25 @@ function initBibleSearchEvents()
       }
       else if (e.key === 'Enter')
       {
-        const resultsList = document.getElementById('bible-search-results-list');
-        const firstResult = resultsList ? resultsList.querySelector('.bible-search-result-item') : null;
-        if (firstResult)
+        e.preventDefault();
+        const query = input.value.trim();
+        if (query)
         {
-          firstResult.click();
+          executeBibleSearch(query);
         }
+      }
+    });
+  }
+
+  const btnExecute = document.getElementById('btn-execute-bible-search');
+  if (btnExecute && input)
+  {
+    btnExecute.addEventListener('click', () =>
+    {
+      const query = input.value.trim();
+      if (query)
+      {
+        executeBibleSearch(query);
       }
     });
   }

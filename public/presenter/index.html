@@ -269,16 +269,20 @@
     <div class="dialog-content bible-search-dialog-content">
       <div class="dialog-header bible-search-dialog-header">
         <div class="bible-search-input-wrap">
-          <svg class="vv-icon search-icon" id="bible-search-spin-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          <input type="text" id="bible-search-input" class="bible-search-input" placeholder="Search scripture (e.g. anbu, யோவான் 3:16, John 3:16)..." autocomplete="off" spellcheck="false">
-          <button type="button" class="search-clear-btn" id="btn-clear-bible-search" style="display: none;" title="Clear search">&times;</button>
+          <div class="bible-search-box-inner">
+            <input type="text" id="bible-search-input" class="bible-search-input" placeholder="Search scripture (e.g. anbu, யோவான் 3:16, John 3:16)..." autocomplete="off" spellcheck="false">
+            <button type="button" class="bible-search-clear-btn" id="btn-clear-bible-search" style="display: none;" title="Clear search">&times;</button>
+          </div>
+          <button type="button" id="btn-execute-bible-search" class="btn-primary bible-search-btn-icon" title="Search (Enter)">
+            <svg class="vv-icon" id="bible-search-spin-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </button>
         </div>
         <div class="bible-search-header-actions">
           <span class="bible-search-version-badge" id="bible-search-version-badge">Tamil</span>
-          <button type="button" id="btn-close-bible-search-dialog" class="btn-icon-tiny" style="font-size: 20px; color: #fff;" title="Close (Esc)">&times;</button>
+          <button type="button" id="btn-close-bible-search-dialog" class="dialog-close-btn" title="Close (Esc)">&times;</button>
         </div>
       </div>
       <div class="bible-search-results-summary" id="bible-search-results-summary" style="display: none;">
