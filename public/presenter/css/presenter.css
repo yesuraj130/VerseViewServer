@@ -728,10 +728,11 @@ mark.search-match-hl
 {
   background-color: rgba(234, 179, 8, 0.35);
   color: #fef9c3;
-  border-bottom: 2px solid #eab308;
+  border-bottom: none;
   border-radius: 2px;
   padding: 0 2px;
   display: inline;
+  text-decoration: none;
 }
 
 .song-searchresult.selected .search-match-hl,
