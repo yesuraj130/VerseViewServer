@@ -228,6 +228,38 @@
   transform: translateY(1px);
 }
 
+/* Merged Left/Right Navigation Button Group (Seamless with 0 gap) */
+.merged-nav-group
+{
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.merged-nav-group .control-button
+{
+  position: relative;
+}
+
+.merged-nav-group .nav-button-prev
+{
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.merged-nav-group .nav-button-next
+{
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  margin-left: -1px;
+}
+
+.merged-nav-group .control-button:hover,
+.merged-nav-group .control-button:focus-visible
+{
+  z-index: 2;
+}
+
 .bible-version-dropdown
 {
   height: 32px;

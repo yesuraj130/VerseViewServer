@@ -2,7 +2,7 @@
 // Verse View Server — Progressive Web App (PWA) Service Worker
 // ===========================================================================
 
-const CACHE_NAME = 'verseview-v4';
+const CACHE_NAME = 'verseview-v6';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -97,12 +97,32 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. Cache-first strategy for static fonts, styles, scripts, and images
+  // 3. Network-first with cache fallback for CSS and JS to ensure instant updates
   if (
     url.pathname.startsWith('/css/') ||
-    url.pathname.startsWith('/fonts/') ||
     url.pathname.startsWith('/presenter/css/') ||
     url.pathname.startsWith('/display/display.css') ||
+    url.pathname.startsWith('/js/') ||
+    url.pathname.startsWith('/presenter/js/') ||
+    url.pathname.startsWith('/display/display.js')
+  ) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // 4. Cache-first strategy for static fonts and images
+  if (
+    url.pathname.startsWith('/fonts/') ||
     url.pathname.endsWith('.png') ||
     url.pathname.endsWith('.svg') ||
     url.pathname.endsWith('.woff2') ||

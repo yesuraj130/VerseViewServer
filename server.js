@@ -1350,7 +1350,7 @@ app.get('/api/clients', (req, res) =>
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res, filePath) =>
   {
-    if (filePath.endsWith('.html'))
+    if (filePath.endsWith('.html') || filePath.endsWith('.css') || filePath.endsWith('.js') || filePath.endsWith('.json'))
     {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Pragma', 'no-cache');

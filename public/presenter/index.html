@@ -13,15 +13,15 @@
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
-  <link rel="stylesheet" href="/css/base.css">
-  <link rel="stylesheet" href="/presenter/css/presenter.css">
+  <link rel="stylesheet" href="/css/base.css?v=6">
+  <link rel="stylesheet" href="/presenter/css/presenter.css?v=6">
   <style>
     @keyframes vv-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     .search-spinning-icon { animation: vv-spin 0.75s linear infinite !important; transform-origin: 50% 50%; }
   </style>
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/js/config.js"></script>
-  <script src="/js/pwa.js"></script>
+  <script src="/js/config.js?v=6"></script>
+  <script src="/js/pwa.js?v=6"></script>
 </head>
 <body class="presenter-body">
   <div class="presenter-app">
@@ -81,16 +81,18 @@
 
         <!-- Dock Right: Left, Right, Close -->
         <div class="control-group control-group-right" id="controls-right">
-          <button type="button" class="control-button" id="btn-prev-slide" title="Previous Slide" aria-label="Previous Slide">
-            <svg class="vv-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="15 18 9 12 15 6"></polyline>
-            </svg>
-          </button>
-          <button type="button" class="control-button" id="btn-next-slide" title="Next Slide" aria-label="Next Slide">
-            <svg class="vv-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="9 18 15 12 9 6"></polyline>
-            </svg>
-          </button>
+          <div class="merged-nav-group" id="nav-btn-group">
+            <button type="button" class="control-button nav-button-prev" id="btn-prev-slide" title="Previous Slide" aria-label="Previous Slide">
+              <svg class="vv-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+            </button>
+            <button type="button" class="control-button nav-button-next" id="btn-next-slide" title="Next Slide" aria-label="Next Slide">
+              <svg class="vv-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+          </div>
           <button type="button" class="control-button" id="btn-clear" title="Clear Screen" aria-label="Clear Screen">
             <svg class="vv-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -254,13 +256,13 @@
   </div>
 
   <!-- Modular Presenter JavaScript -->
-  <script src="/presenter/js/state.js"></script>
-  <script src="/presenter/js/tamilPhonetic.js"></script>
-  <script src="/presenter/js/songs.js"></script>
-  <script src="/presenter/js/editSong.js"></script>
-  <script src="/presenter/js/bible.js"></script>
-  <script src="/presenter/js/controls.js"></script>
-  <script src="/presenter/js/socket.js"></script>
-  <script src="/presenter/js/main.js"></script>
+  <script src="/presenter/js/state.js?v=6"></script>
+  <script src="/presenter/js/tamilPhonetic.js?v=6"></script>
+  <script src="/presenter/js/songs.js?v=6"></script>
+  <script src="/presenter/js/editSong.js?v=6"></script>
+  <script src="/presenter/js/bible.js?v=6"></script>
+  <script src="/presenter/js/controls.js?v=6"></script>
+  <script src="/presenter/js/socket.js?v=6"></script>
+  <script src="/presenter/js/main.js?v=6"></script>
 </body>
 </html>
