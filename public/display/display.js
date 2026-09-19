@@ -141,12 +141,31 @@ async function fetchCurrentState()
   }
 }
 
+let displaySocketLatency = null;
+let displayPingInterval = null;
+
+function measureDisplayLatency()
+{
+  if (!socket || !socket.connected) return;
+  const start = Date.now();
+  socket.emit('client:ping', start, () =>
+  {
+    displaySocketLatency = Math.max(0, Date.now() - start);
+    if (socketDot) socketDot.title = `Connected to Server (${displaySocketLatency} ms)`;
+    if (statusWidget) statusWidget.title = `Connected to Server (${displaySocketLatency} ms)`;
+  });
+}
+
 if (socket)
 {
   socket.on('connect', () =>
   {
     socketDot.classList.remove('disconnected');
+    socketDot.title = 'Connected to Server';
     statusText.textContent = 'Live Connected';
+    measureDisplayLatency();
+    if (displayPingInterval) clearInterval(displayPingInterval);
+    displayPingInterval = setInterval(measureDisplayLatency, 4000);
     socket.emit('role:register', {
       role: 'display',
       screen: `${window.screen.width || window.innerWidth}x${window.screen.height || window.innerHeight}`
@@ -156,7 +175,10 @@ if (socket)
 
   socket.on('disconnect', () =>
   {
+    if (displayPingInterval) clearInterval(displayPingInterval);
+    displaySocketLatency = null;
     socketDot.classList.add('disconnected');
+    socketDot.title = 'Disconnected from server';
     statusText.textContent = 'Reconnecting...';
   });
 

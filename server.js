@@ -13,11 +13,19 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const server = http.createServer(app);
+
+// Disable Nagle's algorithm for immediate low-latency packet delivery
+server.on('connection', (sock) =>
+{
+  sock.setNoDelay(true);
+});
+
 const io = new Server(server, {
   cors: {
     origin: '*',
     methods: ['GET', 'POST']
-  }
+  },
+  perMessageDeflate: false // Disable per-message zlib compression to save CPU and eliminate buffering delays on small JSON payloads
 });
 
 // In the AI Studio development sandbox, NGINX runs on 8080 and reverse-proxies to 3000.
@@ -149,15 +157,21 @@ function getBibleStructure(versionId)
   }
 }
 
-function getVersionMetadata()
+let cachedVersionMetadata = null;
+
+function getVersionMetadata(forceReload = false)
 {
+  if (cachedVersionMetadata && !forceReload)
+  {
+    return cachedVersionMetadata;
+  }
   const versionFile = path.join(dataDir, 'version.json');
   if (!fs.existsSync(versionFile)) return [];
   try
   {
     const raw = JSON.parse(fs.readFileSync(versionFile, 'utf8'));
     const list = raw.version || raw.versions || [];
-    return list.map((item, idx) =>
+    cachedVersionMetadata = list.map((item, idx) =>
     {
       const file = item.file || item.dbFile || `${item.id || 'bible'}.db`;
       const id = item.id || file.replace(/\.db$/i, '');
@@ -176,12 +190,26 @@ function getVersionMetadata()
         available: dbExists
       };
     });
+    return cachedVersionMetadata;
   }
   catch (err)
   {
     console.error('Error reading version.json:', err);
     return [];
   }
+}
+
+// Pre-compiled prepared statement cache for high-speed verse queries
+const bibleVerseStmtCache = new Map();
+function getBibleVerseStmt(db)
+{
+  let stmt = bibleVerseStmtCache.get(db);
+  if (!stmt)
+  {
+    stmt = db.prepare('SELECT word FROM words WHERE bookNum = ? AND chNum = ? AND verseNum = ?');
+    bibleVerseStmtCache.set(db, stmt);
+  }
+  return stmt;
 }
 
 function getBibleDb(versionIdOrFile)
@@ -314,6 +342,16 @@ function broadcastStats()
   });
 }
 
+let stmtGetSongById = null;
+function getSongById(id)
+{
+  if (!stmtGetSongById)
+  {
+    stmtGetSongById = smDb.prepare('SELECT id, name, title2, cat, font, font2, lyrics FROM sm WHERE id = ?');
+  }
+  return stmtGetSongById.get(id);
+}
+
 function resolveLiveState(payload)
 {
   if (!payload) return currentState;
@@ -341,9 +379,8 @@ function resolveLiveState(payload)
     {
       try
       {
-        const row = db.prepare(
-          'SELECT word FROM words WHERE bookNum = ? AND chNum = ? AND verseNum = ?'
-        ).get(bookNum, chNum, verseNum);
+        const stmt = getBibleVerseStmt(db);
+        const row = stmt.get(bookNum, chNum, verseNum);
         if (row && row.word) lineText = row.word;
       }
       catch (e)
@@ -357,7 +394,7 @@ function resolveLiveState(payload)
     return {
       type: 'bible',
       status: 'live',
-      title: bookName,
+      title: `${bookName} ${chNum}:${verseNum}`,
       reference: `${bookName} ${chNum}:${verseNum} (${versionName})`,
       lines: lines,
       rawSlide: lineText || (payload.rawSlide || lines.join('<BR>')),
@@ -382,7 +419,7 @@ function resolveLiveState(payload)
 
     try
     {
-      const row = smDb.prepare('SELECT id, name, title2, cat, font, font2, lyrics FROM sm WHERE id = ?').get(songId);
+      const row = getSongById(songId);
       if (row)
       {
         const rawSlides = row.lyrics ? row.lyrics.split('<slide>').filter(s => s.trim().length > 0) : [];
@@ -484,6 +521,24 @@ io.on('connection', (socket) =>
   socket.on('get:state', () =>
   {
     socket.emit('display:update', currentState);
+  });
+
+  // Action: Latency ping measurement
+  socket.on('client:ping', (clientTime, ack) =>
+  {
+    if (typeof clientTime === 'function')
+    {
+      clientTime();
+      return;
+    }
+    if (typeof ack === 'function')
+    {
+      ack(clientTime);
+    }
+    else
+    {
+      socket.emit('server:pong', clientTime);
+    }
   });
 
   // Action: Present Slide (Song or Scripture)

@@ -609,13 +609,25 @@ function renderBibleVersesSlides(bibleChapterVersesText)
 function presentBibleVerse(bibleVerse)
 {
   selectVerseSlide(bibleVerse.verseNum);
+  const versionId = bibleVerse.versionId || selectedBibleVersionId;
+  const bookNum = Number(bibleVerse.bookNum || selectedBookNumber || 1);
+  const chNum = Number(bibleVerse.chNum || selectedChapterNumber || 1);
+  const verseNum = Number(bibleVerse.verseNum || 1);
+
+  let bookName = `Book ${bookNum}`;
+  if (typeof selectedBibleVersionBooks !== 'undefined' && selectedBibleVersionBooks && selectedBibleVersionBooks[bookNum - 1])
+  {
+    bookName = selectedBibleVersionBooks[bookNum - 1].name;
+  }
+
   const payload = {
     type: 'bible',
+    title: `${bookName} ${chNum}:${verseNum}`,
     verseInfo: {
-      version: bibleVerse.versionId,
-      bookNum: bibleVerse.bookNum,
-      chNum: bibleVerse.chNum,
-      verseNum: bibleVerse.verseNum
+      version: versionId,
+      bookNum: bookNum,
+      chNum: chNum,
+      verseNum: verseNum
     }
   };
 

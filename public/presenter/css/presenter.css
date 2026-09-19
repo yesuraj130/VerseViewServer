@@ -454,6 +454,7 @@
   overflow: hidden;
   transition: background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
   user-select: none;
+  touch-action: manipulation;
 }
 
 .slide-card:hover

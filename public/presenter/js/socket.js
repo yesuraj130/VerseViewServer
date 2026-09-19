@@ -2,6 +2,77 @@
 // Presenter Console — Real-Time Socket.io Communications
 // ===========================================================================
 
+// Latency and Status Management
+let currentSocketLatency = null;
+let latencyPingTimer = null;
+
+function getConnectedStatusText()
+{
+  if (typeof currentSocketLatency === 'number' && currentSocketLatency >= 0)
+  {
+    return `Connected to Server (${currentSocketLatency} ms)`;
+  }
+  return 'Connected to Server';
+}
+
+function getConnectedTooltipText()
+{
+  if (typeof currentSocketLatency === 'number' && currentSocketLatency >= 0)
+  {
+    return `● Connected to Server (${currentSocketLatency} ms)`;
+  }
+  return '● Connected to Server';
+}
+
+function updateStatusDotAndTooltip()
+{
+  const isOnline = socket && socket.connected && (!serverStatusDot || !serverStatusDot.classList.contains('disconnected'));
+  if (serverStatusDot)
+  {
+    serverStatusDot.title = isOnline ? getConnectedStatusText() : 'Disconnected from server';
+  }
+  const tooltip = document.getElementById('server-status-tooltip');
+  if (tooltip && tooltip.classList.contains('visible') && isOnline)
+  {
+    tooltip.textContent = getConnectedTooltipText();
+  }
+}
+
+function measureSocketLatency(callback)
+{
+  if (!socket || !socket.connected) return;
+  const startTime = Date.now();
+  socket.emit('client:ping', startTime, () =>
+  {
+    const latency = Math.max(0, Date.now() - startTime);
+    currentSocketLatency = latency;
+    updateStatusDotAndTooltip();
+    if (typeof callback === 'function') callback(latency);
+  });
+}
+
+function startLatencyPings()
+{
+  if (latencyPingTimer) clearInterval(latencyPingTimer);
+  measureSocketLatency();
+  latencyPingTimer = setInterval(() =>
+  {
+    if (socket && socket.connected)
+    {
+      measureSocketLatency();
+    }
+  }, 3000);
+}
+
+function stopLatencyPings()
+{
+  if (latencyPingTimer)
+  {
+    clearInterval(latencyPingTimer);
+    latencyPingTimer = null;
+  }
+}
+
 // Status Tooltip Popup Manager
 let statusTooltipTimeout = null;
 function showStatusTooltip(message, isOnline)
@@ -15,7 +86,8 @@ function showStatusTooltip(message, isOnline)
     document.body.appendChild(tooltip);
   }
 
-  tooltip.textContent = message;
+  const displayText = message || (isOnline ? getConnectedTooltipText() : '● Reconnecting to Server...');
+  tooltip.textContent = displayText;
   tooltip.className = `server-status-tooltip visible ${isOnline ? 'online' : 'offline'}`;
 
   // Anchor tooltip directly below the server status dot with viewport boundary awareness
@@ -50,8 +122,23 @@ if (serverStatusDot)
 {
   serverStatusDot.addEventListener('mouseenter', () =>
   {
-    const isOnline = !serverStatusDot.classList.contains('disconnected');
-    showStatusTooltip(isOnline ? '● Connected to Server' : '● Reconnecting to Server...', isOnline);
+    const isOnline = socket && socket.connected && !serverStatusDot.classList.contains('disconnected');
+    if (isOnline)
+    {
+      showStatusTooltip(getConnectedTooltipText(), true);
+      measureSocketLatency((lat) =>
+      {
+        const tip = document.getElementById('server-status-tooltip');
+        if (tip && tip.classList.contains('visible'))
+        {
+          tip.textContent = getConnectedTooltipText();
+        }
+      });
+    }
+    else
+    {
+      showStatusTooltip('● Reconnecting to Server...', false);
+    }
   });
 
   serverStatusDot.addEventListener('mouseleave', () =>
@@ -155,9 +242,10 @@ if (socket)
     if (serverStatusDot)
     {
       serverStatusDot.classList.remove('disconnected');
-      serverStatusDot.title = 'Connected to Presentation Server';
+      serverStatusDot.title = getConnectedStatusText();
     }
-    showStatusTooltip('● Connected to Server', true);
+    showStatusTooltip(getConnectedTooltipText(), true);
+    startLatencyPings();
     socket.emit('role:register', {
       role: 'presenter',
       screen: `${window.innerWidth}x${window.innerHeight}`
@@ -167,6 +255,8 @@ if (socket)
 
   socket.on('disconnect', () =>
   {
+    stopLatencyPings();
+    currentSocketLatency = null;
     if (serverStatusDot)
     {
       serverStatusDot.classList.add('disconnected');
@@ -175,13 +265,20 @@ if (socket)
     showStatusTooltip('● Reconnecting to Server...', false);
   });
 
+  socket.on('server:pong', (sentTime) =>
+  {
+    const start = Number(sentTime) || Date.now();
+    currentSocketLatency = Math.max(0, Date.now() - start);
+    updateStatusDotAndTooltip();
+  });
+
   socket.on('display:update', (state) =>
   {
     liveState = state;
     window.liveState = state;
     updateLiveMonitor(state);
     highlightActiveInDecks(state);
-    if (typeof updateVirtualSongList === 'function')
+    if (typeof updateVirtualSongList === 'function' && state.type === 'song' && state.songId !== lastLiveSongId)
     {
       updateVirtualSongList(true);
     }
@@ -219,11 +316,47 @@ function updateLiveMonitor(state)
   {
     liveStatusBadge.className = 'live-badge badge-live';
     liveStatusBadge.textContent = 'LIVE';
-    if (liveTitleText) liveTitleText.textContent = state.title || 'Live Presentation';
+    if (liveTitleText)
+    {
+      if (state.type === 'bible')
+      {
+        if (state.verseInfo && state.verseInfo.chNum && state.verseInfo.verseNum)
+        {
+          const baseBook = (state.title || '').replace(/\s+\d+:\d+.*$/, '').trim() || 'Scripture';
+          const formattedTitle = `${baseBook} ${state.verseInfo.chNum}:${state.verseInfo.verseNum}`;
+          liveTitleText.textContent = formattedTitle;
+          liveTitleText.title = formattedTitle;
+        }
+        else
+        {
+          liveTitleText.textContent = state.title || 'Live Scripture';
+          liveTitleText.title = state.title || 'Live Scripture';
+        }
+      }
+      else
+      {
+        liveTitleText.textContent = state.title || 'Live Presentation';
+        liveTitleText.title = state.title || 'Live Presentation';
+      }
+    }
     const firstLine = (state.lines && state.lines.length > 0) ? state.lines[0] : (state.reference || '');
-    if (liveLineText) liveLineText.textContent = firstLine || 'Ready for presentation';
+    if (liveLineText)
+    {
+      liveLineText.textContent = firstLine || 'Ready for presentation';
+      liveLineText.title = firstLine || 'Ready for presentation';
+    }
   }
 }
+
+// Direct active element references for ultra-fast O(1) DOM updates without layout thrashing
+let lastLiveSongCard = null;
+let lastLiveBibleCard = null;
+let lastLiveVerseBtn = null;
+let lastLiveBookBtn = null;
+let lastLiveChapterBtn = null;
+let lastLiveSongItem = null;
+let lastLiveSongId = null;
+let lastLiveVerseKey = null;
 
 function highlightActiveInDecks(state)
 {
@@ -232,87 +365,150 @@ function highlightActiveInDecks(state)
   const isLive = state.status === 'live' && state.type !== 'none';
   const liveVerse = (isLive && state.type === 'bible' && state.verseInfo) ? state.verseInfo : null;
 
-  // Highlight in song slide deck
+  // 1. Song Slide Deck: direct index toggle without scanning entire deck
   const slideDeckSongsEl = document.getElementById('slide-deck-songs') || (typeof slideDeckContainer !== 'undefined' ? slideDeckContainer : null);
   if (slideDeckSongsEl)
   {
     const isThisSong = isLive && selectedSongId && Number(state.songId) === Number(selectedSongId);
-    for (let i = 0; i < slideDeckSongsEl.children.length; i++)
+    const targetIndex = isThisSong ? (Number(state.slideIndex) - 1) : -1;
+    const newActiveCard = (targetIndex >= 0 && targetIndex < slideDeckSongsEl.children.length)
+      ? slideDeckSongsEl.children[targetIndex]
+      : null;
+
+    if (lastLiveSongCard && lastLiveSongCard !== newActiveCard)
     {
-      const card = slideDeckSongsEl.children[i];
-      const active = isThisSong && (i + 1) === Number(state.slideIndex);
-      card.classList.toggle('live', active);
-      const badge = card.querySelector('.slide-card-badge');
-      if (badge) badge.style.display = active ? 'inline-block' : 'none';
+      lastLiveSongCard.classList.remove('live');
+      const oldBadge = lastLiveSongCard.querySelector('.slide-card-badge');
+      if (oldBadge) oldBadge.style.display = 'none';
     }
-  }
 
-  // Green highlight for Song items list in left panel
-  const songListContainer = document.getElementById('song-list-container');
-  if (songListContainer)
-  {
-    songListContainer.querySelectorAll('.song-searchresult, .song-item').forEach((it) =>
+    if (newActiveCard)
     {
-      const songId = Number(it.getAttribute('data-id'));
-      const isLiveSong = isLive && state.type === 'song' && Number(state.songId) === songId;
-      it.classList.toggle('live', isLiveSong);
-    });
+      newActiveCard.classList.add('live');
+      const newBadge = newActiveCard.querySelector('.slide-card-badge');
+      if (newBadge) newBadge.style.display = 'inline-block';
+    }
+    lastLiveSongCard = newActiveCard;
   }
 
-  // Highlight in vertical Bible chapter slide deck
+  // 2. Song Item in left list: direct update only when song ID changes
+  const currentSongId = (isLive && state.type === 'song') ? Number(state.songId) : null;
+  if (currentSongId !== lastLiveSongId)
+  {
+    const songListContainer = document.getElementById('song-list-container');
+    if (lastLiveSongItem)
+    {
+      lastLiveSongItem.classList.remove('live');
+      lastLiveSongItem = null;
+    }
+    if (currentSongId && songListContainer)
+    {
+      const targetItem = songListContainer.querySelector(`.song-searchresult[data-id="${currentSongId}"], .song-item[data-id="${currentSongId}"]`);
+      if (targetItem)
+      {
+        targetItem.classList.add('live');
+        lastLiveSongItem = targetItem;
+      }
+    }
+    lastLiveSongId = currentSongId;
+  }
+
+  // 3. Bible Chapter Slide Deck: direct index toggle without scanning entire chapter
   if (typeof slideDeckBible !== 'undefined' && slideDeckBible)
   {
     const isCurrentChapter = liveVerse &&
       Number(liveVerse.bookNum) === Number(selectedBookNumber) &&
       Number(liveVerse.chNum) === Number(selectedChapterNumber);
 
-    for (let i = 0; i < slideDeckBible.children.length; i++)
-    {
-      const card = slideDeckBible.children[i];
-      const isLiveVerse = isCurrentChapter && (i + 1) === Number(liveVerse.verseNum);
+    const targetVerseIndex = isCurrentChapter ? (Number(liveVerse.verseNum) - 1) : -1;
+    const newActiveBibleCard = (targetVerseIndex >= 0 && targetVerseIndex < slideDeckBible.children.length)
+      ? slideDeckBible.children[targetVerseIndex]
+      : null;
 
-      card.classList.toggle('live', !!isLiveVerse);
-      const livePill = card.querySelector('.slide-card-badge');
-      if (livePill) livePill.style.display = isLiveVerse ? 'inline-block' : 'none';
+    if (lastLiveBibleCard && lastLiveBibleCard !== newActiveBibleCard)
+    {
+      lastLiveBibleCard.classList.remove('live');
+      const oldBadge = lastLiveBibleCard.querySelector('.slide-card-badge');
+      if (oldBadge) oldBadge.style.display = 'none';
     }
+
+    if (newActiveBibleCard)
+    {
+      newActiveBibleCard.classList.add('live');
+      const newBadge = newActiveBibleCard.querySelector('.slide-card-badge');
+      if (newBadge) newBadge.style.display = 'inline-block';
+    }
+    lastLiveBibleCard = newActiveBibleCard;
   }
 
-  // Green highlight preview for Book list items
-  if (typeof bibleBooksList !== 'undefined' && bibleBooksList)
+  // 4. Bible Navigation Buttons (Book, Chapter, Verse): update only when key changes
+  const currentVerseKey = liveVerse ? `${liveVerse.bookNum}:${liveVerse.chNum}:${liveVerse.verseNum}` : null;
+  if (currentVerseKey !== lastLiveVerseKey)
   {
-    const bookChildren = bibleBooksList.children;
-    for (let i = 0; i < bookChildren.length; i++)
+    // Verse button
+    if (typeof bibleVersesList !== 'undefined' && bibleVersesList)
     {
-      const bookObj = (typeof selectedBibleVersionBooks !== 'undefined' && selectedBibleVersionBooks) ? selectedBibleVersionBooks[i] : null;
-      const bNum = bookObj ? Number(bookObj.bookNum) : (i + 1);
-      const isLiveBook = liveVerse && bNum === Number(liveVerse.bookNum);
-      bookChildren[i].classList.toggle('live', !!isLiveBook);
+      if (lastLiveVerseBtn)
+      {
+        lastLiveVerseBtn.classList.remove('live');
+        lastLiveVerseBtn = null;
+      }
+      const isLiveCh = liveVerse &&
+        Number(liveVerse.bookNum) === Number(selectedBookNumber) &&
+        Number(liveVerse.chNum) === Number(selectedChapterNumber);
+      if (isLiveCh)
+      {
+        const vIdx = Number(liveVerse.verseNum) - 1;
+        if (vIdx >= 0 && vIdx < bibleVersesList.children.length)
+        {
+          const btn = bibleVersesList.children[vIdx];
+          btn.classList.add('live');
+          lastLiveVerseBtn = btn;
+        }
+      }
     }
-  }
 
-  // Green highlight preview for Chapter list buttons
-  if (typeof bibleChaptersList !== 'undefined' && bibleChaptersList)
-  {
-    const isLiveBook = liveVerse && Number(liveVerse.bookNum) === Number(selectedBookNumber);
-    for (let i = 0; i < bibleChaptersList.children.length; i++)
+    // Chapter button
+    if (typeof bibleChaptersList !== 'undefined' && bibleChaptersList)
     {
-      const isLiveChapter = isLiveBook && (i + 1) === Number(liveVerse.chNum);
-      bibleChaptersList.children[i].classList.toggle('live', !!isLiveChapter);
+      if (lastLiveChapterBtn)
+      {
+        lastLiveChapterBtn.classList.remove('live');
+        lastLiveChapterBtn = null;
+      }
+      const isLiveBk = liveVerse && Number(liveVerse.bookNum) === Number(selectedBookNumber);
+      if (isLiveBk)
+      {
+        const chIdx = Number(liveVerse.chNum) - 1;
+        if (chIdx >= 0 && chIdx < bibleChaptersList.children.length)
+        {
+          const btn = bibleChaptersList.children[chIdx];
+          btn.classList.add('live');
+          lastLiveChapterBtn = btn;
+        }
+      }
     }
-  }
 
-  // Green highlight preview for Verse list buttons
-  if (typeof bibleVersesList !== 'undefined' && bibleVersesList)
-  {
-    const isLiveChapter = liveVerse &&
-      Number(liveVerse.bookNum) === Number(selectedBookNumber) &&
-      Number(liveVerse.chNum) === Number(selectedChapterNumber);
-
-    for (let i = 0; i < bibleVersesList.children.length; i++)
+    // Book button
+    if (typeof bibleBooksList !== 'undefined' && bibleBooksList)
     {
-      const isLiveVerseBtn = isLiveChapter && (i + 1) === Number(liveVerse.verseNum);
-      bibleVersesList.children[i].classList.toggle('live', !!isLiveVerseBtn);
+      if (lastLiveBookBtn)
+      {
+        lastLiveBookBtn.classList.remove('live');
+        lastLiveBookBtn = null;
+      }
+      if (liveVerse)
+      {
+        const bIdx = Number(liveVerse.bookNum) - 1;
+        if (bIdx >= 0 && bIdx < bibleBooksList.children.length)
+        {
+          const btn = bibleBooksList.children[bIdx];
+          btn.classList.add('live');
+          lastLiveBookBtn = btn;
+        }
+      }
     }
+
+    lastLiveVerseKey = currentVerseKey;
   }
-  
 }

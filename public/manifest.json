@@ -1,7 +1,7 @@
 {
   "id": "/",
   "name": "Verse View Server",
-  "short_name": "VerseView",
+  "short_name": "Verse View Server",
   "description": "Real-Time Church Presentation Server for Tamil Songs and Bible Scriptures",
   "start_url": "/",
   "scope": "/",

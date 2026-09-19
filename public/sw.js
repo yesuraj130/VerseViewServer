@@ -2,7 +2,7 @@
 // Verse View Server — Progressive Web App (PWA) Service Worker
 // ===========================================================================
 
-const CACHE_NAME = 'verseview-v6';
+const CACHE_NAME = 'verseview-v7';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

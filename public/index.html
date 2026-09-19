@@ -9,7 +9,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="VerseView">
+  <meta name="apple-mobile-web-app-title" content="Verse View Server">
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
@@ -383,17 +383,39 @@
       if (e.key === 'Escape') closeClientsModal();
     });
 
+    let hubSocketLatency = null;
+    let hubPingInterval = null;
+
+    function measureHubLatency()
+    {
+      if (!hubSocket || !hubSocket.connected) return;
+      const start = Date.now();
+      hubSocket.emit('client:ping', start, () =>
+      {
+        hubSocketLatency = Math.max(0, Date.now() - start);
+        if (hubServerDot) hubServerDot.title = `Connected to Server (${hubSocketLatency} ms)`;
+        if (hubServerStatus) hubServerStatus.textContent = `Socket Connected (${hubSocketLatency} ms)`;
+      });
+    }
+
     if (hubSocket)
     {
       hubSocket.on('connect', () =>
       {
         hubServerDot.classList.remove('disconnected');
+        hubServerDot.title = 'Connected to Server';
         hubServerStatus.textContent = 'Socket Connected';
+        measureHubLatency();
+        if (hubPingInterval) clearInterval(hubPingInterval);
+        hubPingInterval = setInterval(measureHubLatency, 4000);
         hubSocket.emit('get:state');
       });
       hubSocket.on('disconnect', () =>
       {
+        if (hubPingInterval) clearInterval(hubPingInterval);
+        hubSocketLatency = null;
         hubServerDot.classList.add('disconnected');
+        hubServerDot.title = 'Disconnected from server';
         hubServerStatus.textContent = 'Disconnected';
       });
       hubSocket.on('display:update', (state) =>
