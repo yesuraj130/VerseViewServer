@@ -25,11 +25,13 @@ let songSearchInput = null;
 let buttonClearSongSearch = null;
 let buttonExecuteSongSearch = null;
 let songSearchStatusBar = null;
+let songSearchStatusSpinner = null;
 let songSearchStatusText = null;
 let slideDeckSongs = null;
 let slideDeckContainer = null;
 let activeSongTitle = null;
 let buttonDeckEditSong = null;
+let contentSearchAbortController = null;
 
 function loadSongLocalStorage()
 {
@@ -47,6 +49,7 @@ async function initSongs()
   buttonClearSongSearch = document.getElementById('btn-clear-song-search');
   buttonExecuteSongSearch = document.getElementById('btn-execute-song-search');
   songSearchStatusBar = document.getElementById('song-search-status-bar');
+  songSearchStatusSpinner = document.getElementById('song-search-status-spinner');
   songSearchStatusText = document.getElementById('song-search-status-text');
   songListContainer = document.getElementById('song-list-container');
   slideDeckSongs = document.getElementById('slide-deck-songs');
@@ -120,6 +123,12 @@ async function reloadSongsCache()
 //#region Virtualized Songs List Engine
 function loadSongsList(songSearchQuery, resetScroll = false)
 {
+  if (contentSearchAbortController)
+  {
+    contentSearchAbortController.abort();
+    contentSearchAbortController = null;
+  }
+
   if (!songsCache)
   {
     console.warn('Songs cache not available');
@@ -128,6 +137,7 @@ function loadSongsList(songSearchQuery, resetScroll = false)
 
   isContentSearchMode = false;
   if (songSearchStatusBar) songSearchStatusBar.style.display = 'none';
+  if (songSearchStatusSpinner) songSearchStatusSpinner.style.display = 'none';
 
   const rawQuery = (songSearchQuery !== undefined ? songSearchQuery : (songSearchInput ? songSearchInput.value : '')).trim();
   currentSearchQuery = rawQuery;
@@ -135,26 +145,25 @@ function loadSongsList(songSearchQuery, resetScroll = false)
   if (rawQuery.length > 0)
   {
     const queryLower = rawQuery.toLowerCase();
-    const variations = window.TamilPhonetic ? window.TamilPhonetic.getPhoneticVariations(rawQuery) : [queryLower];
+    const qTokens = window.TamilPhonetic ? window.TamilPhonetic.tokenizeText(rawQuery) : [];
+    const qKeys = qTokens.map(t => window.TamilPhonetic.getSoundKey(t)).filter(Boolean);
 
     currentFilteredSongs = songsCache.filter(song =>
     {
-      const name = (song.name || '').toLowerCase();
-      const title2 = (song.title2 || '').toLowerCase();
-      const firstLine = (song.firstLine || '').toLowerCase();
-      const tags = (song.tags || '').toLowerCase();
+      const name = song.name || '';
+      const title2 = song.title2 || '';
 
-      // Direct string match
-      if (name.includes(queryLower) || title2.includes(queryLower) || firstLine.includes(queryLower) || tags.includes(queryLower))
+      // Direct substring match first (fastest check)
+      if (name.toLowerCase().includes(queryLower) || (title2 && title2.toLowerCase().includes(queryLower)))
       {
         return true;
       }
 
-      // Phonetic Tamil variations match
-      for (let i = 0; i < variations.length; i++)
+      // Phonetic contiguous match on song titles
+      if (window.TamilPhonetic && qKeys.length > 0)
       {
-        const v = variations[i].toLowerCase();
-        if (v && (name.includes(v) || title2.includes(v) || firstLine.includes(v) || tags.includes(v)))
+        if (window.TamilPhonetic.matchWithPrecomputedKeys(name, qKeys, rawQuery).matched ||
+            (title2 && window.TamilPhonetic.matchWithPrecomputedKeys(title2, qKeys, rawQuery).matched))
         {
           return true;
         }
@@ -247,7 +256,7 @@ function updateVirtualSongList(force = false)
       ? window.TamilPhonetic.highlightMatchedCharacters(displayName, currentSearchQuery)
       : escapeHtml(displayName);
 
-    // In content search mode, show matched line with highlights, otherwise show firstLine
+    // In content search mode, show matched line with highlights; in title search mode, show clean first line
     let previewLineHtml = '&nbsp;';
     if (isContentSearchMode && song.matchedLine)
     {
@@ -259,9 +268,7 @@ function updateVirtualSongList(force = false)
     }
     else if (song.firstLine)
     {
-      previewLineHtml = (currentSearchQuery && window.TamilPhonetic)
-        ? window.TamilPhonetic.highlightMatchedCharacters(song.firstLine, currentSearchQuery)
-        : escapeHtml(song.firstLine);
+      previewLineHtml = escapeHtml(song.firstLine);
     }
 
     const titleAttr = escapeHtml(song.matchedLine || song.firstLine || song.name || '');
@@ -585,6 +592,15 @@ async function executeContentSearch()
     return;
   }
 
+  // Cancel any existing search in progress
+  if (contentSearchAbortController)
+  {
+    contentSearchAbortController.abort();
+    contentSearchAbortController = null;
+  }
+
+  contentSearchAbortController = new AbortController();
+  const currentController = contentSearchAbortController;
   currentSearchQuery = query;
 
   if (buttonExecuteSongSearch)
@@ -592,58 +608,140 @@ async function executeContentSearch()
     buttonExecuteSongSearch.classList.add('active');
   }
 
+  if (!songSearchStatusBar) songSearchStatusBar = document.getElementById('song-search-status-bar');
+  if (!songSearchStatusSpinner) songSearchStatusSpinner = document.getElementById('song-search-status-spinner');
+  if (!songSearchStatusText) songSearchStatusText = document.getElementById('song-search-status-text');
+
   if (songSearchStatusBar)
   {
     songSearchStatusBar.style.display = 'flex';
+    if (songSearchStatusSpinner)
+    {
+      songSearchStatusSpinner.style.display = 'inline-flex';
+    }
     if (songSearchStatusText)
     {
       songSearchStatusText.textContent = `Searching lyrics for "${query}"...`;
     }
   }
 
+  isContentSearchMode = true;
+  currentFilteredSongs = [];
+  if (songListContainer)
+  {
+    songListContainer.scrollTop = 0;
+  }
+  updateVirtualSongList(true);
+
   try
   {
-    const response = await fetch(`/api/songs/search?q=${encodeURIComponent(query)}`);
-    const results = await response.json();
+    const response = await fetch(`/api/songs/search?q=${encodeURIComponent(query)}&stream=true`, {
+      signal: currentController.signal
+    });
 
-    isContentSearchMode = true;
-    currentFilteredSongs = Array.isArray(results) ? results : [];
+    if (!response.ok)
+    {
+      throw new Error(`Search failed with HTTP ${response.status}`);
+    }
+
+    if (!response.body)
+    {
+      // Fallback for non-streamable environments
+      const results = await response.json();
+      currentFilteredSongs = Array.isArray(results) ? results : [];
+      updateVirtualSongList(true);
+    }
+    else
+    {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+      let firstResultSelected = false;
+
+      while (true)
+      {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // Retain incomplete line
+
+        let hasNewBatch = false;
+        for (const line of lines)
+        {
+          if (!line.trim()) continue;
+          try
+          {
+            const data = JSON.parse(line);
+            if (data.type === 'batch' && Array.isArray(data.items) && data.items.length > 0)
+            {
+              currentFilteredSongs.push(...data.items);
+              hasNewBatch = true;
+            }
+            else if (data.type === 'error')
+            {
+              throw new Error(data.message || 'Server search error');
+            }
+          }
+          catch (parseErr)
+          {
+            console.warn('Error reading stream batch:', parseErr);
+          }
+        }
+
+        if (hasNewBatch)
+        {
+          const count = currentFilteredSongs.length;
+          if (songSearchStatusText)
+          {
+            songSearchStatusText.textContent = `Searching lyrics for "${query}" (${count} found)...`;
+          }
+          updateVirtualSongList(false);
+
+          // Auto-select first result if available on initial batch
+          if (!firstResultSelected && currentFilteredSongs.length > 0)
+          {
+            firstResultSelected = true;
+            const first = currentFilteredSongs[0];
+            selectSong(first.id, false);
+            loadSongSlides().then(isLoaded =>
+            {
+              if (isLoaded && first.matchedSlideIndex > 1 && slideDeckSongs)
+              {
+                selectSongSlide(first.matchedSlideIndex);
+                scrollToIndexInList(slideDeckSongs, first.matchedSlideIndex - 1);
+              }
+            });
+          }
+        }
+      }
+    }
+
+    if (songSearchStatusSpinner)
+    {
+      songSearchStatusSpinner.style.display = 'none';
+    }
 
     if (songSearchStatusBar && songSearchStatusText)
     {
       const count = currentFilteredSongs.length;
-      let phoneticInfo = '';
-      if (window.TamilPhonetic && !/[\u0B80-\u0BFF]/.test(query))
-      {
-        const t = window.TamilPhonetic.englishToTamil(query);
-        if (t && t !== query) phoneticInfo = ` (${t})`;
-      }
-      songSearchStatusText.textContent = `${count} ${count === 1 ? 'song' : 'songs'} matched lyrics for "${query}"${phoneticInfo}`;
+      songSearchStatusText.textContent = `${count} ${count === 1 ? 'song' : 'songs'} matched lyrics for "${query}"`;
     }
 
-    if (songListContainer)
-    {
-      songListContainer.scrollTop = 0;
-    }
-
-    updateVirtualSongList(true);
-
-    // Auto-select first result if available
-    if (currentFilteredSongs.length > 0)
-    {
-      const first = currentFilteredSongs[0];
-      selectSong(first.id, false);
-      const isLoaded = await loadSongSlides();
-      if (isLoaded && first.matchedSlideIndex > 1 && slideDeckSongs)
-      {
-        selectSongSlide(first.matchedSlideIndex);
-        scrollToIndexInList(slideDeckSongs, first.matchedSlideIndex - 1);
-      }
-    }
+    updateVirtualSongList(false);
   }
   catch (err)
   {
+    if (err.name === 'AbortError')
+    {
+      return; // gracefully cancelled by another user action
+    }
     console.error('Error executing song lyrics search:', err);
+    if (songSearchStatusSpinner)
+    {
+      songSearchStatusSpinner.style.display = 'none';
+    }
     if (songSearchStatusText)
     {
       songSearchStatusText.textContent = `Search error: ${err.message}`;
@@ -654,6 +752,10 @@ async function executeContentSearch()
     if (buttonExecuteSongSearch)
     {
       buttonExecuteSongSearch.classList.remove('active');
+    }
+    if (contentSearchAbortController === currentController)
+    {
+      contentSearchAbortController = null;
     }
   }
 }

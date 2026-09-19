@@ -23,7 +23,7 @@
 {
   width: 100%;
   height: 100%;
-  padding: 5vh 6vw;
+  padding: calc(5vh + var(--sat, 0px)) calc(6vw + var(--sar, 0px)) calc(5vh + var(--sab, 0px)) calc(6vw + var(--sal, 0px));
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -87,8 +87,8 @@
 .display-status-widget
 {
   position: fixed;
-  bottom: 12px;
-  right: 12px;
+  bottom: calc(12px + var(--sab, 0px));
+  right: calc(12px + var(--sar, 0px));
   display: flex;
   align-items: center;
   gap: 8px;

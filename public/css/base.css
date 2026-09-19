@@ -41,6 +41,12 @@
 }
 
 :root {
+  /* Safe Area Notch Insets for edge-to-edge fullscreen */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+
   /* Core 5-color Palette */
   --color-font:          #f8fafc;        /* 1. Font color: white */
   --color-font-muted:    #94a3b8;        /* Subtitles / secondary */

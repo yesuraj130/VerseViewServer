@@ -6,7 +6,7 @@
 {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 40px 24px;
+  padding: calc(24px + var(--sat)) calc(24px + var(--sar)) calc(40px + var(--sab)) calc(24px + var(--sal));
 }
 
 .hub-header

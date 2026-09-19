@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { Server } from 'socket.io';
 import { isTamilBibleFont, baminiToUnicode } from './lib/bamini.js';
-import { englishToTamil, getPhoneticVariations, matchesQueryPhonetic } from './lib/tamilPhonetic.js';
+import { matchContiguousPhoneticPhrase, matchesQueryPhonetic, tokenizeText, getSoundKey, matchWithPrecomputedKeys } from './lib/tamilPhonetic.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -787,8 +787,8 @@ app.get('/api/songs', (req, res) =>
   }
 });
 
-// API: Full Song Content & Lyrics Search with Tamil Phonetic Transliteration
-app.get('/api/songs/search', (req, res) =>
+// API: Full Song Content & Lyrics Search with Zero-Dictionary Strict Contiguous Phonetic Matcher & 100ms Stream Batches
+app.get('/api/songs/search', async (req, res) =>
 {
   try
   {
@@ -798,13 +798,43 @@ app.get('/api/songs/search', (req, res) =>
       return res.json([]);
     }
 
-    const variations = getPhoneticVariations(q);
-    const limit = req.query.limit ? Math.min(Number(req.query.limit) || 300, 1000) : 300;
+    const limit = req.query.limit ? Math.min(Number(req.query.limit) || 500, 2000) : 500;
+    const isStreamRequested = req.query.stream !== 'false';
+
+    if (isStreamRequested)
+    {
+      res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+      res.setHeader('Transfer-Encoding', 'chunked');
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
+      res.setHeader('X-Accel-Buffering', 'no');
+    }
 
     const stmt = smDb.prepare('SELECT id, name, title2, cat, font, tags, lyrics FROM sm');
     const allRows = stmt.all();
 
     const matches = [];
+    let batch = [];
+    let lastFlushTime = Date.now();
+    let totalSent = 0;
+
+    const flushBatch = () =>
+    {
+      if (batch.length > 0)
+      {
+        if (isStreamRequested)
+        {
+          res.write(JSON.stringify({ type: 'batch', items: batch }) + '\n');
+          if (typeof res.flush === 'function') res.flush();
+        }
+        totalSent += batch.length;
+        batch = [];
+        lastFlushTime = Date.now();
+      }
+    };
+
+    // Precompute phonetic sound keys for query
+    const qTokens = tokenizeText(q);
+    const qKeys = qTokens.map(t => getSoundKey(t)).filter(Boolean);
 
     for (const r of allRows)
     {
@@ -825,54 +855,68 @@ app.get('/api/songs/search', (req, res) =>
         if (!cleanSlide) continue;
         currentSlideIdx++;
 
-        const lines = cleanSlide.split(/<BR>|\r?\n/i).map(l => l.replace(/<[^>]*>/g, '').trim()).filter(Boolean);
-        for (const line of lines)
+        // 1. Strict contiguous phrase search within this individual slide
+        const slideMatch = qKeys.length > 0
+          ? matchWithPrecomputedKeys(cleanSlide, qKeys, q)
+          : matchContiguousPhoneticPhrase(cleanSlide, q);
+
+        if (slideMatch.matched)
         {
-          const lineLower = line.toLowerCase();
-          for (const v of variations)
+          totalMatchesInSong++;
+          if (!songMatched)
           {
-            if (v && lineLower.includes(v.toLowerCase()))
+            songMatched = true;
+            matchedSlideIndex = currentSlideIdx;
+            matchedTerm = slideMatch.matchedTokens.join(' ') || q;
+
+            // Find the specific line within the slide for the preview line
+            const lines = cleanSlide.split(/<BR>|\r?\n/i).map(l => l.replace(/<[^>]*>/g, '').trim()).filter(Boolean);
+            for (const line of lines)
             {
-              totalMatchesInSong++;
-              if (!songMatched)
+              const lineMatch = qKeys.length > 0
+                ? matchWithPrecomputedKeys(line, qKeys, q)
+                : matchContiguousPhoneticPhrase(line, q);
+              if (lineMatch.matched)
               {
-                songMatched = true;
-                matchedSlideIndex = currentSlideIdx;
                 matchedLine = line;
-                matchedTerm = v;
+                break;
               }
-              break;
+            }
+            if (!matchedLine && lines.length > 0)
+            {
+              matchedLine = lines[0];
             }
           }
         }
       }
 
-      // Check song title / alternate title / tags if no slide line matched
+      // 2. Check song title / alternate title / tags if no slide line matched
       if (!songMatched)
       {
-        const nameLower = (r.name || '').toLowerCase();
-        const title2Lower = (r.title2 || '').toLowerCase();
-        const tagsLower = (r.tags || '').toLowerCase();
+        const nameMatch = qKeys.length > 0
+          ? matchWithPrecomputedKeys(r.name || '', qKeys, q)
+          : matchContiguousPhoneticPhrase(r.name || '', q);
+        const title2Match = (r.title2 && qKeys.length > 0)
+          ? matchWithPrecomputedKeys(r.title2, qKeys, q)
+          : matchContiguousPhoneticPhrase(r.title2 || '', q);
+        const tagsMatch = (r.tags && qKeys.length > 0)
+          ? matchWithPrecomputedKeys(r.tags, qKeys, q)
+          : matchContiguousPhoneticPhrase(r.tags || '', q);
 
-        for (const v of variations)
+        if (nameMatch.matched || title2Match.matched || tagsMatch.matched)
         {
-          const vLower = v.toLowerCase();
-          if (nameLower.includes(vLower) || title2Lower.includes(vLower) || tagsLower.includes(vLower))
-          {
-            songMatched = true;
-            matchedSlideIndex = 1;
-            matchedLine = extractFirstLine(r.lyrics, r.font) || r.name;
-            matchedTerm = v;
-            totalMatchesInSong = 1;
-            break;
-          }
+          songMatched = true;
+          matchedSlideIndex = 1;
+          matchedLine = extractFirstLine(r.lyrics, r.font) || r.name;
+          matchedTerm = (nameMatch.matchedTokens.join(' ') || title2Match.matchedTokens.join(' ') || tagsMatch.matchedTokens.join(' ') || q);
+          totalMatchesInSong = 1;
         }
       }
 
       if (songMatched)
       {
         const slideCount = rawSlides.filter(s => s.trim().length > 0).length;
-        matches.push({
+        const item = {
           id: r.id,
           name: r.name,
           title2: r.title2 || '',
@@ -885,18 +929,56 @@ app.get('/api/songs/search', (req, res) =>
           totalMatches: totalMatchesInSong,
           firstLine: extractFirstLine(r.lyrics, r.font),
           isConverted: Boolean(needsConversion)
-        });
+        };
 
-        if (matches.length >= limit) break;
+        if (isStreamRequested)
+        {
+          batch.push(item);
+
+          if (totalSent + batch.length >= limit)
+          {
+            flushBatch();
+            break;
+          }
+
+          // Stream as a batch every 100ms or when batch size reaches 25
+          if (Date.now() - lastFlushTime >= 100 || batch.length >= 25)
+          {
+            flushBatch();
+            await new Promise(resolve => setTimeout(resolve, 5));
+          }
+        }
+        else
+        {
+          matches.push(item);
+          if (matches.length >= limit) break;
+        }
       }
     }
 
-    res.json(matches);
+    if (isStreamRequested)
+    {
+      flushBatch();
+      res.write(JSON.stringify({ type: 'done', total: totalSent }) + '\n');
+      res.end();
+    }
+    else
+    {
+      res.json(matches);
+    }
   }
   catch (err)
   {
     console.error('Error during song content search:', err);
-    res.status(500).json({ error: err.message });
+    if (!res.headersSent)
+    {
+      res.status(500).json({ error: err.message });
+    }
+    else
+    {
+      res.write(JSON.stringify({ type: 'error', message: err.message }) + '\n');
+      res.end();
+    }
   }
 });
 

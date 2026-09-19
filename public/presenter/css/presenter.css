@@ -11,6 +11,7 @@
   height: 100dvh;
   overflow: hidden;
   color: var(--color-font);
+  padding-bottom: var(--sab, 0px);
 }
 
 .presenter-app a,
@@ -21,14 +22,17 @@
 
 .presenter-header
 {
-  height: 52px;
-  padding: 0 14px;
+  min-height: calc(52px + var(--sat, 0px));
+  padding-top: var(--sat, 0px);
+  padding-left: calc(14px + var(--sal, 0px));
+  padding-right: calc(14px + var(--sar, 0px));
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   flex-shrink: 0;
   border-bottom: 1px solid var(--border-subtle);
+  background-color: var(--color-panel);
 }
 
 .header-left
@@ -538,29 +542,87 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 10px;
+  padding: 6px 10px;
   background-color: rgba(14, 165, 233, 0.12);
   border-bottom: 1px solid rgba(14, 165, 233, 0.25);
   font-size: 11px;
+  line-height: 1.2;
   color: var(--color-blue-light);
   font-weight: 500;
   flex-shrink: 0;
+  min-height: 28px;
+  box-sizing: border-box;
+}
+
+.song-search-status-left
+{
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  gap: 7px;
+}
+
+.song-search-spinner
+{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.search-spinning-icon
+{
+  display: block;
+  width: 14px;
+  height: 14px;
+  animation: vv-spin 0.8s linear infinite !important;
+  transform-origin: 50% 50%;
+}
+
+#song-search-status-text
+{
+  display: inline-block;
+  line-height: 14px;
+  vertical-align: middle;
+}
+
+@keyframes vv-spin
+{
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* Search match character highlight styling */
 .search-match-hl,
 mark.search-match-hl
 {
-  background-color: rgba(245, 158, 11, 0.38);
+  background-color: rgba(245, 158, 11, 0.45);
   color: #fef08a;
-  border-radius: 2px;
-  padding: 0 1px;
+  border-radius: 3px;
+  padding: 1px 3px;
   font-weight: 700;
   text-decoration: none;
+  box-shadow: 0 0 4px rgba(245, 158, 11, 0.3);
+}
+
+.slide-card mark.search-match-hl,
+.slide-card-content mark.search-match-hl
+{
+  background-color: rgba(234, 179, 8, 0.35);
+  color: #fef9c3;
+  border-bottom: 2px solid #eab308;
+  border-radius: 2px;
+  padding: 0 2px;
+  display: inline;
 }
 
 .song-searchresult.selected .search-match-hl,
-.song-searchresult.selected mark.search-match-hl
+.song-searchresult.selected mark.search-match-hl,
+.slide-card.selected mark.search-match-hl
 {
   background-color: #fef08a;
   color: #0f172a;

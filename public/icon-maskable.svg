@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient filling entire 512x512 canvas for maskable compatibility -->
+    <linearGradient id="vv-mask-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090d16" />
+      <stop offset="50%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#0369a1" />
+    </linearGradient>
+
+    <!-- Gold Accent Gradient -->
+    <linearGradient id="vv-mask-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+
+    <!-- Page Gradient -->
+    <linearGradient id="vv-mask-page" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#e2e8f0" />
+    </linearGradient>
+
+    <!-- Glow Filter -->
+    <filter id="vv-mask-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Full bleed Background for Maskable Icon -->
+  <rect width="512" height="512" fill="url(#vv-mask-bg)" />
+
+  <!-- Inner Safe Zone Guide Elements (Center Emblem scaled to safe zone) -->
+  <g transform="translate(0, 0)">
+    <!-- Projection Screen Display Frame -->
+    <rect x="106" y="110" width="300" height="210" rx="20" fill="#0b1329" stroke="#38bdf8" stroke-width="7" filter="url(#vv-mask-glow)" />
+
+    <!-- Centered Open Bible (High Contrast White) -->
+    <!-- Left Page -->
+    <path d="M 256 280 C 214 262 174 262 148 268 L 148 168 C 178 162 216 162 256 180 Z" fill="url(#vv-mask-page)" stroke="#0f172a" stroke-width="3" />
+    
+    <!-- Right Page -->
+    <path d="M 256 280 C 298 262 338 262 364 268 L 364 168 C 334 162 296 162 256 180 Z" fill="url(#vv-mask-page)" stroke="#0f172a" stroke-width="3" />
+
+    <!-- Center Fold -->
+    <path d="M 256 178 L 256 282" stroke="#0284c7" stroke-width="3.5" stroke-linecap="round" />
+
+    <!-- Book Page Lines (Left) -->
+    <line x1="170" y1="192" x2="238" y2="201" stroke="#0284c7" stroke-width="4" stroke-linecap="round" opacity="0.9" />
+    <line x1="166" y1="214" x2="238" y2="223" stroke="#64748b" stroke-width="3.5" stroke-linecap="round" opacity="0.8" />
+    <line x1="170" y1="236" x2="228" y2="245" stroke="#64748b" stroke-width="3.5" stroke-linecap="round" opacity="0.8" />
+
+    <!-- Book Page Lines (Right) -->
+    <line x1="274" y1="201" x2="342" y2="192" stroke="#0284c7" stroke-width="4" stroke-linecap="round" opacity="0.9" />
+    <line x1="274" y1="223" x2="346" y2="214" stroke="#64748b" stroke-width="3.5" stroke-linecap="round" opacity="0.8" />
+    <line x1="284" y1="245" x2="342" y2="236" stroke="#64748b" stroke-width="3.5" stroke-linecap="round" opacity="0.8" />
+
+    <!-- Golden Radiant Cross -->
+    <circle cx="256" cy="140" r="24" fill="#0f172a" stroke="#f59e0b" stroke-width="3" />
+    <rect x="252" y="122" width="8" height="34" rx="3" fill="url(#vv-mask-gold)" />
+    <rect x="242" y="132" width="28" height="8" rx="3" fill="url(#vv-mask-gold)" />
+
+    <!-- Projector Base Stand -->
+    <polygon points="256,320 238,375 274,375" fill="#0284c7" />
+    <rect x="206" y="375" width="100" height="16" rx="8" fill="#38bdf8" />
+
+    <!-- Bold Monogram Badge -->
+    <rect x="196" y="400" width="120" height="24" rx="6" fill="#0b1329" stroke="#38bdf8" stroke-width="1.5" />
+    <text x="256" y="416" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="900" fill="#ffffff" letter-spacing="2.5" text-anchor="middle">VERSEVIEW</text>
+  </g>
+</svg>

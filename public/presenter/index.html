@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
   <title>Verse View Server — Presenter Console</title>
   <meta name="description" content="Real-Time Church Presentation Server for Tamil Songs and Bible Scriptures">
-  <meta name="theme-color" content="#0f172a">
+  <meta name="theme-color" content="#0b1120">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -15,6 +15,10 @@
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
   <link rel="stylesheet" href="/css/base.css">
   <link rel="stylesheet" href="/presenter/css/presenter.css">
+  <style>
+    @keyframes vv-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .search-spinning-icon { animation: vv-spin 0.75s linear infinite !important; transform-origin: 50% 50%; }
+  </style>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/config.js"></script>
   <script src="/js/pwa.js"></script>
@@ -46,6 +50,11 @@
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>
               <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+          </button>
+          <button type="button" class="control-button" id="btn-toggle-fullscreen" data-fullscreen-btn title="Toggle Edge-to-Edge Fullscreen" aria-label="Toggle Fullscreen">
+            <svg class="vv-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
             </svg>
           </button>
           <a href="/" class="control-button" id="btn-home" title="Home" aria-label="Home">
@@ -115,7 +124,15 @@
 
           <!-- Status badge for Content / Lyrics search mode -->
           <div id="song-search-status-bar" class="song-search-status-bar" style="display: none;">
-            <span id="song-search-status-text">Lyrics search results</span>
+            <div class="song-search-status-left">
+              <span id="song-search-status-spinner" class="song-search-spinner" style="display: none;" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="14" height="14" class="search-spinning-icon" style="display: block; width: 14px; height: 14px;">
+                  <circle cx="12" cy="12" r="9" stroke="rgba(56, 189, 248, 0.25)" stroke-width="3" fill="none"></circle>
+                  <path d="M12 3a9 9 0 0 1 9 9" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" fill="none"></path>
+                </svg>
+              </span>
+              <span id="song-search-status-text">Lyrics search results</span>
+            </div>
           </div>
 
           <div class="song-searchresults-list" id="song-list-container">

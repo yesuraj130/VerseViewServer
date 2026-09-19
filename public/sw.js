@@ -2,7 +2,7 @@
 // Verse View Server — Progressive Web App (PWA) Service Worker
 // ===========================================================================
 
-const CACHE_NAME = 'verseview-v1';
+const CACHE_NAME = 'verseview-v4';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -27,6 +27,8 @@ const STATIC_ASSETS = [
   '/display/display.js',
   '/fonts/baloo-thambi.woff2',
   '/icon.svg',
+  '/icon-maskable.svg',
+  '/favicon.png',
   '/pwa-192x192.png',
   '/pwa-512x512.png',
   '/pwa-maskable-512x512.png',

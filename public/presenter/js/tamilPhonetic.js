@@ -1,274 +1,295 @@
 // ===========================================================================
-// Presenter Console — Client-Side Tamil Phonetic Transliteration & Highlighting
+// Presenter Console — Client-Side Tamil Phonetic Sound-Key & Phrase Matcher
+// Zero-Dictionary, High-Performance Deterministic Acoustic Sound-Folding Engine
 // ===========================================================================
 
 (function(window) {
   'use strict';
 
-  const standaloneVowels = {
-    'aa': 'ஆ', 'a': 'அ', 'A': 'ஆ',
-    'ee': 'ஈ', 'ii': 'ஈ', 'i': 'இ', 'I': 'ஈ',
-    'oo': 'ஊ', 'uu': 'ஊ', 'u': 'உ', 'U': 'ஊ',
-    'ea': 'ஏ', 'ae': 'ஏ', 'ee': 'ஈ', 'e': 'எ', 'E': 'ஏ',
-    'ai': 'ஐ', 'ay': 'ஐ', 'ey': 'ஐ',
-    'oa': 'ஓ', 'oo': 'ஊ', 'o': 'ஒ', 'O': 'ஓ',
-    'au': 'ஔ', 'ou': 'ஔ', 'ow': 'ஔ'
+  // Standalone Tamil Vowels -> Canonical Vowel Sound
+  const standaloneTamilVowels = {
+    'அ': 'a',
+    'ஆ': 'a',
+    'இ': 'i',
+    'ஈ': 'i',
+    'உ': 'u',
+    'ஊ': 'u',
+    'எ': 'e',
+    'ஏ': 'e',
+    'ஐ': 'y',
+    'ஒ': 'o',
+    'ஓ': 'o',
+    'ஔ': 'av'
   };
 
-  const vowelMatras = {
-    'aa': 'ா', 'a': '', 'A': 'ா',
-    'ee': 'ீ', 'ii': 'ீ', 'i': 'ி', 'I': 'ீ',
-    'oo': 'ூ', 'uu': 'ூ', 'u': 'ு', 'U': 'ூ',
-    'ea': 'ே', 'ae': 'ே', 'e': 'ெ', 'E': 'ே',
-    'ai': 'ை', 'ay': 'ை', 'ey': 'ை',
-    'oa': 'ோ', 'o': 'ொ', 'O': 'ோ',
-    'au': 'ௌ', 'ou': 'ௌ', 'ow': 'ௌ'
+  // Attached Tamil Vowel Matras (attached to consonants)
+  const tamilVowelMatras = {
+    'ா': 'a',
+    'ி': 'i',
+    'ீ': 'i',
+    'ு': 'u',
+    'ூ': 'u',
+    'ெ': 'e',
+    'ே': 'e',
+    'ை': 'y',
+    'ொ': 'o',
+    'ோ': 'o',
+    'ௌ': 'av'
   };
 
-  const consonants = [
-    { key: 'shri', base: 'ஸ்ரீ', pure: true },
-    { key: 'sree', base: 'ஸ்ரீ', pure: true },
-    { key: 'sri', base: 'ஸ்ரீ', pure: true },
-    { key: 'ksh', base: 'க்ஷ' },
-    { key: 'ng', base: 'ங' },
-    { key: 'nj', base: 'ஞ' },
-    { key: 'gn', base: 'ஞ' },
-    { key: 'ny', base: 'ஞ' },
-    { key: 'th', base: 'த' },
-    { key: 'dh', base: 'த' },
-    { key: 'zh', base: 'ழ' },
-    { key: 'sh', base: 'ஷ' },
-    { key: 'ch', base: 'ச' },
-    { key: 'nn', base: 'ண' },
-    { key: 'rh', base: 'ற' },
-    { key: 'k', base: 'க' },
-    { key: 'g', base: 'க' },
-    { key: 'c', base: 'ச' },
-    { key: 's', base: 'ச' },
-    { key: 'j', base: 'ஜ' },
-    { key: 't', base: 'ட' },
-    { key: 'd', base: 'ட' },
-    { key: 'N', base: 'ண' },
-    { key: 'n', base: 'ன' },
-    { key: 'p', base: 'ப' },
-    { key: 'b', base: 'ப' },
-    { key: 'f', base: 'ப' },
-    { key: 'm', base: 'ம' },
-    { key: 'y', base: 'ய' },
-    { key: 'r', base: 'ர' },
-    { key: 'R', base: 'ற' },
-    { key: 'l', base: 'ல' },
-    { key: 'L', base: 'ள' },
-    { key: 'z', base: 'ழ' },
-    { key: 'Z', base: 'ழ' },
-    { key: 'v', base: 'வ' },
-    { key: 'w', base: 'வ' },
-    { key: 'S', base: 'ஸ' },
-    { key: 'h', base: 'ஹ' },
-    { key: 'q', base: 'க' },
-    { key: 'x', base: 'க்ஷ' }
-  ];
+  // Tamil Consonants -> Canonical Base Consonant Sound
+  const tamilConsonants = {
+    'க': 'k',
+    'ங': 'ng',
+    'ச': 's',
+    'ஞ': 'nj',
+    'ட': 't',
+    'ண': 'n',
+    'த': 't',
+    'ந': 'n',
+    'ன': 'n',
+    'ப': 'p',
+    'ம': 'm',
+    'ய': 'y',
+    'ர': 'r',
+    'ற': 'r',
+    'ல': 'l',
+    'ள': 'l',
+    'ழ': 'l',
+    'வ': 'v',
+    'ஸ': 's',
+    'ஷ': 's',
+    'ஜ': 'j',
+    'ஹ': 'h'
+  };
 
-  const directPhoneticReplacements = [
-    [/\byesu\b/gi, 'இயேசு'],
-    [/\byaesu\b/gi, 'இயேசு'],
-    [/\biesu\b/gi, 'இயேசு'],
-    [/\bjesus\b/gi, 'இயேசு'],
-    [/\bkarthar\b/gi, 'கர்த்தர்'],
-    [/\bkartharae\b/gi, 'கர்த்தரே'],
-    [/\bkarthare\b/gi, 'கர்த்தரே'],
-    [/\bkirubai\b/gi, 'கிருபை'],
-    [/\bkirubaiye\b/gi, 'கிருபையே'],
-    [/\bkirubaiyae\b/gi, 'கிருபையே'],
-    [/\baaraadhanai\b/gi, 'ஆராதனை'],
-    [/\baarathanai\b/gi, 'ஆராதனை'],
-    [/\baradhanai\b/gi, 'ஆராதனை'],
-    [/\barathanai\b/gi, 'ஆராதனை'],
-    [/\bsthothiram\b/gi, 'ஸ்தோத்திரம்'],
-    [/\bstothiram\b/gi, 'ஸ்தோத்திரம்'],
-    [/\bthothiram\b/gi, 'தோத்திரம்'],
-    [/\bhalleluya\b/gi, 'அல்லேலூயா'],
-    [/\bhallelujah\b/gi, 'அல்லேலூயா'],
-    [/\balleluya\b/gi, 'அல்லேலூயா'],
-    [/\bthevan\b/gi, 'தேவன்'],
-    [/\bdhevan\b/gi, 'தேவன்'],
-    [/\bdevan\b/gi, 'தேவன்'],
-    [/\bneer\b/gi, 'நீர்'],
-    [/\bneere\b/gi, 'நீரே'],
-    [/\bneerae\b/gi, 'நீரே'],
-    [/\banbu\b/gi, 'அன்பு'],
-    [/\banbe\b/gi, 'அன்பே'],
-    [/\banbae\b/gi, 'அன்பே'],
-    [/\bnandri\b/gi, 'நன்றி'],
-    [/\bnanri\b/gi, 'நன்றி'],
-    [/\bthuthi\b/gi, 'துதி'],
-    [/\bthudhi\b/gi, 'துதி'],
-    [/\bparaloga\b/gi, 'பரலோக'],
-    [/\bparalogam\b/gi, 'பரலோகம்'],
-    [/\brajave\b/gi, 'ராஜாவே'],
-    [/\brajavae\b/gi, 'ராஜாவே']
-  ];
-
-  function englishToTamil(input) {
-    if (!input || typeof input !== 'string') return '';
-    let str = input.trim();
-    if (!str) return '';
-
-    if (/[\u0B80-\u0BFF]/.test(str)) {
-      return str;
-    }
-
-    for (let i = 0; i < directPhoneticReplacements.length; i++) {
-      const [regex, rep] = directPhoneticReplacements[i];
-      if (regex.test(str)) {
-        str = str.replace(regex, rep);
-      }
-    }
-
-    return str.split(/([A-Za-z]+)/).map(token => {
-      if (!/^[A-Za-z]+$/.test(token)) return token;
-      return transliterateWord(token);
-    }).join('');
+  function tokenizeText(text) {
+    if (!text || typeof text !== 'string') return [];
+    const clean = text.replace(/<[^>]*>/g, ' ');
+    const normalized = clean
+      .replace(/[0-9]+[\.\)\-:]*/g, ' ')
+      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()—–"'\?\[\]\\|<>+@•]/g, ' ')
+      .trim();
+    if (!normalized) return [];
+    return normalized.split(/\s+/).filter(Boolean);
   }
 
-  function transliterateWord(word) {
-    let output = '';
-    let i = 0;
+  function getTamilScriptSoundKey(word) {
+    let key = '';
     const len = word.length;
+    let i = 0;
 
     while (i < len) {
-      let matchedConsonant = null;
-      let matchedConsLen = 0;
+      const ch = word[i];
 
-      for (let cIdx = 0; cIdx < consonants.length; cIdx++) {
-        const c = consonants[cIdx];
-        const sub = word.substr(i, c.key.length);
-        if (sub === c.key || (c.key !== 'N' && c.key !== 'R' && c.key !== 'L' && c.key !== 'S' && sub.toLowerCase() === c.key.toLowerCase())) {
-          matchedConsonant = c;
-          matchedConsLen = c.key.length;
-          break;
-        }
+      if (ch === 'ஸ்ரீ') {
+        key += 'sri';
+        i++;
+        continue;
       }
 
-      if (matchedConsonant) {
-        if (matchedConsonant.pure) {
-          output += matchedConsonant.base;
-          i += matchedConsLen;
-          continue;
-        }
+      if (standaloneTamilVowels[ch] !== undefined) {
+        key += standaloneTamilVowels[ch];
+        i++;
+        continue;
+      }
 
-        const nextIdx = i + matchedConsLen;
-        let matchedVowelMatra = null;
-        let matchedVowelLen = 0;
-        const vowelKeys = ['aai', 'aae', 'aa', 'ee', 'ii', 'oo', 'uu', 'ea', 'ae', 'ai', 'ay', 'ey', 'oa', 'au', 'ou', 'ow', 'a', 'A', 'i', 'I', 'u', 'U', 'e', 'E', 'o', 'O'];
+      if (tamilConsonants[ch] !== undefined) {
+        const consSound = tamilConsonants[ch];
+        const nextCh = i + 1 < len ? word[i + 1] : '';
 
-        for (let vIdx = 0; vIdx < vowelKeys.length; vIdx++) {
-          const vk = vowelKeys[vIdx];
-          const vSub = word.substr(nextIdx, vk.length);
-          if (vSub.toLowerCase() === vk.toLowerCase()) {
-            matchedVowelMatra = vowelMatras[vk.toLowerCase()] !== undefined ? vowelMatras[vk.toLowerCase()] : (vowelMatras[vk] || '');
-            matchedVowelLen = vk.length;
-            break;
-          }
-        }
-
-        if (matchedVowelMatra !== null) {
-          let base = matchedConsonant.base;
-          if (matchedConsonant.key === 'n') {
-            base = (i === 0) ? 'ந' : 'ன';
-          }
-          output += base + matchedVowelMatra;
-          i += matchedConsLen + matchedVowelLen;
+        if (nextCh === '\u0BCD') {
+          key += consSound;
+          i += 2;
+        } else if (tamilVowelMatras[nextCh] !== undefined) {
+          key += consSound + tamilVowelMatras[nextCh];
+          i += 2;
         } else {
-          let base = matchedConsonant.base;
-          if (matchedConsonant.key === 'n') {
-            base = (i === 0) ? 'ந்' : 'ன்';
-          } else {
-            base = base + '்';
-          }
-          output += base;
-          i += matchedConsLen;
+          key += consSound + 'a';
+          i += 1;
         }
         continue;
       }
 
-      let matchedStandaloneVowel = null;
-      let matchedVowelLen = 0;
-      const standaloneKeys = ['aai', 'aae', 'aa', 'ee', 'ii', 'oo', 'uu', 'ea', 'ae', 'ai', 'ay', 'ey', 'oa', 'au', 'ou', 'ow', 'a', 'A', 'i', 'I', 'u', 'U', 'e', 'E', 'o', 'O'];
-
-      for (let sIdx = 0; sIdx < standaloneKeys.length; sIdx++) {
-        const vk = standaloneKeys[sIdx];
-        const vSub = word.substr(i, vk.length);
-        if (vSub.toLowerCase() === vk.toLowerCase()) {
-          matchedStandaloneVowel = standaloneVowels[vk.toLowerCase()] || standaloneVowels[vk];
-          matchedVowelLen = vk.length;
-          break;
-        }
-      }
-
-      if (matchedStandaloneVowel) {
-        output += matchedStandaloneVowel;
-        i += matchedVowelLen;
+      if (ch === 'ஃ' || ch === '\u0BCD') {
+        i++;
         continue;
       }
 
-      output += word[i];
+      if (/[a-z]/i.test(ch)) {
+        key += ch.toLowerCase();
+      }
       i++;
     }
 
-    return output;
+    return collapseSoundKey(key);
   }
 
-  function getPhoneticVariations(query) {
-    if (!query || typeof query !== 'string') return [];
-    const raw = query.trim();
-    if (!raw) return [];
+  function getRomanizedSoundKey(word) {
+    let s = word.toLowerCase();
 
-    const variations = new Set();
-    variations.add(raw.toLowerCase());
+    s = s.replace(/shri|sree|sri/g, 'sri');
+    s = s.replace(/ksh/g, 'ks');
+    s = s.replace(/th|dh/g, 't');
+    s = s.replace(/sh|ch/g, 's');
+    s = s.replace(/zh/g, 'l');
+    s = s.replace(/ng/g, 'ng');
+    s = s.replace(/nj|gn|ny/g, 'nj');
+    s = s.replace(/ndr/g, 'nr');
 
-    if (!/[\u0B80-\u0BFF]/.test(raw)) {
-      const tamil = englishToTamil(raw);
-      if (tamil && tamil !== raw) {
-        variations.add(tamil);
+    s = s.replace(/[bf]/g, 'p');
+    s = s.replace(/g/g, 'k');
+    s = s.replace(/d/g, 't');
+    s = s.replace(/c/g, 's');
+    s = s.replace(/z/g, 'j');
+    s = s.replace(/w/g, 'v');
+    s = s.replace(/q/g, 'k');
+    s = s.replace(/x/g, 'ks');
+
+    s = s.replace(/aai|aae/g, 'y');
+    s = s.replace(/ai(?![aeiou])/g, 'y');
+    s = s.replace(/(?:ay|ey)(?![aeiou])/g, 'y');
+    s = s.replace(/au|ou|ow/g, 'av');
+    s = s.replace(/aa/g, 'a');
+    s = s.replace(/ee|ea|ae|ii/g, 'i');
+    s = s.replace(/oo|uu/g, 'u');
+    s = s.replace(/oa|oe/g, 'o');
+
+    s = s.replace(/^ie|^iae|^yae/, 'ye');
+
+    return collapseSoundKey(s);
+  }
+
+  function collapseSoundKey(rawKey) {
+    if (!rawKey) return '';
+    let out = '';
+    for (let i = 0; i < rawKey.length; i++) {
+      const char = rawKey[i];
+      if (i === 0 || char !== rawKey[i - 1]) {
+        out += char;
       }
+    }
+    return out;
+  }
 
-      const alt1 = raw.replace(/th/gi, 't');
-      const alt2 = raw.replace(/\bt/gi, 'th');
-      const alt3 = raw.replace(/d/gi, 'th');
-      const alt4 = raw.replace(/s/gi, 'ch');
-      const alt5 = raw.replace(/sh/gi, 's');
+  function getSoundKey(word) {
+    if (!word || typeof word !== 'string') return '';
+    const raw = word.trim().toLowerCase();
+    if (!raw) return '';
 
-      [alt1, alt2, alt3, alt4, alt5].forEach(alt => {
-        if (alt !== raw) {
-          const tAlt = englishToTamil(alt);
-          if (tAlt) variations.add(tAlt);
+    if (/[\u0B80-\u0BFF]/.test(raw)) {
+      return getTamilScriptSoundKey(raw);
+    }
+    return getRomanizedSoundKey(raw);
+  }
+
+  function buildTargetTokenInfos(tokens) {
+    if (!tokens || !Array.isArray(tokens)) return [];
+    const infos = [];
+    const len = tokens.length;
+
+    for (let i = 0; i < len; i++) {
+      const word = tokens[i];
+      const fullKey = getSoundKey(word);
+      let strippedKey = null;
+
+      if (i + 1 < len) {
+        const nextWord = tokens[i + 1];
+        // Vallinam sandhi check (க், ச், த், ப் matching following consonant)
+        if (word.endsWith('க்') && nextWord.startsWith('க')) {
+          strippedKey = getSoundKey(word.slice(0, -2));
+        } else if (word.endsWith('ச்') && nextWord.startsWith('ச')) {
+          strippedKey = getSoundKey(word.slice(0, -2));
+        } else if (word.endsWith('த்') && nextWord.startsWith('த')) {
+          strippedKey = getSoundKey(word.slice(0, -2));
+        } else if (word.endsWith('ப்') && nextWord.startsWith('ப')) {
+          strippedKey = getSoundKey(word.slice(0, -2));
         }
+      }
+
+      infos.push({
+        raw: word,
+        fullKey: fullKey,
+        strippedKey: strippedKey
       });
-    } else {
-      variations.add(raw);
     }
 
-    return Array.from(variations).filter(Boolean);
+    return infos;
   }
 
-  function matchesQueryPhonetic(targetText, query, variations) {
-    if (!targetText || !query) return false;
-    const target = String(targetText).toLowerCase();
-    const q = String(query).trim().toLowerCase();
-    if (!q) return true;
+  function matchWithPrecomputedKeys(targetText, qKeys, rawQuery) {
+    if (!targetText || typeof targetText !== 'string' || !targetText.trim()) {
+      return { matched: false, matchedTokens: [], matchStartIndex: -1 };
+    }
+    if (!qKeys || qKeys.length === 0) {
+      return { matched: true, matchedTokens: [], matchStartIndex: 0 };
+    }
 
-    if (target.includes(q)) return true;
+    const tTokens = tokenizeText(targetText);
+    const K = qKeys.length;
 
-    const vars = variations || getPhoneticVariations(query);
-    for (let i = 0; i < vars.length; i++) {
-      const v = vars[i];
-      if (v && target.includes(v.toLowerCase())) {
-        return true;
+    if (tTokens.length >= K) {
+      const tInfos = buildTargetTokenInfos(tTokens);
+
+      for (let i = 0; i <= tInfos.length - K; i++) {
+        let allMatched = true;
+
+        for (let j = 0; j < K; j++) {
+          const T = tInfos[i + j];
+          const Q = qKeys[j];
+
+          if (j < K - 1) {
+            // Intermediate tokens: Strict exact match
+            const tokenMatched = (T.fullKey === Q) || (T.strippedKey !== null && T.strippedKey === Q);
+            if (!tokenMatched) {
+              allMatched = false;
+              break;
+            }
+          } else {
+            // Last token: Wildcard/prefix match (target token starts with query token sound-key)
+            const tokenMatched = (T.fullKey && T.fullKey.startsWith(Q)) ||
+                                 (T.strippedKey !== null && T.strippedKey.startsWith(Q));
+            if (!tokenMatched) {
+              allMatched = false;
+              break;
+            }
+          }
+        }
+
+        if (allMatched) {
+          return {
+            matched: true,
+            matchedTokens: tTokens.slice(i, i + K),
+            matchStartIndex: i
+          };
+        }
       }
     }
 
-    return false;
+    if (rawQuery) {
+      const qLower = rawQuery.trim().toLowerCase();
+      if (qLower && targetText.toLowerCase().includes(qLower)) {
+        return { matched: true, matchedTokens: [rawQuery.trim()], matchStartIndex: 0 };
+      }
+    }
+
+    return { matched: false, matchedTokens: [], matchStartIndex: -1 };
+  }
+
+  function matchContiguousPhoneticPhrase(targetText, query) {
+    if (!query || typeof query !== 'string' || !query.trim()) {
+      return { matched: true, matchedTokens: [], matchStartIndex: 0 };
+    }
+    const qTokens = tokenizeText(query);
+    if (qTokens.length === 0) {
+      return { matched: true, matchedTokens: [], matchStartIndex: 0 };
+    }
+    const qKeys = qTokens.map(t => getSoundKey(t)).filter(Boolean);
+    return matchWithPrecomputedKeys(targetText, qKeys, query);
+  }
+
+  function matchesQueryPhonetic(targetText, query) {
+    return matchContiguousPhoneticPhrase(targetText, query).matched;
   }
 
   function escapeHtml(str) {
@@ -281,36 +302,54 @@
       .replace(/'/g, '&#039;');
   }
 
-  function highlightMatchedCharacters(text, query, variations) {
+  function highlightMatchedCharacters(text, query) {
     if (!text) return '';
     if (!query || !query.trim()) return escapeHtml(text);
 
-    const vars = variations || getPhoneticVariations(query);
-    const sortedVars = vars.slice().sort((a, b) => b.length - a.length);
-
-    const escapedTerms = sortedVars
-      .map(v => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-      .filter(Boolean);
-
-    if (escapedTerms.length === 0) return escapeHtml(text);
-
-    const regex = new RegExp(`(${escapedTerms.join('|')})`, 'gi');
     const rawString = String(text);
+    const matchRes = matchContiguousPhoneticPhrase(rawString, query);
+    if (!matchRes.matched) {
+      return escapeHtml(rawString);
+    }
 
-    const parts = rawString.split(regex);
-    return parts.map(part => {
-      if (!part) return '';
-      const isMatch = sortedVars.some(v => v.toLowerCase() === part.toLowerCase());
-      if (isMatch) {
-        return `<mark class="search-match-hl">${escapeHtml(part)}</mark>`;
+    if (matchRes.matchedTokens && matchRes.matchedTokens.length > 0) {
+      const tokenRegexes = matchRes.matchedTokens
+        .map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+        .filter(Boolean);
+
+      if (tokenRegexes.length > 0) {
+        // 1. Try matching the exact contiguous phrase of matched tokens
+        const phrasePattern = tokenRegexes.join('[^a-zA-Z\\u0B80-\\u0BFF0-9]+');
+        try {
+          const phraseRegex = new RegExp(phrasePattern, 'gi');
+          if (phraseRegex.test(rawString)) {
+            return rawString.replace(phraseRegex, (m) => `<mark class="search-match-hl">${escapeHtml(m)}</mark>`);
+          }
+        } catch (e) {}
+
+        // 2. Try matching individual tokens
+        try {
+          const wordRegex = new RegExp(tokenRegexes.join('|'), 'gi');
+          return rawString.replace(wordRegex, (m) => `<mark class="search-match-hl">${escapeHtml(m)}</mark>`);
+        } catch (e) {}
       }
-      return escapeHtml(part);
-    }).join('');
+    }
+
+    // Fallback direct query match
+    try {
+      const qClean = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(qClean, 'gi');
+      return rawString.replace(regex, (m) => `<mark class="search-match-hl">${escapeHtml(m)}</mark>`);
+    } catch (e) {}
+
+    return escapeHtml(rawString);
   }
 
   window.TamilPhonetic = {
-    englishToTamil: englishToTamil,
-    getPhoneticVariations: getPhoneticVariations,
+    tokenizeText: tokenizeText,
+    getSoundKey: getSoundKey,
+    matchWithPrecomputedKeys: matchWithPrecomputedKeys,
+    matchContiguousPhoneticPhrase: matchContiguousPhoneticPhrase,
     matchesQueryPhonetic: matchesQueryPhonetic,
     highlightMatchedCharacters: highlightMatchedCharacters
   };

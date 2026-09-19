@@ -5,10 +5,11 @@
   "description": "Real-Time Church Presentation Server for Tamil Songs and Bible Scriptures",
   "start_url": "/",
   "scope": "/",
-  "display": "standalone",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone", "minimal-ui"],
   "orientation": "any",
   "background_color": "#0b1120",
-  "theme_color": "#0f172a",
+  "theme_color": "#0b1120",
   "icons": [
     {
       "src": "/pwa-192x192.png",

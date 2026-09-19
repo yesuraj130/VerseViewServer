@@ -98,8 +98,60 @@
     }
   }
 
+  // 3. Fullscreen Controller (Supports both Chrome Browser and PWA)
+  function isFullscreen() {
+    return !!(document.fullscreenElement ||
+              document.webkitFullscreenElement ||
+              document.mozFullScreenElement ||
+              document.msFullscreenElement);
+  }
+
+  function toggleFullscreen() {
+    if (!isFullscreen()) {
+      const docEl = document.documentElement;
+      if (docEl.requestFullscreen) {
+        docEl.requestFullscreen().catch(err => console.warn('[PWA] Fullscreen error:', err.message));
+      } else if (docEl.webkitRequestFullscreen) {
+        docEl.webkitRequestFullscreen();
+      } else if (docEl.mozRequestFullScreen) {
+        docEl.mozRequestFullScreen();
+      } else if (docEl.msRequestFullscreen) {
+        docEl.msRequestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      } else if (document.mozCancelFullScreen) {
+        document.mozCancelFullScreen();
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
+      }
+    }
+  }
+
+  function updateFullscreenButtons() {
+    const fsBtns = document.querySelectorAll('[data-fullscreen-btn]');
+    const active = isFullscreen();
+    fsBtns.forEach(btn => {
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+      if (active) {
+        btn.classList.add('active-fullscreen');
+        btn.title = 'Exit Fullscreen Mode';
+      } else {
+        btn.classList.remove('active-fullscreen');
+        btn.title = 'Enter Fullscreen Mode (Edge-to-Edge Notch View)';
+      }
+    });
+  }
+
+  document.addEventListener('fullscreenchange', updateFullscreenButtons);
+  document.addEventListener('webkitfullscreenchange', updateFullscreenButtons);
+
   document.addEventListener('DOMContentLoaded', () => {
     updateInstallButtonState();
+    updateFullscreenButtons();
 
     document.querySelectorAll('[data-pwa-install-btn]').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -107,10 +159,19 @@
         triggerPWAInstall();
       });
     });
+
+    document.querySelectorAll('[data-fullscreen-btn]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleFullscreen();
+      });
+    });
   });
 
   window.PWA = {
     triggerInstall: triggerPWAInstall,
+    toggleFullscreen: toggleFullscreen,
+    isFullscreen: isFullscreen,
     isStandalone: isStandalone,
     isIOS: isIOS
   };

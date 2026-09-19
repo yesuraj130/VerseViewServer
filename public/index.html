@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
   <title>Verse View Server — Real-Time Church Presentation</title>
   <meta name="description" content="Real-Time Church Presentation Server for Tamil Songs and Bible Scriptures">
-  <meta name="theme-color" content="#0f172a">
+  <meta name="theme-color" content="#0b1120">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -30,6 +30,7 @@
         </div>
       </div>
       <div style="display: flex; align-items: center; gap: 12px;">
+        <button type="button" class="btn-secondary" data-fullscreen-btn style="font-size: 12px; padding: 4px 10px;" title="Toggle Fullscreen Edge-to-Edge">⛶ Fullscreen</button>
         <button type="button" class="btn-secondary" data-pwa-install-btn style="display: none; font-size: 12px; padding: 4px 10px;">📲 Install App</button>
         <span class="server-dot" id="hub-server-dot"></span>
         <span style="font-size: 13px; color: var(--text-secondary);" id="hub-server-status">Socket Synchronized</span>
