@@ -43,6 +43,14 @@
   min-width: 0;
 }
 
+.header-live-group
+{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .application-tilte,
 .application-title
 {
@@ -148,8 +156,21 @@
 {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
+  flex-wrap: nowrap;
   flex-shrink: 0;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.quick-action-controls::-webkit-scrollbar,
+.quick-action-contols::-webkit-scrollbar
+{
+  display: none;
 }
 
 .control-group
@@ -157,12 +178,30 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0;
+}
+
+.control-group-left
+{
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.control-group-right
+{
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
 .control-button
 {
   width: 32px;
   height: 32px;
+  min-width: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -173,6 +212,7 @@
   cursor: pointer;
   text-decoration: none;
   padding: 0;
+  flex-shrink: 0;
   transition: background-color 0.12s ease, border-color 0.12s ease;
 }
 
@@ -191,15 +231,28 @@
 .bible-version-dropdown
 {
   height: 32px;
-  padding: 0 8px;
-  background: var(--bg-card);
+  padding: 0 24px 0 10px;
+  background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   color: var(--color-font);
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 500;
   font-family: inherit;
   outline: none;
   cursor: pointer;
+  flex: 1 1 auto;
+  min-width: 90px;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 14px;
 }
 
 .bible-version-dropdown:focus
@@ -958,13 +1011,27 @@ mark.search-match-hl
     height: auto;
     min-height: 48px;
     padding: 6px 10px;
-    flex-wrap: wrap;
-    gap: 6px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
   }
 
   .header-left
   {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     gap: 8px;
+  }
+
+  .header-live-group
+  {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 1;
+    min-width: 0;
   }
 
   .logo-main
@@ -977,6 +1044,7 @@ mark.search-match-hl
     min-width: 0;
     max-width: 180px;
     padding: 3px 6px;
+    flex-shrink: 1;
   }
 
   .live-title
@@ -993,6 +1061,16 @@ mark.search-match-hl
   .quick-action-contols
   {
     width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
   }
 
   .tab-item.active

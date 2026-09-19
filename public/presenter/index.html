@@ -32,26 +32,24 @@
           <span class="logo-main" data-app-title>Verse View Server</span>
         </a>
 
-        <!-- Live On-Air Monitor Pill -->
-        <div class="live-pill" id="live-indicator-pill" title="Current Projection State">
-          <span class="live-badge badge-live" id="live-status-badge">LIVE</span>
-          <div class="live-pill-meta">
-            <span class="live-title" id="live-title-text">Select Song or Scripture</span>
-            <span class="live-subtitle" id="live-line-text">Ready for Presentation</span>
+        <div class="header-live-group">
+          <!-- Live On-Air Monitor Pill -->
+          <div class="live-pill" id="live-indicator-pill" title="Current Projection State">
+            <span class="live-badge badge-live" id="live-status-badge">LIVE</span>
+            <div class="live-pill-meta">
+              <span class="live-title" id="live-title-text">Select Song or Scripture</span>
+              <span class="live-subtitle" id="live-line-text">Ready for Presentation</span>
+            </div>
           </div>
+          <!-- Socket Connection Status Dot -->
+          <div class="server-dot" id="server-status-dot" title="Server Status: Connected"></div>
         </div>
       </div>
 
-      <!-- Quick Action Controls -->
+      <!-- Quick Action Controls (Single Row: Left Docked, In-Between Selector, Right Docked) -->
       <div class="quick-action-controls" id="controls-bar">
-        <div class="control-group">
-          <button type="button" class="control-button pwa-install-btn" id="btn-pwa-install" data-pwa-install-btn title="Install App" aria-label="Install App" style="display: none;">
-            <svg class="vv-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-          </button>
+        <!-- Dock Left: Fullscreen, Home, Plus (and PWA install) -->
+        <div class="control-group control-group-left" id="controls-left">
           <button type="button" class="control-button" id="btn-toggle-fullscreen" data-fullscreen-btn title="Toggle Edge-to-Edge Fullscreen" aria-label="Toggle Fullscreen">
             <svg class="vv-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
               <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
@@ -69,9 +67,20 @@
               <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
           </button>
-          <select id="bibleVersionSelectionDropdown" class="bible-version-dropdown" title="Choose Bible Version" style="display: none;"></select>
+          <button type="button" class="control-button pwa-install-btn" id="btn-pwa-install" data-pwa-install-btn title="Install App" aria-label="Install App" style="display: none;">
+            <svg class="vv-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+          </button>
         </div>
-        <div class="control-group">
+
+        <!-- In-Between: Bible Version Dropdown (flex 1 takes inbetween space) -->
+        <select id="bibleVersionSelectionDropdown" class="bible-version-dropdown" title="Choose Bible Version" style="display: none;"></select>
+
+        <!-- Dock Right: Left, Right, Close -->
+        <div class="control-group control-group-right" id="controls-right">
           <button type="button" class="control-button" id="btn-prev-slide" title="Previous Slide" aria-label="Previous Slide">
             <svg class="vv-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="15 18 9 12 15 6"></polyline>
@@ -82,8 +91,6 @@
               <polyline points="9 18 15 12 9 6"></polyline>
             </svg>
           </button>
-        </div>
-        <div class="control-group">
           <button type="button" class="control-button" id="btn-clear" title="Clear Screen" aria-label="Clear Screen">
             <svg class="vv-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -91,7 +98,6 @@
             </svg>
           </button>
         </div>
-        <div class="server-dot" id="server-status-dot" title="Server Status: Connected" style="margin-left: 4px;"></div>
       </div>
     </header>
 

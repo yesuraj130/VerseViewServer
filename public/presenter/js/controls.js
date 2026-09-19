@@ -157,7 +157,7 @@ function switchTab(tabId)
   const versionDropdown = document.getElementById('bibleVersionSelectionDropdown');
   if (versionDropdown)
   {
-    versionDropdown.style.display = (tabId === 'bible') ? 'inline-flex' : 'none';
+    versionDropdown.style.display = (tabId === 'bible') ? 'block' : 'none';
   }
 
   if (tabId === 'songs' && typeof updateVirtualSongList === 'function')
