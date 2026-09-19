@@ -68,15 +68,23 @@ async function initSongs()
   try
   {
     const localFetchId = ++currentSongSlidesFetchId;
+    const targetSongId = selectedSongId;
 
-    const songsFetchUrl = '/api/songs';
-    const songsFetchResult = await fetch(songsFetchUrl);
-    const songsFetchResultJson = await songsFetchResult.json();
+    // Concurrently fetch songs catalog and pre-fetch initial song slides in parallel
+    const [songsFetchResultJson, targetSongData] = await Promise.all([
+      fetch('/api/songs').then(r => (r.ok ? r.json() : [])).catch(() => []),
+      targetSongId ? fetch(`/api/songs/${targetSongId}`).then(r => (r.ok ? r.json() : null)).catch(() => null) : Promise.resolve(null)
+    ]);
 
     if (songsFetchResultJson && songsFetchResultJson.length > 0)
     {
       songsCache = songsFetchResultJson;
       if (selectedSongId === 0) selectedSongId = songsFetchResultJson[0].id;
+    }
+
+    if (targetSongData && targetSongData.id)
+    {
+      songSlidesTextCache.set(Number(targetSongData.id), targetSongData);
     }
 
     if (localFetchId === currentSongSlidesFetchId)

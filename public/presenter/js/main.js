@@ -7,6 +7,13 @@ document.addEventListener('DOMContentLoaded', () =>
   initControls();
   initResizer();
   initTabNavigation();
-  initSongs();
-  initBible();
+
+  // Load Songs and Bible catalogs concurrently in parallel
+  Promise.all([
+    initSongs(),
+    initBible()
+  ]).catch((err) =>
+  {
+    console.error('Parallel presenter initialization error:', err);
+  });
 });

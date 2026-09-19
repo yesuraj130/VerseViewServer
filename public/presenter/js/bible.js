@@ -107,9 +107,18 @@ async function initBible()
 
   try
   {
-    const versionsRes = await fetch('/api/bible/versions?returnVersion=true');
-    const versionsData = await versionsRes.json();
-    bibleVersionsCache = versionsData.versions || [];
+    const localVersionId = selectedBibleVersionId || 'tamil';
+    const localBookNumber = selectedBookNumber || 1;
+    const localChapterNumber = selectedChapterNumber || 1;
+    const localVerseNumber = selectedVerseNumber || 1;
+    const localFetchId = ++currentBibleChapterTextFetchId;
+
+    // Fast unified roundtrip: fetch versions list, structure, and current chapter text all at once
+    const bibleFetchUrl = `/api/bible/versions?returnVersion=true&returnBibleStructure=true&versionId=${encodeURIComponent(localVersionId)}&bookNumber=${localBookNumber}&chapterNumber=${localChapterNumber}`;
+    const bibleFetchResult = await fetch(bibleFetchUrl);
+    const bibleFetchResultJson = await bibleFetchResult.json();
+
+    bibleVersionsCache = bibleFetchResultJson.versions || [];
 
     let activeVersion = bibleVersionsCache.find(v => v.id === selectedBibleVersionId);
     if (!activeVersion || !activeVersion.available)
@@ -138,16 +147,6 @@ async function initBible()
     addChangeEventToBibleVersionDropdown();
     selectBibleVersion(selectedBibleVersionId);
 
-    const localVersionId = selectedBibleVersionId;
-    const localBookNumber = selectedBookNumber || 1;
-    const localChapterNumber = selectedChapterNumber || 1;
-    const localVerseNumber = selectedVerseNumber || 1;
-    const localFetchId = ++currentBibleChapterTextFetchId;
-
-    const bibleFetchUrl = `/api/bible/versions?returnBibleStructure=true&versionId=${encodeURIComponent(localVersionId)}&bookNumber=${localBookNumber}&chapterNumber=${localChapterNumber}`;
-    const bibleFetchResult = await fetch(bibleFetchUrl);
-    const bibleFetchResultJson = await bibleFetchResult.json();
-
     if (bibleFetchResultJson.bibleStructure)
     {
       bibleStructureCache.set(localVersionId, bibleFetchResultJson.bibleStructure);
@@ -155,6 +154,12 @@ async function initBible()
     if (bibleFetchResultJson.chapterTexts)
     {
       bibleChapterTextCache.set(`${localVersionId}:${localBookNumber}:${localChapterNumber}`, bibleFetchResultJson.chapterTexts);
+    }
+
+    // If activeVersion changed from localVersionId because local was unavailable, pre-fetch structure
+    if (selectedBibleVersionId !== localVersionId && !bibleStructureCache.has(selectedBibleVersionId))
+    {
+      ensureBibleStructure(selectedBibleVersionId);
     }
 
     if (localFetchId === currentBibleChapterTextFetchId)
