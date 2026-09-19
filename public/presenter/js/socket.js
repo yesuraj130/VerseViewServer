@@ -534,4 +534,30 @@ function highlightActiveInDecks(state)
 
     lastLiveVerseKey = currentVerseKey;
   }
+
+  // 5. Bible Search Results List live highlighting synchronization
+  const bibleSearchResultsList = document.getElementById('bible-search-tab-results-list');
+  if (bibleSearchResultsList)
+  {
+    bibleSearchResultsList.querySelectorAll('.slide-card').forEach((card) =>
+    {
+      const cardBook = card.getAttribute('data-book-num');
+      const cardCh = card.getAttribute('data-ch-num');
+      const cardVerse = card.getAttribute('data-verse-num');
+
+      const isMatch = isLive && liveVerse &&
+        cardBook && Number(cardBook) === Number(liveVerse.bookNum) &&
+        cardCh && Number(cardCh) === Number(liveVerse.chNum) &&
+        cardVerse && Number(cardVerse) === Number(liveVerse.verseNum);
+
+      if (isMatch)
+      {
+        if (!card.classList.contains('live')) card.classList.add('live');
+      }
+      else
+      {
+        if (card.classList.contains('live')) card.classList.remove('live');
+      }
+    });
+  }
 }

@@ -1405,7 +1405,7 @@ app.get('/api/bible/search', (req, res) =>
     }
 
     const versionId = req.query.versionId || req.query.version || 'tamil';
-    const limit = req.query.limit ? Math.min(Number(req.query.limit) || 50, 200) : 50;
+    const limit = req.query.limit ? Math.min(Number(req.query.limit) || 100, 500) : 100;
 
     const verses = getOrBuildBibleSearchIndex(versionId);
     if (!verses || verses.length === 0)

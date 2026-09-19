@@ -358,6 +358,15 @@
   display: flex;
 }
 
+#workspace-biblesearch.active
+{
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  flex: 1 1 100%;
+}
+
 .navigation-pane
 {
   width: var(--left-panel-width, 420px);
@@ -550,16 +559,34 @@
   min-width: 0;
   display: flex;
   align-items: center;
+  height: 34px;
 }
 
 .search-input-wrapper .input-search,
-#song-search-input
+#song-search-input,
+#bible-search-tab-input
 {
   width: 100%;
   min-width: 0;
   flex: 1;
-  padding-right: 28px;
+  height: 34px;
+  line-height: 34px;
+  padding: 0 28px 0 10px;
   box-sizing: border-box;
+  font-size: 13px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--color-font);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.search-input-wrapper .input-search:focus,
+#song-search-input:focus,
+#bible-search-tab-input:focus
+{
+  border-color: var(--color-blue-light);
 }
 
 .search-clear-button
@@ -599,6 +626,7 @@
   width: 34px;
   height: 34px;
   padding: 0;
+  box-sizing: border-box;
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);

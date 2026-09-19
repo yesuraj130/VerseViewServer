@@ -138,7 +138,7 @@ function initTabNavigation()
   try
   {
     const savedTab = localStorage.getItem('presenter_active_tab');
-    if (savedTab && ['songs', 'bible'].includes(savedTab))
+    if (savedTab && ['songs', 'bible', 'biblesearch'].includes(savedTab))
     {
       initialTab = savedTab;
     }
@@ -166,21 +166,20 @@ function switchTab(tabId)
     buttonAddSong.style.display = (tabId === 'songs') ? '' : 'none';
   }
 
-  const buttonBibleSearch = document.getElementById('btn-open-bible-search');
-  if (buttonBibleSearch)
-  {
-    buttonBibleSearch.style.display = (tabId === 'bible') ? '' : 'none';
-  }
-
   const versionDropdown = document.getElementById('bibleVersionSelectionDropdown');
   if (versionDropdown)
   {
-    versionDropdown.style.display = (tabId === 'bible') ? 'block' : 'none';
+    versionDropdown.style.display = (tabId === 'bible' || tabId === 'biblesearch') ? 'block' : 'none';
   }
 
   if (tabId === 'songs' && typeof updateVirtualSongList === 'function')
   {
     updateVirtualSongList(true);
+  }
+
+  if (tabId === 'biblesearch' && typeof initBibleSearchTabEvents === 'function')
+  {
+    initBibleSearchTabEvents();
   }
 
   try

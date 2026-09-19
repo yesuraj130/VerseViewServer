@@ -179,7 +179,7 @@ async function initBible()
       }
     }
 
-    initBibleSearchEvents();
+    initBibleSearchTabEvents();
   }
   catch (err)
   {
@@ -188,74 +188,19 @@ async function initBible()
 }
 
 // ---------------------------------------------------------------------------
-// Bible Scripture Search Modal Logic
+// Bible Scripture Search Tab Logic
 // ---------------------------------------------------------------------------
-let bibleSearchDebounceTimer = null;
 let currentBibleSearchAbortCtrl = null;
-let isBibleSearchEventsInitialized = false;
+let isBibleSearchTabEventsInitialized = false;
 
-function openBibleSearchDialog()
+function initBibleSearchTabEvents()
 {
-  initBibleSearchEvents();
+  if (isBibleSearchTabEventsInitialized) return;
+  isBibleSearchTabEventsInitialized = true;
 
-  const dialog = document.getElementById('bible-search-dialog');
-  const input = document.getElementById('bible-search-input');
-  const badge = document.getElementById('bible-search-version-badge');
-
-  if (!dialog || !input) return;
-
-  if (badge)
-  {
-    let verName = selectedBibleVersionId;
-    if (bibleVersionsCache)
-    {
-      const found = bibleVersionsCache.find(v => v.id === selectedBibleVersionId);
-      if (found) verName = found.name;
-    }
-    badge.textContent = verName;
-  }
-
-  dialog.style.display = 'flex';
-  setTimeout(() => {
-    input.focus();
-    input.select();
-  }, 50);
-}
-
-function closeBibleSearchDialog()
-{
-  const dialog = document.getElementById('bible-search-dialog');
-  if (dialog) dialog.style.display = 'none';
-}
-
-function initBibleSearchEvents()
-{
-  if (isBibleSearchEventsInitialized) return;
-  isBibleSearchEventsInitialized = true;
-
-  const dialog = document.getElementById('bible-search-dialog');
-  const input = document.getElementById('bible-search-input');
-  const btnClose = document.getElementById('btn-close-bible-search-dialog');
-  const btnClear = document.getElementById('btn-clear-bible-search');
-  const btnOpen = document.getElementById('btn-open-bible-search');
-
-  if (btnOpen)
-  {
-    btnOpen.addEventListener('click', openBibleSearchDialog);
-  }
-
-  if (btnClose)
-  {
-    btnClose.addEventListener('click', closeBibleSearchDialog);
-  }
-
-  if (dialog)
-  {
-    dialog.addEventListener('click', (e) =>
-    {
-      if (e.target === dialog) closeBibleSearchDialog();
-    });
-  }
+  const input = document.getElementById('bible-search-tab-input');
+  const btnClear = document.getElementById('btn-clear-bible-tab-search');
+  const btnExecute = document.getElementById('btn-execute-bible-tab-search');
 
   if (btnClear && input)
   {
@@ -264,7 +209,7 @@ function initBibleSearchEvents()
       input.value = '';
       btnClear.style.display = 'none';
       input.focus();
-      renderBibleSearchResults([], '');
+      renderBibleTabSearchResults([], '');
     });
   }
 
@@ -281,23 +226,18 @@ function initBibleSearchEvents()
 
     input.addEventListener('keydown', (e) =>
     {
-      if (e.key === 'Escape')
-      {
-        closeBibleSearchDialog();
-      }
-      else if (e.key === 'Enter')
+      if (e.key === 'Enter')
       {
         e.preventDefault();
         const query = input.value.trim();
         if (query)
         {
-          executeBibleSearch(query);
+          executeBibleTabSearch(query);
         }
       }
     });
   }
 
-  const btnExecute = document.getElementById('btn-execute-bible-search');
   if (btnExecute && input)
   {
     btnExecute.addEventListener('click', () =>
@@ -305,37 +245,24 @@ function initBibleSearchEvents()
       const query = input.value.trim();
       if (query)
       {
-        executeBibleSearch(query);
+        executeBibleTabSearch(query);
       }
     });
   }
-
-  window.addEventListener('keydown', (e) =>
-  {
-    if (e.key === 'Escape')
-    {
-      const d = document.getElementById('bible-search-dialog');
-      if (d && d.style.display === 'flex')
-      {
-        closeBibleSearchDialog();
-      }
-    }
-  });
 }
 
-async function executeBibleSearch(query)
+async function executeBibleTabSearch(query)
 {
-  const resultsList = document.getElementById('bible-search-results-list');
-  const summaryBox = document.getElementById('bible-search-results-summary');
-  const countText = document.getElementById('bible-search-count-text');
-  const spinIcon = document.getElementById('bible-search-spin-icon');
+  const resultsList = document.getElementById('bible-search-tab-results-list');
+  const statusBar = document.getElementById('bible-search-tab-status-bar');
+  const spinIcon = document.getElementById('bible-tab-search-spin-icon');
 
   if (!query)
   {
-    if (summaryBox) summaryBox.style.display = 'none';
+    if (statusBar) statusBar.style.display = 'none';
     if (resultsList)
     {
-      resultsList.innerHTML = '<div class="bible-search-empty-state">Type a word in Tamil or English phonetics (e.g. anbu, visuvasam) or a scripture reference (e.g. John 3:16) to search.</div>';
+      resultsList.innerHTML = `<div class="bible-search-empty-state" style="padding: 48px 16px; text-align: center; color: var(--color-font-muted); font-size: 13px; line-height: 1.6;">Type a word in Tamil or English phonetics (e.g. <em>anbu</em>, <em>visuvasam</em>) and click 🔍 or press Enter to search.</div>`;
     }
     return;
   }
@@ -350,13 +277,13 @@ async function executeBibleSearch(query)
 
   try
   {
-    const url = `/api/bible/search?q=${encodeURIComponent(query)}&versionId=${encodeURIComponent(selectedBibleVersionId)}&limit=50`;
+    const url = `/api/bible/search?q=${encodeURIComponent(query)}&versionId=${encodeURIComponent(selectedBibleVersionId)}&limit=100`;
     const res = await fetch(url, { signal: currentBibleSearchAbortCtrl.signal });
     if (!res.ok) throw new Error('Search failed');
     const results = await res.json();
 
     if (spinIcon) spinIcon.classList.remove('spinning');
-    renderBibleSearchResults(results, query);
+    renderBibleTabSearchResults(results, query);
   }
   catch (err)
   {
@@ -365,35 +292,43 @@ async function executeBibleSearch(query)
     console.error('Error during Bible search:', err);
     if (resultsList)
     {
-      resultsList.innerHTML = `<div class="bible-search-empty-state" style="color: var(--color-red);">Error: ${escapeHtml(err.message)}</div>`;
+      resultsList.innerHTML = `<div class="bible-search-empty-state" style="padding: 24px; color: var(--color-red);">Error: ${escapeHtml(err.message)}</div>`;
     }
   }
 }
 
-function renderBibleSearchResults(results, query)
+function renderBibleTabSearchResults(results, query)
 {
-  const resultsList = document.getElementById('bible-search-results-list');
-  const summaryBox = document.getElementById('bible-search-results-summary');
-  const countText = document.getElementById('bible-search-count-text');
+  const resultsList = document.getElementById('bible-search-tab-results-list');
+  const statusBar = document.getElementById('bible-search-tab-status-bar');
+  const countText = document.getElementById('bible-search-tab-count-text');
 
   if (!resultsList) return;
+
   resultsList.innerHTML = '';
 
   if (!results || results.length === 0)
   {
-    if (summaryBox) summaryBox.style.display = 'none';
-    resultsList.innerHTML = `<div class="bible-search-empty-state">No matching verses found for "${escapeHtml(query)}". Try different Tamil phonetic spelling or scripture reference.</div>`;
+    if (statusBar) statusBar.style.display = 'none';
+    resultsList.innerHTML = `<div class="bible-search-empty-state" style="padding: 48px 16px; text-align: center; color: var(--color-font-muted); font-size: 13px;">No matching verses found for "${escapeHtml(query)}". Try a different Tamil phonetic spelling or word.</div>`;
     return;
   }
 
-  if (summaryBox) summaryBox.style.display = 'flex';
-  if (countText) countText.textContent = `${results.length} verse${results.length === 1 ? '' : 's'} found`;
+  if (statusBar) statusBar.style.display = 'flex';
+  if (countText)
+  {
+    if (results.length >= 100)
+    {
+      countText.textContent = `100+ verses found (showing top 100)`;
+    }
+    else
+    {
+      countText.textContent = `${results.length} verse${results.length === 1 ? '' : 's'} found`;
+    }
+  }
 
   results.forEach((verse) =>
   {
-    const itemEl = document.createElement('div');
-    itemEl.className = 'bible-search-result-item';
-
     const refText = verse.reference || `${verse.bookName} ${verse.chNum}:${verse.verseNum}`;
     let highlightedVerseText = escapeHtml(verse.word);
 
@@ -402,15 +337,19 @@ function renderBibleSearchResults(results, query)
       highlightedVerseText = window.TamilPhonetic.highlightMatchedCharacters(verse.word, query);
     }
 
-    itemEl.innerHTML = `
-      <div class="bible-search-item-header">
-        <span class="bible-search-ref-badge">${escapeHtml(refText)}</span>
-      </div>
-      <div class="bible-search-verse-text">${highlightedVerseText}</div>
+    const verseSlide = document.createElement('div');
+    verseSlide.className = 'slide-card';
+    if (verse.versionId) verseSlide.setAttribute('data-version-id', verse.versionId);
+    if (verse.bookNum) verseSlide.setAttribute('data-book-num', verse.bookNum);
+    if (verse.chNum) verseSlide.setAttribute('data-ch-num', verse.chNum);
+    if (verse.verseNum) verseSlide.setAttribute('data-verse-num', verse.verseNum);
+
+    verseSlide.innerHTML = `
+      <span class="slide-card-badge">LIVE</span>
+      <div class="slide-card-content"><span class="verse-number">${escapeHtml(refText)}</span>${highlightedVerseText}</div>
     `;
 
-    // Click triggers live slide instantly, matches 3-column browser state, and closes modal
-    itemEl.addEventListener('click', async () =>
+    verseSlide.addEventListener('click', () =>
     {
       presentBibleVerse({
         versionId: verse.versionId,
@@ -419,16 +358,9 @@ function renderBibleSearchResults(results, query)
         verseNum: verse.verseNum,
         word: verse.word
       });
-
-      closeBibleSearchDialog();
-
-      if (verse.bookNum && verse.chNum && verse.verseNum)
-      {
-        await selectBibleBook(verse.bookNum, verse.chNum, verse.verseNum);
-      }
     });
 
-    resultsList.appendChild(itemEl);
+    resultsList.appendChild(verseSlide);
   });
 }
 
@@ -613,6 +545,12 @@ async function changeBibleVersion(targetVersionId)
   if (bibleVersionSelectionDropdown)
   {
     bibleVersionSelectionDropdown.value = targetVersionId;
+  }
+
+  const tabInput = document.getElementById('bible-search-tab-input');
+  if (tabInput && tabInput.value.trim())
+  {
+    executeBibleTabSearch(tabInput.value.trim());
   }
 
   await ensureBibleStructure(targetVersionId);
@@ -939,7 +877,7 @@ window.selectBibleChapter = selectBibleChapter;
 window.selectBibleVerse = selectBibleVerse;
 window.selectVerseSlide = selectVerseSlide;
 window.changeBibleVersion = changeBibleVersion;
-window.openBibleSearchDialog = openBibleSearchDialog;
-window.closeBibleSearchDialog = closeBibleSearchDialog;
+window.initBibleSearchTabEvents = initBibleSearchTabEvents;
+window.executeBibleTabSearch = executeBibleTabSearch;
 window.getStorageItem = getStorageItem;
 window.setStorageItem = setStorageItem;

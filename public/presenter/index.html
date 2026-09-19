@@ -61,12 +61,6 @@
               <polyline points="9 22 9 12 15 12 15 22"></polyline>
             </svg>
           </a>
-          <button type="button" class="control-button" id="btn-open-bible-search" title="Search Bible Scriptures" aria-label="Search Bible" style="display: none;">
-            <svg class="vv-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-          </button>
           <button type="button" class="control-button" id="btn-open-add-song" title="Add New Song" aria-label="Add New Song">
             <svg class="vv-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -114,6 +108,7 @@
       <div class="tabs-button-container">
         <button type="button" class="tab-button active" data-tab="songs" id="tab-btn-songs">Songs</button>
         <button type="button" class="tab-button" data-tab="bible" id="tab-btn-bible">Bible</button>
+        <button type="button" class="tab-button" data-tab="biblesearch" id="tab-btn-biblesearch">Bible Search</button>
       </div>
     </nav>
 
@@ -208,6 +203,35 @@
         </section>
       </div>
 
+      <!-- ==================== TAB 3: BIBLE SEARCH ==================== -->
+      <div class="tab-item" id="workspace-biblesearch" style="width: 100%; height: 100%; flex-direction: column;">
+        <div class="search-input-container">
+          <div class="search-input-wrapper">
+            <input type="text" id="bible-search-tab-input" class="input-search" placeholder="Search scripture in Tamil or phonetics..." autocomplete="off" spellcheck="false">
+            <button type="button" id="btn-clear-bible-tab-search" class="search-clear-button" title="Clear search" aria-label="Clear search" style="display: none;">&times;</button>
+          </div>
+          <button type="button" id="btn-execute-bible-tab-search" class="search-submit-button" title="Search Bible Scriptures (Enter)" aria-label="Search scripture">
+            <svg class="vv-icon" id="bible-tab-search-spin-icon" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Status badge for scripture search results -->
+        <div id="bible-search-tab-status-bar" class="song-search-status-bar" style="display: none;">
+          <div class="song-search-status-left">
+            <span id="bible-search-tab-count-text">0 verses found</span>
+          </div>
+        </div>
+
+        <div class="slides-list" id="bible-search-tab-results-list" style="flex: 1; width: 100%; max-width: 100%; box-sizing: border-box; overflow-y: auto;">
+          <div class="bible-search-empty-state" style="padding: 32px 16px; text-align: center; color: var(--color-font-muted); font-size: 13px; line-height: 1.5;">
+            Type a word in Tamil or English phonetics (e.g. <em>anbu</em>, <em>visuvasam</em>) and click 🔍 or press Enter to search.
+          </div>
+        </div>
+      </div>
+
     </main>
   </div>
 
@@ -260,37 +284,6 @@
         <button type="button" class="btn-danger" id="btn-delete-song-dialog" style="display: none; margin-right: auto;">Delete Song</button>
         <button type="button" class="btn-secondary" id="btn-cancel-edit-song-dialog">Cancel</button>
         <button type="button" class="btn-primary" id="btn-save-song">Save Song</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Bible Scripture Search Dialog -->
-  <div class="dialog-backdrop-cover" id="bible-search-dialog" style="display: none;">
-    <div class="dialog-content bible-search-dialog-content">
-      <div class="dialog-header bible-search-dialog-header">
-        <div class="bible-search-input-wrap">
-          <div class="bible-search-box-inner">
-            <input type="text" id="bible-search-input" class="bible-search-input" placeholder="Search scripture (e.g. anbu, யோவான் 3:16, John 3:16)..." autocomplete="off" spellcheck="false">
-            <button type="button" class="bible-search-clear-btn" id="btn-clear-bible-search" style="display: none;" title="Clear search">&times;</button>
-          </div>
-          <button type="button" id="btn-execute-bible-search" class="btn-primary bible-search-btn-icon" title="Search (Enter)">
-            <svg class="vv-icon" id="bible-search-spin-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-          </button>
-        </div>
-        <div class="bible-search-header-actions">
-          <span class="bible-search-version-badge" id="bible-search-version-badge">Tamil</span>
-          <button type="button" id="btn-close-bible-search-dialog" class="dialog-close-btn" title="Close (Esc)">&times;</button>
-        </div>
-      </div>
-      <div class="bible-search-results-summary" id="bible-search-results-summary" style="display: none;">
-        <span id="bible-search-count-text">0 verses found</span>
-        <span class="bible-search-hint-text">Click any verse slide to go LIVE</span>
-      </div>
-      <div class="dialog-body bible-search-results-list" id="bible-search-results-list">
-        <div class="bible-search-empty-state">Type a word in Tamil or English phonetics (e.g. anbu, visuvasam) or a scripture reference (e.g. John 3:16) to search.</div>
       </div>
     </div>
   </div>
