@@ -1,8 +1,6 @@
 /* ==========================================================================
-   Base Theme, Global Variables & Common Components
+   Base Theme, Global Variables & Common Components (100% Offline Self-Contained)
    ========================================================================== */
-
-@import url('https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@400;500;600;700;800&family=Mukta+Malar:wght@400;500;600;700;800&family=Noto+Sans+Tamil:wght@400;600;700;800&display=swap');
 
 @font-face {
   font-family: 'Baloo Thambi';
@@ -13,6 +11,12 @@
 @font-face {
   font-family: 'Baloo Thambi 2';
   src: url('/fonts/baloo-thambi.woff2') format('woff2'), local('Baloo Thambi 2'), local('Baloo Thambi');
+  font-weight: 100 900; font-style: normal; font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans Tamil';
+  src: local('Noto Sans Tamil'), local('Baloo Thambi 2'), local('Baloo Thambi'), url('/fonts/baloo-thambi.woff2') format('woff2');
   font-weight: 100 900; font-style: normal; font-display: swap;
 }
 

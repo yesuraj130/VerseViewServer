@@ -2,7 +2,7 @@
 // Verse View Server — Progressive Web App (PWA) Service Worker
 // ===========================================================================
 
-const CACHE_NAME = 'verseview-v7';
+const CACHE_NAME = 'verseview-v8';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -125,9 +125,7 @@ self.addEventListener('fetch', (event) => {
     url.pathname.startsWith('/fonts/') ||
     url.pathname.endsWith('.png') ||
     url.pathname.endsWith('.svg') ||
-    url.pathname.endsWith('.woff2') ||
-    url.origin.includes('fonts.googleapis.com') ||
-    url.origin.includes('fonts.gstatic.com')
+    url.pathname.endsWith('.woff2')
   ) {
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {
