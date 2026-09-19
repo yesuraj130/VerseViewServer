@@ -61,6 +61,12 @@
               <polyline points="9 22 9 12 15 12 15 22"></polyline>
             </svg>
           </a>
+          <button type="button" class="control-button" id="btn-open-bible-search" title="Search Bible Scriptures" aria-label="Search Bible" style="display: none;">
+            <svg class="vv-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </button>
           <button type="button" class="control-button" id="btn-open-add-song" title="Add New Song" aria-label="Add New Song">
             <svg class="vv-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -241,7 +247,10 @@
 
         <div class="form-group" style="flex-grow: 1; display: flex; flex-direction: column;">
           <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
-            <label class="form-label" for="edit-song-lyrics-textarea" style="margin-bottom: 0;">Lyrics &amp; Slides</label>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <label class="form-label" for="edit-song-lyrics-textarea" style="margin-bottom: 0;">Lyrics &amp; Slides</label>
+              <span id="edit-song-slide-count-badge" class="edit-song-slide-badge">0 slides</span>
+            </div>
             <span style="font-size: 11px; color: var(--color-font-muted);">Separate slides with <strong>2 blank lines</strong> (two empty lines)</span>
           </div>
           <textarea id="edit-song-lyrics-textarea" class="editsong-textbox" style="flex-grow: 1; min-height: 240px; font-size: 13px; line-height: 1.5; outline: none; resize: vertical;" placeholder="Slide 1 line 1&#10;Slide 1 line 2&#10;&#10;&#10;Slide 2 line 1&#10;Slide 2 line 2"></textarea>
@@ -251,6 +260,33 @@
         <button type="button" class="btn-danger" id="btn-delete-song-dialog" style="display: none; margin-right: auto;">Delete Song</button>
         <button type="button" class="btn-secondary" id="btn-cancel-edit-song-dialog">Cancel</button>
         <button type="button" class="btn-primary" id="btn-save-song">Save Song</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bible Scripture Search Dialog -->
+  <div class="dialog-backdrop-cover" id="bible-search-dialog" style="display: none;">
+    <div class="dialog-content bible-search-dialog-content">
+      <div class="dialog-header bible-search-dialog-header">
+        <div class="bible-search-input-wrap">
+          <svg class="vv-icon search-icon" id="bible-search-spin-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="bible-search-input" class="bible-search-input" placeholder="Search scripture (e.g. anbu, யோவான் 3:16, John 3:16)..." autocomplete="off" spellcheck="false">
+          <button type="button" class="search-clear-btn" id="btn-clear-bible-search" style="display: none;" title="Clear search">&times;</button>
+        </div>
+        <div class="bible-search-header-actions">
+          <span class="bible-search-version-badge" id="bible-search-version-badge">Tamil</span>
+          <button type="button" id="btn-close-bible-search-dialog" class="btn-icon-tiny" style="font-size: 20px; color: #fff;" title="Close (Esc)">&times;</button>
+        </div>
+      </div>
+      <div class="bible-search-results-summary" id="bible-search-results-summary" style="display: none;">
+        <span id="bible-search-count-text">0 verses found</span>
+        <span class="bible-search-hint-text">Click any verse slide to go LIVE</span>
+      </div>
+      <div class="dialog-body bible-search-results-list" id="bible-search-results-list">
+        <div class="bible-search-empty-state">Type a word in Tamil or English phonetics (e.g. anbu, visuvasam) or a scripture reference (e.g. John 3:16) to search.</div>
       </div>
     </div>
   </div>

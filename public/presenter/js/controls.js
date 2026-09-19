@@ -43,6 +43,18 @@ function initControlsEvent()
   buttonPreviousSlide.addEventListener('click', triggerPrevious);
   buttonNextSlide.addEventListener('click', triggerNext);
   liveIndicatorPill.addEventListener('click', jumpToLiveSlide);
+
+  const buttonBibleSearch = document.getElementById('btn-open-bible-search');
+  if (buttonBibleSearch)
+  {
+    buttonBibleSearch.addEventListener('click', () =>
+    {
+      if (typeof openBibleSearchDialog === 'function')
+      {
+        openBibleSearchDialog();
+      }
+    });
+  }
 }
 
 // Jump to active live slide on clicking live indicator
@@ -152,6 +164,12 @@ function switchTab(tabId)
   if (buttonAddSong)
   {
     buttonAddSong.style.display = (tabId === 'songs') ? '' : 'none';
+  }
+
+  const buttonBibleSearch = document.getElementById('btn-open-bible-search');
+  if (buttonBibleSearch)
+  {
+    buttonBibleSearch.style.display = (tabId === 'bible') ? '' : 'none';
   }
 
   const versionDropdown = document.getElementById('bibleVersionSelectionDropdown');

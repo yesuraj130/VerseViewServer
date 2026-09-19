@@ -111,6 +111,7 @@ catch (e)
 // ---------------------------------------------------------------------------
 const bibleDbCache = new Map();
 const bibleStructureCache = new Map();
+const bibleSearchIndex = new Map(); // versionId -> Array of pre-indexed verses
 
 function getBibleStructure(versionId)
 {
@@ -195,6 +196,75 @@ function getVersionMetadata(forceReload = false)
   catch (err)
   {
     console.error('Error reading version.json:', err);
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Pre-Computed In-Memory Bible Search Engine (Zero-Disk Low-Latency Querying)
+// ---------------------------------------------------------------------------
+function getOrBuildBibleSearchIndex(versionId = 'tamil')
+{
+  const targetId = versionId.replace(/\.db$/i, '');
+  if (bibleSearchIndex.has(targetId))
+  {
+    return bibleSearchIndex.get(targetId);
+  }
+
+  const versions = getVersionMetadata();
+  const matchedVer = versions.find(v => v.id === targetId || v.file === targetId || v.file === `${targetId}.db`);
+  const actualVersionId = matchedVer ? matchedVer.id : targetId;
+
+  if (bibleSearchIndex.has(actualVersionId))
+  {
+    return bibleSearchIndex.get(actualVersionId);
+  }
+
+  const db = getBibleDb(actualVersionId);
+  if (!db) return [];
+
+  try
+  {
+    const t0 = Date.now();
+    const rows = db.prepare('SELECT wordId, bookNum, chNum, verseNum, word FROM words ORDER BY bookNum, chNum, verseNum').all();
+    
+    const bookNames = (matchedVer && (matchedVer.booknames || matchedVer.books)) || [];
+    const kjvVer = versions.find(v => v.id === 'kjv' || v.file === 'kjv.db');
+    const englishBookNames = (kjvVer && (kjvVer.booknames || kjvVer.books)) || [];
+
+    const indexedVerses = rows.map(r => {
+      const bNum = Number(r.bookNum);
+      const chNum = Number(r.chNum);
+      const vNum = Number(r.verseNum);
+      const bookName = (bookNames && bookNames[bNum - 1]) ? bookNames[bNum - 1] : `Book ${bNum}`;
+      const engName = (englishBookNames && englishBookNames[bNum - 1]) ? englishBookNames[bNum - 1] : `Book ${bNum}`;
+      const tokens = tokenizeText(r.word);
+      const tokenInfos = buildTargetTokenInfos(tokens);
+
+      return {
+        wordId: r.wordId,
+        bookNum: bNum,
+        chNum: chNum,
+        verseNum: vNum,
+        bookName,
+        bookNameLower: bookName.toLowerCase(),
+        engName,
+        engNameLower: engName.toLowerCase(),
+        word: r.word,
+        wordLower: (r.word || '').toLowerCase(),
+        tokens,
+        tokenInfos,
+        versionId: actualVersionId
+      };
+    });
+
+    bibleSearchIndex.set(actualVersionId, indexedVerses);
+    console.log(`In-memory Bible search index built for '${actualVersionId}': ${indexedVerses.length} verses in ${Date.now() - t0}ms`);
+    return indexedVerses;
+  }
+  catch (err)
+  {
+    console.error(`Failed to build Bible search index for ${versionId}:`, err);
     return [];
   }
 }
@@ -841,6 +911,29 @@ function indexSongRecord(r)
   };
 }
 
+let cachedSongsListJson = null;
+
+function refreshSongsListCache()
+{
+  const list = [];
+  for (const s of songSearchIndex.values())
+  {
+    list.push({
+      id: s.id,
+      name: s.name,
+      title2: s.title2 || '',
+      cat: s.cat || 'General',
+      font: s.font || '',
+      tags: s.tags || '',
+      firstLine: s.firstLine || '',
+      slideCount: s.slideCount || 0,
+      isConverted: Boolean(s.isConverted)
+    });
+  }
+  list.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+  cachedSongsListJson = list;
+}
+
 function initSongSearchIndex()
 {
   try
@@ -856,6 +949,7 @@ function initSongSearchIndex()
         songSearchIndex.set(indexed.id, indexed);
       }
     }
+    refreshSongsListCache();
     console.log(`In-memory song search index built: ${songSearchIndex.size} songs in ${Date.now() - t0}ms`);
   }
   catch (err)
@@ -864,7 +958,7 @@ function initSongSearchIndex()
   }
 }
 
-// API: Songs (songs.db / sm.db)
+// API: Songs (served instantaneously from in-memory cache when unfiltered)
 app.get('/api/songs', (req, res) =>
 {
   try
@@ -872,6 +966,16 @@ app.get('/api/songs', (req, res) =>
     const q = req.query.q ? String(req.query.q).trim() : '';
     const cat = req.query.cat ? String(req.query.cat).trim() : '';
     const limit = req.query.limit ? Math.min(Number(req.query.limit) || 5000, 10000) : 5000;
+
+    // Instant in-memory delivery if unfiltered
+    if (!q && (!cat || cat === 'All') && cachedSongsListJson)
+    {
+      if (limit < cachedSongsListJson.length)
+      {
+        return res.json(cachedSongsListJson.slice(0, limit));
+      }
+      return res.json(cachedSongsListJson);
+    }
 
     let sql = 'SELECT id, name, title2, cat, font, font2, key, notes, tags, lyrics, lyrics2 FROM sm';
     const params = [];
@@ -1201,7 +1305,11 @@ app.post('/api/songs', (req, res) =>
 
     const created = smDb.prepare('SELECT id, name, title2, cat, font, font2, key, notes, tags, lyrics, lyrics2 FROM sm WHERE id = ?').get(newId);
     const indexed = indexSongRecord(created);
-    if (indexed) songSearchIndex.set(indexed.id, indexed);
+    if (indexed)
+    {
+      songSearchIndex.set(indexed.id, indexed);
+      refreshSongsListCache();
+    }
     res.status(201).json(created);
   }
   catch (err)
@@ -1255,7 +1363,11 @@ app.put('/api/songs/:id', (req, res) =>
 
     const updated = smDb.prepare('SELECT id, name, title2, cat, font, font2, key, notes, tags, lyrics, lyrics2 FROM sm WHERE id = ?').get(songId);
     const indexed = indexSongRecord(updated);
-    if (indexed) songSearchIndex.set(indexed.id, indexed);
+    if (indexed)
+    {
+      songSearchIndex.set(indexed.id, indexed);
+      refreshSongsListCache();
+    }
     res.json(updated);
   }
   catch (err)
@@ -1272,10 +1384,137 @@ app.delete('/api/songs/:id', (req, res) =>
     const stmt = smDb.prepare('DELETE FROM sm WHERE id = ?');
     stmt.run(songId);
     songSearchIndex.delete(songId);
+    refreshSongsListCache();
     res.json({ success: true, deletedId: songId });
   }
   catch (err)
   {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: In-Memory Bible Scripture Search (Tamil Phonetic, Unicode & Reference Search)
+app.get('/api/bible/search', (req, res) =>
+{
+  try
+  {
+    const q = req.query.q ? String(req.query.q).trim() : '';
+    if (!q)
+    {
+      return res.json([]);
+    }
+
+    const versionId = req.query.versionId || req.query.version || 'tamil';
+    const limit = req.query.limit ? Math.min(Number(req.query.limit) || 50, 200) : 50;
+
+    const verses = getOrBuildBibleSearchIndex(versionId);
+    if (!verses || verses.length === 0)
+    {
+      return res.json([]);
+    }
+
+    const results = [];
+    const qLower = q.toLowerCase();
+
+    // 1. Scripture reference parsing (e.g. "John 3:16", "யோவான் 3:16", "1 John 1:9", "1 3 16")
+    const refMatch = q.match(/^([0-9]*\s*[a-zA-Z\u0B80-\u0BFF]+(?:\s+[a-zA-Z\u0B80-\u0BFF]+)?)\s+(\d+)(?:[:\s]+(\d+))?$/);
+    const numRefMatch = !refMatch && q.match(/^(\d+)\s*[:\s]\s*(\d+)(?:[:\s](\d+))?$/);
+
+    let targetBookNum = null;
+    let targetChNum = null;
+    let targetVerseNum = null;
+
+    if (refMatch)
+    {
+      const rawBookStr = refMatch[1].trim().toLowerCase();
+      targetChNum = Number(refMatch[2]);
+      targetVerseNum = refMatch[3] ? Number(refMatch[3]) : null;
+
+      for (const v of verses)
+      {
+        if (v.bookNameLower === rawBookStr || v.engNameLower === rawBookStr ||
+            v.bookNameLower.startsWith(rawBookStr) || v.engNameLower.startsWith(rawBookStr))
+        {
+          targetBookNum = v.bookNum;
+          break;
+        }
+      }
+    }
+    else if (numRefMatch)
+    {
+      if (numRefMatch[3])
+      {
+        targetBookNum = Number(numRefMatch[1]);
+        targetChNum = Number(numRefMatch[2]);
+        targetVerseNum = Number(numRefMatch[3]);
+      }
+      else
+      {
+        targetChNum = Number(numRefMatch[1]);
+        targetVerseNum = Number(numRefMatch[2]);
+      }
+    }
+
+    if (targetChNum)
+    {
+      for (const v of verses)
+      {
+        if (targetBookNum && v.bookNum !== targetBookNum) continue;
+        if (v.chNum !== targetChNum) continue;
+        if (targetVerseNum && v.verseNum !== targetVerseNum) continue;
+
+        results.push({
+          wordId: v.wordId,
+          bookNum: v.bookNum,
+          chNum: v.chNum,
+          verseNum: v.verseNum,
+          bookName: v.bookName,
+          word: v.word,
+          versionId: v.versionId,
+          reference: `${v.bookName} ${v.chNum}:${v.verseNum}`,
+          matchedTerm: q
+        });
+
+        if (results.length >= limit) break;
+      }
+
+      if (results.length > 0)
+      {
+        return res.json(results);
+      }
+    }
+
+    // 2. Phonetic & Substring Verse Search
+    const qTokens = tokenizeText(q);
+    const qKeys = qTokens.map(t => getSoundKey(t)).filter(Boolean);
+
+    for (const v of verses)
+    {
+      const match = matchTokenInfosWithKeys(v.tokenInfos, v.tokens, v.wordLower, qKeys, qLower);
+      if (match.matched)
+      {
+        results.push({
+          wordId: v.wordId,
+          bookNum: v.bookNum,
+          chNum: v.chNum,
+          verseNum: v.verseNum,
+          bookName: v.bookName,
+          word: v.word,
+          versionId: v.versionId,
+          reference: `${v.bookName} ${v.chNum}:${v.verseNum}`,
+          matchedTokens: match.matchedTokens,
+          matchedTerm: match.matchedTokens.join(' ') || q
+        });
+
+        if (results.length >= limit) break;
+      }
+    }
+
+    res.json(results);
+  }
+  catch (err)
+  {
+    console.error('Error during Bible search:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1563,6 +1802,7 @@ server.listen(PORT, '0.0.0.0', () =>
   console.log(`Presenter Console available at: http://0.0.0.0:${PORT}/presenter/`);
   console.log(`Display Output available at:    http://0.0.0.0:${PORT}/display/`);
   initSongSearchIndex();
+  getOrBuildBibleSearchIndex('tamil');
 });
 
 // In production Cloud Run, additionally listen on 3000 if different from PORT for internal compatibility

@@ -2,6 +2,26 @@
 // Presenter Console — Song Creation & Editing (Add / Edit / Delete Dialog)
 // ===========================================================================
 
+function countSlidesFromText(rawText)
+{
+  if (!rawText || !rawText.trim()) return 0;
+  const sections = rawText.split(/\r?\n(?:\s*\r?\n){2,}/);
+  const valid = sections.filter(sec => {
+    const lines = sec.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    return lines.length > 0;
+  });
+  return valid.length;
+}
+
+function updateEditSongSlideCount()
+{
+  const badge = document.getElementById('edit-song-slide-count-badge');
+  if (!badge) return;
+  const textarea = editSongLyricsTextarea || document.getElementById('edit-song-lyrics-textarea');
+  const count = textarea ? countSlidesFromText(textarea.value) : 0;
+  badge.textContent = count === 1 ? '1 slide' : `${count} slides`;
+}
+
 function lyricsToTextareaValue(lyricsStr)
 {
   if (!lyricsStr) return '';
@@ -40,6 +60,7 @@ function openAddSongDialog()
   editSongSecondaryTitleTextbox.value = '';
   editSongFontTextbox.value = '';
   editSongLyricsTextarea.value = '';
+  updateEditSongSlideCount();
   buttonDeleteSongDialog.style.display = 'none';
   editSongDialog.style.display = 'flex';
   editSongTitleTextbox.focus();
@@ -65,6 +86,7 @@ async function openEditSongDialog(songId)
     editSongSecondaryTitleTextbox.value = song.title2 || '';
     editSongFontTextbox.value = song.font || '';
     editSongLyricsTextarea.value = lyricsToTextareaValue(song.lyrics || '');
+    updateEditSongSlideCount();
 
     buttonDeleteSongDialog.style.display = 'inline-flex';
     buttonDeleteSongDialog.onclick = async () =>
@@ -105,9 +127,9 @@ async function handleSaveSong()
     return;
   }
 
-  if (!lyrics)
+  if (!lyrics || countSlidesFromText(editSongLyricsTextarea.value) === 0)
   {
-    alert('Please enter at least one slide of lyrics.');
+    alert('Please enter at least one valid slide of lyrics.');
     editSongLyricsTextarea.focus();
     return;
   }
@@ -205,6 +227,12 @@ function initSongEditorEvents()
       openEditSongDialog(selectedSongId);
     }
   });
+
+  if (editSongLyricsTextarea)
+  {
+    editSongLyricsTextarea.addEventListener('input', updateEditSongSlideCount);
+    editSongLyricsTextarea.addEventListener('keyup', updateEditSongSlideCount);
+  }
 
   buttonCloseEditSongDialog.addEventListener('click', closeEditSongDialog);
   buttonCancelEditSongDialog.addEventListener('click', closeEditSongDialog);
