@@ -4,10 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Verse View Server — Real-Time Church Presentation</title>
+  <meta name="description" content="Real-Time Church Presentation Server for Tamil Songs and Bible Scriptures">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="VerseView">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
   <link rel="stylesheet" href="/css/base.css">
   <link rel="stylesheet" href="/css/hub.css">
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/config.js"></script>
+  <script src="/js/pwa.js"></script>
 </head>
 <body>
   <div class="hub-container">
@@ -19,8 +29,11 @@
           <p class="hub-subtitle">Real-Time Express + Socket.io + SQLite WAL Engine</p>
         </div>
       </div>
-      <div style="display: flex; align-items: center; gap: 12px;"><span class="server-dot" id="hub-server-dot"></span>
-        <span style="font-size: 13px; color: var(--text-secondary);" id="hub-server-status">Socket Synchronized</span></div>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <button type="button" class="btn-secondary" data-pwa-install-btn style="display: none; font-size: 12px; padding: 4px 10px;">📲 Install App</button>
+        <span class="server-dot" id="hub-server-dot"></span>
+        <span style="font-size: 13px; color: var(--text-secondary);" id="hub-server-status">Socket Synchronized</span>
+      </div>
     </header>
 
     <!-- Role Views Switcher Cards -->

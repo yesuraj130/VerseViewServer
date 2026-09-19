@@ -4,10 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
   <title>Verse View Server — Presenter Console</title>
+  <meta name="description" content="Real-Time Church Presentation Server for Tamil Songs and Bible Scriptures">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="VerseView">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
   <link rel="stylesheet" href="/css/base.css">
   <link rel="stylesheet" href="/presenter/css/presenter.css">
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/config.js"></script>
+  <script src="/js/pwa.js"></script>
 </head>
 <body class="presenter-body">
   <div class="presenter-app">
@@ -31,6 +41,13 @@
       <!-- Quick Action Controls -->
       <div class="quick-action-controls" id="controls-bar">
         <div class="control-group">
+          <button type="button" class="control-button pwa-install-btn" id="btn-pwa-install" data-pwa-install-btn title="Install App" aria-label="Install App" style="display: none;">
+            <svg class="vv-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+          </button>
           <a href="/" class="control-button" id="btn-home" title="Home" aria-label="Home">
             <svg class="vv-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
@@ -84,8 +101,21 @@
       <div class="tab-item active" id="workspace-songs">
         <aside class="navigation-pane">
           <div class="search-input-container">
-            <input type="text" id="song-search-input" class="input-search" placeholder="Search song title or alternate title...">
-            <button type="button" id="btn-clear-song-search" class="search-clear-button" title="Clear search" aria-label="Clear search" style="display: none;">&times;</button>
+            <div class="search-input-wrapper">
+              <input type="text" id="song-search-input" class="input-search" placeholder="Type title / click 🔍 for lyrics..." autocomplete="off" spellcheck="false">
+              <button type="button" id="btn-clear-song-search" class="search-clear-button" title="Clear search" aria-label="Clear search" style="display: none;">&times;</button>
+            </div>
+            <button type="button" id="btn-execute-song-search" class="search-submit-button" title="Search inside song lyrics on server (Enter)" aria-label="Search lyrics on server">
+              <svg class="vv-icon" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Status badge for Content / Lyrics search mode -->
+          <div id="song-search-status-bar" class="song-search-status-bar" style="display: none;">
+            <span id="song-search-status-text">Lyrics search results</span>
           </div>
 
           <div class="song-searchresults-list" id="song-list-container">
@@ -202,6 +232,7 @@
 
   <!-- Modular Presenter JavaScript -->
   <script src="/presenter/js/state.js"></script>
+  <script src="/presenter/js/tamilPhonetic.js"></script>
   <script src="/presenter/js/songs.js"></script>
   <script src="/presenter/js/editSong.js"></script>
   <script src="/presenter/js/bible.js"></script>

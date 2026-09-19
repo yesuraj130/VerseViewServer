@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { Server } from 'socket.io';
 import { isTamilBibleFont, baminiToUnicode } from './lib/bamini.js';
+import { englishToTamil, getPhoneticVariations, matchesQueryPhonetic } from './lib/tamilPhonetic.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -782,6 +783,119 @@ app.get('/api/songs', (req, res) =>
   catch (err)
   {
     console.error('Error fetching songs:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Full Song Content & Lyrics Search with Tamil Phonetic Transliteration
+app.get('/api/songs/search', (req, res) =>
+{
+  try
+  {
+    const q = req.query.q ? String(req.query.q).trim() : '';
+    if (!q)
+    {
+      return res.json([]);
+    }
+
+    const variations = getPhoneticVariations(q);
+    const limit = req.query.limit ? Math.min(Number(req.query.limit) || 300, 1000) : 300;
+
+    const stmt = smDb.prepare('SELECT id, name, title2, cat, font, tags, lyrics FROM sm');
+    const allRows = stmt.all();
+
+    const matches = [];
+
+    for (const r of allRows)
+    {
+      const needsConversion = isTamilBibleFont(r.font);
+      const convertedLyrics = needsConversion ? baminiToUnicode(r.lyrics) : (r.lyrics || '');
+      const rawSlides = convertedLyrics.split('<slide>');
+
+      let songMatched = false;
+      let matchedSlideIndex = 1;
+      let matchedLine = '';
+      let matchedTerm = '';
+      let totalMatchesInSong = 0;
+
+      let currentSlideIdx = 0;
+      for (const s of rawSlides)
+      {
+        const cleanSlide = s.trim();
+        if (!cleanSlide) continue;
+        currentSlideIdx++;
+
+        const lines = cleanSlide.split(/<BR>|\r?\n/i).map(l => l.replace(/<[^>]*>/g, '').trim()).filter(Boolean);
+        for (const line of lines)
+        {
+          const lineLower = line.toLowerCase();
+          for (const v of variations)
+          {
+            if (v && lineLower.includes(v.toLowerCase()))
+            {
+              totalMatchesInSong++;
+              if (!songMatched)
+              {
+                songMatched = true;
+                matchedSlideIndex = currentSlideIdx;
+                matchedLine = line;
+                matchedTerm = v;
+              }
+              break;
+            }
+          }
+        }
+      }
+
+      // Check song title / alternate title / tags if no slide line matched
+      if (!songMatched)
+      {
+        const nameLower = (r.name || '').toLowerCase();
+        const title2Lower = (r.title2 || '').toLowerCase();
+        const tagsLower = (r.tags || '').toLowerCase();
+
+        for (const v of variations)
+        {
+          const vLower = v.toLowerCase();
+          if (nameLower.includes(vLower) || title2Lower.includes(vLower) || tagsLower.includes(vLower))
+          {
+            songMatched = true;
+            matchedSlideIndex = 1;
+            matchedLine = extractFirstLine(r.lyrics, r.font) || r.name;
+            matchedTerm = v;
+            totalMatchesInSong = 1;
+            break;
+          }
+        }
+      }
+
+      if (songMatched)
+      {
+        const slideCount = rawSlides.filter(s => s.trim().length > 0).length;
+        matches.push({
+          id: r.id,
+          name: r.name,
+          title2: r.title2 || '',
+          cat: r.cat || 'General',
+          font: r.font || '',
+          slideCount,
+          matchedSlideIndex,
+          matchedLine,
+          matchedTerm,
+          totalMatches: totalMatchesInSong,
+          firstLine: extractFirstLine(r.lyrics, r.font),
+          isConverted: Boolean(needsConversion)
+        });
+
+        if (matches.length >= limit) break;
+      }
+    }
+
+    res.json(matches);
+  }
+  catch (err)
+  {
+    console.error('Error during song content search:', err);
     res.status(500).json({ error: err.message });
   }
 });

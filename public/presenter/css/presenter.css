@@ -444,6 +444,7 @@
   position: relative;
   display: flex;
   align-items: center;
+  gap: 6px;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
@@ -452,31 +453,40 @@
   flex-shrink: 0;
 }
 
-.search-input-container .input-search,
+.search-input-wrapper
+{
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.search-input-wrapper .input-search,
 #song-search-input
 {
   width: 100%;
   min-width: 0;
   flex: 1;
-  padding-right: 32px;
+  padding-right: 28px;
   box-sizing: border-box;
 }
 
 .search-clear-button
 {
   position: absolute;
-  right: 16px;
+  right: 6px;
   top: 50%;
   transform: translateY(-50%);
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
   border: none;
   color: var(--color-font-muted);
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1;
   cursor: pointer;
   padding: 0;
@@ -489,6 +499,71 @@
 {
   color: #ffffff;
   background-color: rgba(255, 255, 255, 0.1);
+}
+
+.search-submit-button
+{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--color-blue-light);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.search-submit-button:hover
+{
+  background-color: var(--color-blue);
+  color: #ffffff;
+  border-color: var(--color-blue);
+  box-shadow: 0 0 8px rgba(14, 165, 233, 0.4);
+}
+
+.search-submit-button.active
+{
+  background-color: var(--color-blue);
+  color: #ffffff;
+  border-color: var(--color-blue-light);
+}
+
+.song-search-status-bar
+{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 10px;
+  background-color: rgba(14, 165, 233, 0.12);
+  border-bottom: 1px solid rgba(14, 165, 233, 0.25);
+  font-size: 11px;
+  color: var(--color-blue-light);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+/* Search match character highlight styling */
+.search-match-hl,
+mark.search-match-hl
+{
+  background-color: rgba(245, 158, 11, 0.38);
+  color: #fef08a;
+  border-radius: 2px;
+  padding: 0 1px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.song-searchresult.selected .search-match-hl,
+.song-searchresult.selected mark.search-match-hl
+{
+  background-color: #fef08a;
+  color: #0f172a;
 }
 
 .song-searchresults-list

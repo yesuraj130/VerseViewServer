@@ -1,5 +1,6 @@
 // ===========================================================================
 // Presenter Console — Songs Browser & Slide Deck Presentation (Virtualized)
+// Supports Instant Tamil Phonetic Title Search & Server Content/Lyrics Search
 // ===========================================================================
 
 let songsCache = null;
@@ -11,15 +12,20 @@ let currentSongSlidesFetchId = 0;
 
 // Virtual List Constants and State
 const SONG_ITEM_HEIGHT = 42; // Fixed height in px matching .song-searchresult
-const SONG_BUFFER_COUNT = 8; // Number of buffer items above and below the viewport
+const SONG_BUFFER_COUNT = 8; // Number of buffer items above and below viewport
 let currentFilteredSongs = [];
+let currentSearchQuery = '';
+let isContentSearchMode = false;
 let virtualScrollAnimationId = null;
 let virtualLastRenderRange = { start: -1, end: -1 };
 
-// Song DOM References (Assigned inside initSongs)
+// Song DOM References
 let songListContainer = null;
 let songSearchInput = null;
 let buttonClearSongSearch = null;
+let buttonExecuteSongSearch = null;
+let songSearchStatusBar = null;
+let songSearchStatusText = null;
 let slideDeckSongs = null;
 let slideDeckContainer = null;
 let activeSongTitle = null;
@@ -39,6 +45,9 @@ async function initSongs()
   // Assign Songs DOM elements
   songSearchInput = document.getElementById('song-search-input');
   buttonClearSongSearch = document.getElementById('btn-clear-song-search');
+  buttonExecuteSongSearch = document.getElementById('btn-execute-song-search');
+  songSearchStatusBar = document.getElementById('song-search-status-bar');
+  songSearchStatusText = document.getElementById('song-search-status-text');
   songListContainer = document.getElementById('song-list-container');
   slideDeckSongs = document.getElementById('slide-deck-songs');
   slideDeckContainer = slideDeckSongs;
@@ -96,6 +105,10 @@ async function reloadSongsCache()
     if (songsFetchResultJson && songsFetchResultJson.length > 0)
     {
       songsCache = songsFetchResultJson;
+      if (!isContentSearchMode)
+      {
+        loadSongsList(currentSearchQuery, false);
+      }
     }
   }
   catch (err)
@@ -113,17 +126,52 @@ function loadSongsList(songSearchQuery, resetScroll = false)
     return;
   }
 
-  const query = (songSearchQuery !== undefined ? songSearchQuery : (songSearchInput ? songSearchInput.value : '')).trim().toLowerCase();
+  isContentSearchMode = false;
+  if (songSearchStatusBar) songSearchStatusBar.style.display = 'none';
 
-  if (query.length > 0)
+  const rawQuery = (songSearchQuery !== undefined ? songSearchQuery : (songSearchInput ? songSearchInput.value : '')).trim();
+  currentSearchQuery = rawQuery;
+
+  if (rawQuery.length > 0)
   {
+    const queryLower = rawQuery.toLowerCase();
+    const variations = window.TamilPhonetic ? window.TamilPhonetic.getPhoneticVariations(rawQuery) : [queryLower];
+
     currentFilteredSongs = songsCache.filter(song =>
     {
       const name = (song.name || '').toLowerCase();
       const title2 = (song.title2 || '').toLowerCase();
       const firstLine = (song.firstLine || '').toLowerCase();
       const tags = (song.tags || '').toLowerCase();
-      return name.includes(query) || title2.includes(query) || firstLine.includes(query) || tags.includes(query);
+
+      // Direct string match
+      if (name.includes(queryLower) || title2.includes(queryLower) || firstLine.includes(queryLower) || tags.includes(queryLower))
+      {
+        return true;
+      }
+
+      // Phonetic Tamil variations match
+      for (let i = 0; i < variations.length; i++)
+      {
+        const v = variations[i].toLowerCase();
+        if (v && (name.includes(v) || title2.includes(v) || firstLine.includes(v) || tags.includes(v)))
+        {
+          return true;
+        }
+      }
+
+      return false;
+    });
+
+    // Score & sort results so exact/closer matches appear at the top
+    currentFilteredSongs.sort((a, b) =>
+    {
+      const aName = (a.name || '').toLowerCase();
+      const bName = (b.name || '').toLowerCase();
+      const aExact = aName.startsWith(queryLower) ? 1 : (aName.includes(queryLower) ? 2 : 3);
+      const bExact = bName.startsWith(queryLower) ? 1 : (bName.includes(queryLower) ? 2 : 3);
+      if (aExact !== bExact) return aExact - bExact;
+      return aName.localeCompare(bName);
     });
   }
   else
@@ -153,7 +201,6 @@ function updateVirtualSongList(force = false)
   }
 
   const viewportHeight = songListContainer.clientHeight;
-  // If the songs tab is hidden, clientHeight is 0; defer rendering until visible
   if (viewportHeight === 0) return;
 
   const scrollTop = songListContainer.scrollTop;
@@ -163,7 +210,6 @@ function updateVirtualSongList(force = false)
   const startIndex = Math.max(0, rawStartIndex - SONG_BUFFER_COUNT);
   const endIndex = Math.min(totalCount, rawEndIndex + SONG_BUFFER_COUNT);
 
-  // If the visible index range hasn't shifted and this isn't a forced render, skip DOM operations
   if (!force && startIndex === virtualLastRenderRange.start && endIndex === virtualLastRenderRange.end)
   {
     return;
@@ -195,15 +241,38 @@ function updateVirtualSongList(force = false)
     if (isLive) classes.push('live');
 
     const displayName = song.name || '';
-    const previewLine = song.firstLine ? escapeHtml(song.firstLine) : '&nbsp;';
+    
+    // Highlight matched characters in song title
+    const highlightedName = (currentSearchQuery && window.TamilPhonetic)
+      ? window.TamilPhonetic.highlightMatchedCharacters(displayName, currentSearchQuery)
+      : escapeHtml(displayName);
+
+    // In content search mode, show matched line with highlights, otherwise show firstLine
+    let previewLineHtml = '&nbsp;';
+    if (isContentSearchMode && song.matchedLine)
+    {
+      const highlightedMatch = (currentSearchQuery && window.TamilPhonetic)
+        ? window.TamilPhonetic.highlightMatchedCharacters(song.matchedLine, currentSearchQuery)
+        : escapeHtml(song.matchedLine);
+      const slideBadge = song.matchedSlideIndex ? `<span style="opacity: 0.75; font-size: 10px; margin-right: 4px;">[S${song.matchedSlideIndex}]</span>` : '';
+      previewLineHtml = `${slideBadge}${highlightedMatch}`;
+    }
+    else if (song.firstLine)
+    {
+      previewLineHtml = (currentSearchQuery && window.TamilPhonetic)
+        ? window.TamilPhonetic.highlightMatchedCharacters(song.firstLine, currentSearchQuery)
+        : escapeHtml(song.firstLine);
+    }
+
+    const titleAttr = escapeHtml(song.matchedLine || song.firstLine || song.name || '');
 
     html += `
-      <div class="${classes.join(' ')}" data-id="${song.id}">
+      <div class="${classes.join(' ')}" data-id="${song.id}" data-matched-slide="${song.matchedSlideIndex || 1}">
         <div class="song-searchresult-name" style="font-family: ${songFontFamily};">
-          ${escapeHtml(displayName)}
+          ${highlightedName}
         </div>
-        <div class="song-searchresult-previewfirstline" style="font-family: ${songFontFamily};" title="${escapeHtml(song.firstLine || '')}">
-          ${previewLine}
+        <div class="song-searchresult-previewfirstline" style="font-family: ${songFontFamily};" title="${titleAttr}">
+          ${previewLineHtml}
         </div>
       </div>
     `;
@@ -220,7 +289,6 @@ function initVirtualSongListEvents()
 {
   if (!songListContainer) return;
 
-  // 1. Smooth, throttled scroll listener utilizing requestAnimationFrame
   songListContainer.addEventListener('scroll', () =>
   {
     if (virtualScrollAnimationId) cancelAnimationFrame(virtualScrollAnimationId);
@@ -230,24 +298,32 @@ function initVirtualSongListEvents()
     });
   }, { passive: true });
 
-  // 2. High-performance event delegation for clicking song rows
   songListContainer.addEventListener('click', async (event) =>
   {
     const item = event.target.closest('.song-searchresult');
     if (!item) return;
 
     const targetSongId = Number(item.getAttribute('data-id'));
-    if (!targetSongId || selectedSongId === targetSongId) return;
+    const matchedSlide = Number(item.getAttribute('data-matched-slide')) || 1;
+    if (!targetSongId) return;
 
     selectSong(targetSongId, false);
     const isLoaded = await loadSongSlides();
     if (isLoaded && slideDeckSongs)
     {
-      selectSongSlide(0);
+      // If user clicked a content search result with a matched slide index, jump to it
+      if (isContentSearchMode && matchedSlide > 1)
+      {
+        selectSongSlide(matchedSlide);
+        scrollToIndexInList(slideDeckSongs, matchedSlide - 1);
+      }
+      else
+      {
+        selectSongSlide(0);
+      }
     }
   });
 
-  // 3. ResizeObserver adapts the virtual buffer immediately when splitter or window resizes
   if (window.ResizeObserver)
   {
     const songListResizeObserver = new ResizeObserver(() =>
@@ -303,7 +379,6 @@ async function fetchAndLoadSongSlides(targetSongId)
   {
     const songFetchResult = await fetch(`/api/songs/${localSongId}`);
 
-    // Guard against race conditions if user clicked another song before response returned
     if (localFetchId !== currentSongSlidesFetchId) return false;
 
     if (!songFetchResult.ok)
@@ -316,7 +391,6 @@ async function fetchAndLoadSongSlides(targetSongId)
     const song = await songFetchResult.json();
     if (song && song.slides && song.slides.length > 0)
     {
-      // Add to cache with bounded LRU eviction
       if (songSlidesTextCache.size >= maxSongSlidesTextCache)
       {
         const oldestKey = songSlidesTextCache.keys().next().value;
@@ -389,7 +463,14 @@ function renderSongSlides(song)
     const lines = slide.lines;
     const linesHtml = lines.map(line => {
       const trimmed = line ? line.trim() : '';
-      return trimmed ? `<div>${escapeHtml(line)}</div>` : `<div class="slide-line-gap">&nbsp;</div>`;
+      if (!trimmed) return `<div class="slide-line-gap">&nbsp;</div>`;
+      
+      // Highlight matched search characters on slides if in content search mode or query active
+      const highlightedLine = (currentSearchQuery && window.TamilPhonetic)
+        ? window.TamilPhonetic.highlightMatchedCharacters(line, currentSearchQuery)
+        : escapeHtml(line);
+
+      return `<div>${highlightedLine}</div>`;
     }).join('');
 
     card.innerHTML = `
@@ -437,6 +518,7 @@ function presentSlide(slide, slideIndexOverride)
 //#region List Scrolling and Selection Helpers
 function scrollToIndexInList(container, index)
 {
+  if (!container || !container.children) return;
   if (index === 0) container.scrollTop = 0;
   else 
   {
@@ -445,17 +527,9 @@ function scrollToIndexInList(container, index)
   }
 }
 
-function smoothScrollToIndexInList(container, index)
-{
-  const targetChild = container.children[index];
-  if (targetChild && typeof smoothScrollToElement === 'function')
-  {
-    smoothScrollToElement(container, targetChild, 200, true);
-  }
-}
-
 function setSelectedIndexInList(container, activeIndex)
 {
+  if (!container || !container.children) return;
   const items = container.children;
   for (let i = 0; i < items.length; i++)
   {
@@ -501,6 +575,90 @@ function scrollToDataItemInList(container, attributeName, attributeValue)
 }
 //#endregion
 
+//#region Server-Side Song Content Search Engine
+async function executeContentSearch()
+{
+  const query = (songSearchInput ? songSearchInput.value : '').trim();
+  if (!query)
+  {
+    loadSongsList('', true);
+    return;
+  }
+
+  currentSearchQuery = query;
+
+  if (buttonExecuteSongSearch)
+  {
+    buttonExecuteSongSearch.classList.add('active');
+  }
+
+  if (songSearchStatusBar)
+  {
+    songSearchStatusBar.style.display = 'flex';
+    if (songSearchStatusText)
+    {
+      songSearchStatusText.textContent = `Searching lyrics for "${query}"...`;
+    }
+  }
+
+  try
+  {
+    const response = await fetch(`/api/songs/search?q=${encodeURIComponent(query)}`);
+    const results = await response.json();
+
+    isContentSearchMode = true;
+    currentFilteredSongs = Array.isArray(results) ? results : [];
+
+    if (songSearchStatusBar && songSearchStatusText)
+    {
+      const count = currentFilteredSongs.length;
+      let phoneticInfo = '';
+      if (window.TamilPhonetic && !/[\u0B80-\u0BFF]/.test(query))
+      {
+        const t = window.TamilPhonetic.englishToTamil(query);
+        if (t && t !== query) phoneticInfo = ` (${t})`;
+      }
+      songSearchStatusText.textContent = `${count} ${count === 1 ? 'song' : 'songs'} matched lyrics for "${query}"${phoneticInfo}`;
+    }
+
+    if (songListContainer)
+    {
+      songListContainer.scrollTop = 0;
+    }
+
+    updateVirtualSongList(true);
+
+    // Auto-select first result if available
+    if (currentFilteredSongs.length > 0)
+    {
+      const first = currentFilteredSongs[0];
+      selectSong(first.id, false);
+      const isLoaded = await loadSongSlides();
+      if (isLoaded && first.matchedSlideIndex > 1 && slideDeckSongs)
+      {
+        selectSongSlide(first.matchedSlideIndex);
+        scrollToIndexInList(slideDeckSongs, first.matchedSlideIndex - 1);
+      }
+    }
+  }
+  catch (err)
+  {
+    console.error('Error executing song lyrics search:', err);
+    if (songSearchStatusText)
+    {
+      songSearchStatusText.textContent = `Search error: ${err.message}`;
+    }
+  }
+  finally
+  {
+    if (buttonExecuteSongSearch)
+    {
+      buttonExecuteSongSearch.classList.remove('active');
+    }
+  }
+}
+//#endregion
+
 //#region Song Search Input Events
 function initSongSearchEvents()
 {
@@ -516,6 +674,7 @@ function initSongSearchEvents()
 
   updateClearButtonVisibility();
 
+  // 1. Live Client-Side Filtering as user types (Title & Phonetic Title matching)
   songSearchInput.addEventListener('input', () =>
   {
     const query = songSearchInput.value;
@@ -523,9 +682,15 @@ function initSongSearchEvents()
     loadSongsList(query, true);
   });
 
+  // 2. Keyboard shortcuts (Enter triggers server lyrics search, Escape clears)
   songSearchInput.addEventListener('keydown', (e) =>
   {
-    if (e.key === 'Escape' && songSearchInput.value)
+    if (e.key === 'Enter')
+    {
+      e.preventDefault();
+      executeContentSearch();
+    }
+    else if (e.key === 'Escape' && songSearchInput.value)
     {
       e.preventDefault();
       songSearchInput.value = '';
@@ -534,6 +699,7 @@ function initSongSearchEvents()
     }
   });
 
+  // 3. Clear button click
   if (buttonClearSongSearch)
   {
     buttonClearSongSearch.addEventListener('click', () =>
@@ -544,5 +710,26 @@ function initSongSearchEvents()
       loadSongsList('', true);
     });
   }
+
+  // 4. Search submit button click (Server-side lyrics content search)
+  if (buttonExecuteSongSearch)
+  {
+    buttonExecuteSongSearch.addEventListener('click', (e) =>
+    {
+      e.preventDefault();
+      executeContentSearch();
+    });
+  }
 }
 //#endregion
+
+function escapeHtml(str)
+{
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
