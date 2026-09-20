@@ -1,0 +1,856 @@
+/* ===========================================================================
+   VerseView Experimental 3D Animator Projector
+   Ultra-smooth GPU-accelerated 3D typography & kinetic word staging
+   =========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@500;700;800&family=Outfit:wght@400;600;700;800;900&display=swap');
+
+:root {
+  --anim-font: 'Baloo Thambi 2', 'Outfit', 'Mukta Malar', 'Noto Sans Tamil', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --anim-bg: #030712;
+  --anim-speed: 0.6s;
+  --anim-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --anim-ease-out: cubic-bezier(0.7, 0, 0.84, 0);
+  --anim-ref-color: #fde047;
+  --anim-text-color: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+html, body {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  font-family: var(--anim-font);
+  user-select: none;
+  background-color: var(--anim-bg);
+  color: var(--anim-text-color);
+}
+
+/* Background canvas for ambient particle drift */
+#particles-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.65;
+  transition: opacity 0.5s ease;
+}
+
+/* Main 3D Staging Stage */
+.anim-stage {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  perspective: 1300px;
+  perspective-origin: 50% 50%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 4vh 5vw;
+  z-index: 10;
+  overflow: visible; /* Must remain visible so preserve-3d is NEVER flattened */
+  transform-style: preserve-3d;
+}
+
+/* 3D Camera Rig holding perspective orientation */
+.anim-camera-rig {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+/* CAD 3D Perspective Angles (SolidWorks standard views) */
+.anim-camera-rig.camera-isometric {
+  /* SolidWorks Standard Axonometric Isometric view: 24deg pitch, -32deg yaw, 2deg roll */
+  transform: rotateX(24deg) rotateY(-32deg) rotateZ(2deg);
+}
+
+.anim-camera-rig.camera-deep-profile {
+  /* High Z-Depth Profile View: 16deg pitch, -48deg yaw - maximum Z-depth visibility! */
+  transform: rotateX(16deg) rotateY(-48deg) rotateZ(3deg);
+}
+
+.anim-camera-rig.camera-cinema-tilt {
+  /* Dynamic Cinema Perspective: 16deg pitch, -18deg yaw */
+  transform: rotateX(16deg) rotateY(-18deg) rotateZ(1deg);
+}
+
+.anim-camera-rig.camera-low-angle {
+  /* Underside Chiseled Hero 3D View: -22deg pitch, 20deg yaw */
+  transform: rotateX(-22deg) rotateY(20deg) rotateZ(-2deg);
+}
+
+.anim-camera-rig.camera-top-down-cad {
+  /* Top-Down CAD Chamfer View: 38deg pitch, -30deg yaw */
+  transform: rotateX(38deg) rotateY(-30deg) rotateZ(3deg);
+}
+
+.anim-camera-rig.camera-frontal-3d {
+  /* Frontal 3D: slight 8deg tilt to give subtle depth */
+  transform: rotateX(8deg) rotateY(-6deg);
+}
+
+/* Floating breathing rig - ONLY translates in Y and Z, NEVER modifies camera rotation */
+.anim-float-rig {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transform-style: preserve-3d;
+}
+
+.anim-float-rig.floating {
+  animation: animSubtleFloat 5s ease-in-out infinite alternate;
+}
+
+@keyframes animSubtleFloat {
+  0% {
+    transform: translate3d(0, 0px, 0px);
+  }
+  100% {
+    transform: translate3d(0, -8px, 15px);
+  }
+}
+
+/* Master text container holding active and exiting slide layers */
+.anim-container {
+  --extrude-depth: 44px;
+  --slice-step: calc(var(--extrude-depth) / 25);
+  --extrude-dir-x: -0.53;
+  --extrude-dir-y: -0.35;
+  position: relative;
+  width: 100%;
+  max-width: 1750px;
+  height: auto;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  transform-style: preserve-3d;
+}
+
+/* Slide layer */
+.anim-slide-layer {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+
+.anim-slide-layer.active {
+  pointer-events: auto;
+}
+
+/* Bible Reference Badge / Header */
+.anim-ref {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0.45em;
+  padding: 0.25em 0.9em;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--anim-ref-color);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+  transform-style: preserve-3d;
+  line-height: 1.2;
+}
+
+/* Lines wrapper */
+.anim-lines {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.28em;
+  width: 100%;
+  transform-style: preserve-3d;
+}
+
+/* Individual line */
+.anim-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  row-gap: 0.15em;
+  column-gap: 0.35em;
+  width: 100%;
+  font-weight: 800;
+  line-height: 1.32;
+  transform-style: preserve-3d;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
+  -webkit-hyphens: none;
+}
+
+/* Individual word token */
+.anim-word {
+  display: inline-block;
+  transform-style: preserve-3d;
+  white-space: nowrap;
+  will-change: transform;
+  overflow: visible !important;
+}
+
+/* ===========================================================================
+   SOLIDWORKS 3D PHYSICAL EXTRUSION ARCHITECTURE
+   Continuous Solid Volumetric Mesh along (X, Y, Z) Extrusion Vector
+   =========================================================================== */
+
+.anim-char {
+  display: inline-block;
+  position: relative;
+  transform-style: preserve-3d !important;
+  vertical-align: baseline;
+  will-change: transform;
+  overflow: visible !important;
+}
+
+.anim-char-solid {
+  display: inline-block;
+  position: relative;
+  transform-style: preserve-3d !important;
+  vertical-align: baseline;
+  overflow: visible !important;
+}
+
+.anim-slice {
+  display: inline-block;
+  transform-style: preserve-3d;
+  user-select: none;
+  pointer-events: none;
+  line-height: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 800;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Front Face: in normal document flow, defining dimensions */
+.anim-slice-front {
+  position: relative;
+  display: inline-block;
+  z-index: 50;
+  transform: translate3d(0, 0, 1px);
+}
+
+/* Back Face: rear bounding slice with deep contact shadow */
+.anim-slice-back {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  transform: translate3d(
+    calc(var(--extrude-dir-x, -0.53) * var(--extrude-depth, 40px)),
+    calc(var(--extrude-dir-y, -0.35) * var(--extrude-depth, 40px)),
+    calc(-1 * var(--extrude-depth, 40px))
+  );
+}
+
+/* Intermediate 24 Physical Slices across Z Extrude Depth */
+.anim-slice-side {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+}
+
+.s-24 { transform: translate3d(calc(var(--extrude-dir-x, -0.53) * 1  * var(--slice-step)), calc(var(--extrude-dir-y, -0.35) * 1  * var(--slice-step)), calc(-1 * 1  * var(--slice-step))); }
+.s-23 { transform: translate3d(calc(var(--extrude-dir-x, -0.53) * 2  * var(--slice-step)), calc(var(--extrude-dir-y, -0.35) * 2  * var(--slice-step)), calc(-1 * 2  * var(--slice-step))); }
+.s-22 { transform: translate3d(calc(var(--extrude-dir-x, -0.53) * 3  * var(--slice-step)), calc(var(--extrude-dir-y, -0.35) * 3  * var(--slice-step)), calc(-1 * 3  * var(--slice-step))); }
+.s-21 { transform: translate3d(calc(var(--extrude-dir-x, -0.53) * 4  * var(--slice-step)), calc(var(--extrude-dir-y, -0.35) * 4  * var(--slice-step)), calc(-1 * 4  * var(--slice-step))); }
+.s-20 { transform: translate3d(calc(var(--extrude-dir-x, -0.53) * 5  * var(--slice-step)), calc(var(--extrude-dir-y, -0.35) * 5  * var(--slice-step)), calc(-1 * 5  * var(--slice-step))); }
+.s-19 { transform: translate3d(calc(var(--extrude-dir-x, -0.53) * 6  * var(--slice-step)), calc(var(--extrude-dir-y, -0.35) * 6  * var(--slice-step)), calc(-1 * 6  * var(--slice-step))); }
+.s-18 { transform: translate3d(calc(var(--extrude-dir-x, -0.53) * 7  * var(--slice-step)), calc(var(--extrude-dir-y, -0.35) * 7  * var(--slice-step)), calc(-1 * 7  * var(--slice-step))); }
+.s-17 { transform: translate3d(calc(var(--extrude-dir-x, -0.53) * 8  * var(--slice-step)), calc(var(--extrude-dir-y, -0.35) * 8  * var(--slice-step)), calc(-1 * 8  * var(--slice-step))); }
+.s-16 { transform: translate3d(calc(var(--extrude-dir-x, -0.53) * 9  * var(--slice-step)), calc(var(--extrude-dir-y, -0.35) * 9  * var(--slice-step)), calc(-1 * 9  * var(--slice-step))); }
+.s-15 { transform: translate3d(calc(var(--extrude-dir-x, -0.53) * 10 * var(--slice-step)), calc(var(--extrude-dir-y, -0.35) * 10 * var(--slice-step)), calc(-1 * 10 * var(--slice-step))); }
+.s-14 { transform: translate3d(calc(var(--extrude-dir-x, -0.53) * 11 * var(--slice-step)), calc(var(--extrude-dir-y, -0.35) * 11 * var(--slice-step)), calc(-1 * 11 * var(--slice-step))); }
+.s-13 { transform: translate3d(calc(var(--extrude-dir-x, -0.53) * 12 * var(--slice-step)), calc(var(--extrude-dir-y, -0.35) * 12 * var(--slice-step)), calc(-1 * 12 * var(--slice-step))); }
+.s-12 { transform: translate3d(calc(var(--extrude-dir-x, -0.53) * 13 * var(--slice-step)), calc(var(--extrude-dir-y, -0.35) * 13 * var(--slice-step)), calc(-1 * 13 * var(--slice-step))); }
+.s-11 { transform: translate3d(calc(var(--extrude-dir-x, -0.53) * 14 * var(--slice-step)), calc(var(--extrude-dir-y, -0.35) * 14 * var(--slice-step)), calc(-1 * 14 * var(--slice-step))); }
+.s-10 { transform: translate3d(calc(var(--extrude-dir-x, -0.53) * 15 * var(--slice-step)), calc(var(--extrude-dir-y, -0.35) * 15 * var(--slice-step)), calc(-1 * 15 * var(--slice-step))); }
+.s-9  { transform: translate3d(calc(var(--extrude-dir-x, -0.53) * 16 * var(--slice-step)), calc(var(--extrude-dir-y, -0.35) * 16 * var(--slice-step)), calc(-1 * 16 * var(--slice-step))); }
+.s-8  { transform: translate3d(calc(var(--extrude-dir-x, -0.53) * 17 * var(--slice-step)), calc(var(--extrude-dir-y, -0.35) * 17 * var(--slice-step)), calc(-1 * 17 * var(--slice-step))); }
+.s-7  { transform: translate3d(calc(var(--extrude-dir-x, -0.53) * 18 * var(--slice-step)), calc(var(--extrude-dir-y, -0.35) * 18 * var(--slice-step)), calc(-1 * 18 * var(--slice-step))); }
+.s-6  { transform: translate3d(calc(var(--extrude-dir-x, -0.53) * 19 * var(--slice-step)), calc(var(--extrude-dir-y, -0.35) * 19 * var(--slice-step)), calc(-1 * 19 * var(--slice-step))); }
+.s-5  { transform: translate3d(calc(var(--extrude-dir-x, -0.53) * 20 * var(--slice-step)), calc(var(--extrude-dir-y, -0.35) * 20 * var(--slice-step)), calc(-1 * 20 * var(--slice-step))); }
+.s-4  { transform: translate3d(calc(var(--extrude-dir-x, -0.53) * 21 * var(--slice-step)), calc(var(--extrude-dir-y, -0.35) * 21 * var(--slice-step)), calc(-1 * 21 * var(--slice-step))); }
+.s-3  { transform: translate3d(calc(var(--extrude-dir-x, -0.53) * 22 * var(--slice-step)), calc(var(--extrude-dir-y, -0.35) * 22 * var(--slice-step)), calc(-1 * 22 * var(--slice-step))); }
+.s-2  { transform: translate3d(calc(var(--extrude-dir-x, -0.53) * 23 * var(--slice-step)), calc(var(--extrude-dir-y, -0.35) * 23 * var(--slice-step)), calc(-1 * 23 * var(--slice-step))); }
+.s-1  { transform: translate3d(calc(var(--extrude-dir-x, -0.53) * 24 * var(--slice-step)), calc(var(--extrude-dir-y, -0.35) * 24 * var(--slice-step)), calc(-1 * 24 * var(--slice-step))); }
+
+/* Inline bible reference if displayed inside paragraph */
+.anim-inline-ref {
+  display: inline-block;
+  font-weight: 800;
+  color: var(--anim-ref-color);
+  opacity: 0.95;
+  margin-left: 0.35em;
+  white-space: nowrap;
+}
+
+/* ===========================================================================
+   3D THEMES (SolidWorks Extrusions, Specular Bevels, Ambient Occlusion)
+   =========================================================================== */
+
+/* 1. Cinema 3D Gold Extrusion (Solid Machined Gold Ingot) */
+.theme-gold-3d .anim-slice-front {
+  color: #fff9db;
+  -webkit-text-stroke: 1px rgba(255, 250, 220, 0.95);
+  text-shadow: 0 0 20px rgba(250, 204, 21, 0.65), 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.theme-gold-3d .anim-slice-side.s-24,
+.theme-gold-3d .anim-slice-side.s-23,
+.theme-gold-3d .anim-slice-side.s-22,
+.theme-gold-3d .anim-slice-side.s-21 {
+  color: #fef08a;
+  -webkit-text-stroke: 1px #fde047;
+}
+.theme-gold-3d .anim-slice-side.s-20,
+.theme-gold-3d .anim-slice-side.s-19,
+.theme-gold-3d .anim-slice-side.s-18,
+.theme-gold-3d .anim-slice-side.s-17 {
+  color: #fde047;
+  -webkit-text-stroke: 1px #eab308;
+}
+.theme-gold-3d .anim-slice-side.s-16,
+.theme-gold-3d .anim-slice-side.s-15,
+.theme-gold-3d .anim-slice-side.s-14,
+.theme-gold-3d .anim-slice-side.s-13 {
+  color: #eab308;
+  -webkit-text-stroke: 1px #ca8a04;
+}
+.theme-gold-3d .anim-slice-side.s-12,
+.theme-gold-3d .anim-slice-side.s-11,
+.theme-gold-3d .anim-slice-side.s-10,
+.theme-gold-3d .anim-slice-side.s-9 {
+  color: #ca8a04;
+  -webkit-text-stroke: 1px #a16207;
+}
+.theme-gold-3d .anim-slice-side.s-8,
+.theme-gold-3d .anim-slice-side.s-7,
+.theme-gold-3d .anim-slice-side.s-6,
+.theme-gold-3d .anim-slice-side.s-5 {
+  color: #a16207;
+  -webkit-text-stroke: 1px #854d0e;
+}
+.theme-gold-3d .anim-slice-side.s-4,
+.theme-gold-3d .anim-slice-side.s-3,
+.theme-gold-3d .anim-slice-side.s-2,
+.theme-gold-3d .anim-slice-side.s-1 {
+  color: #713f12;
+  -webkit-text-stroke: 1px #451a03;
+}
+.theme-gold-3d .anim-slice-back {
+  color: #381a00;
+  -webkit-text-stroke: 1px #200e00;
+  filter: drop-shadow(0 22px 34px rgba(0, 0, 0, 0.95));
+}
+.theme-gold-3d .anim-ref {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.28), rgba(161, 98, 7, 0.18));
+  border-color: rgba(250, 204, 21, 0.5);
+  color: #fef08a;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9);
+}
+
+/* 2. Stage Pure White 3D (Solid Milled Acrylic / White Marble Block) */
+.theme-stage-white-3d .anim-slice-front {
+  color: #ffffff;
+  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.95);
+  text-shadow: 0 0 25px rgba(255, 255, 255, 0.6), 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+.theme-stage-white-3d .anim-slice-side.s-24,
+.theme-stage-white-3d .anim-slice-side.s-23,
+.theme-stage-white-3d .anim-slice-side.s-22,
+.theme-stage-white-3d .anim-slice-side.s-21 {
+  color: #f8fafc;
+  -webkit-text-stroke: 1px #f1f5f9;
+}
+.theme-stage-white-3d .anim-slice-side.s-20,
+.theme-stage-white-3d .anim-slice-side.s-19,
+.theme-stage-white-3d .anim-slice-side.s-18,
+.theme-stage-white-3d .anim-slice-side.s-17 {
+  color: #e2e8f0;
+  -webkit-text-stroke: 1px #cbd5e1;
+}
+.theme-stage-white-3d .anim-slice-side.s-16,
+.theme-stage-white-3d .anim-slice-side.s-15,
+.theme-stage-white-3d .anim-slice-side.s-14,
+.theme-stage-white-3d .anim-slice-side.s-13 {
+  color: #cbd5e1;
+  -webkit-text-stroke: 1px #94a3b8;
+}
+.theme-stage-white-3d .anim-slice-side.s-12,
+.theme-stage-white-3d .anim-slice-side.s-11,
+.theme-stage-white-3d .anim-slice-side.s-10,
+.theme-stage-white-3d .anim-slice-side.s-9 {
+  color: #94a3b8;
+  -webkit-text-stroke: 1px #64748b;
+}
+.theme-stage-white-3d .anim-slice-side.s-8,
+.theme-stage-white-3d .anim-slice-side.s-7,
+.theme-stage-white-3d .anim-slice-side.s-6,
+.theme-stage-white-3d .anim-slice-side.s-5 {
+  color: #64748b;
+  -webkit-text-stroke: 1px #475569;
+}
+.theme-stage-white-3d .anim-slice-side.s-4,
+.theme-stage-white-3d .anim-slice-side.s-3,
+.theme-stage-white-3d .anim-slice-side.s-2,
+.theme-stage-white-3d .anim-slice-side.s-1 {
+  color: #334155;
+  -webkit-text-stroke: 1px #1e293b;
+}
+.theme-stage-white-3d .anim-slice-back {
+  color: #0f172a;
+  -webkit-text-stroke: 1px #020617;
+  filter: drop-shadow(0 22px 34px rgba(0, 0, 0, 0.95));
+}
+.theme-stage-white-3d .anim-ref {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #ffffff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.95);
+}
+
+/* 3. Electric Cyan Glow & Depth */
+.theme-electric-cyan .anim-slice-front {
+  color: #ecfeff;
+  -webkit-text-stroke: 1px #cffafe;
+  text-shadow: 0 0 25px rgba(34, 211, 238, 0.9), 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+.theme-electric-cyan .anim-slice-side.s-24,
+.theme-electric-cyan .anim-slice-side.s-23,
+.theme-electric-cyan .anim-slice-side.s-22,
+.theme-electric-cyan .anim-slice-side.s-21 {
+  color: #a5f3fc;
+  -webkit-text-stroke: 1px #67e8f9;
+}
+.theme-electric-cyan .anim-slice-side.s-20,
+.theme-electric-cyan .anim-slice-side.s-19,
+.theme-electric-cyan .anim-slice-side.s-18,
+.theme-electric-cyan .anim-slice-side.s-17 {
+  color: #67e8f9;
+  -webkit-text-stroke: 1px #22d3ee;
+}
+.theme-electric-cyan .anim-slice-side.s-16,
+.theme-electric-cyan .anim-slice-side.s-15,
+.theme-electric-cyan .anim-slice-side.s-14,
+.theme-electric-cyan .anim-slice-side.s-13 {
+  color: #22d3ee;
+  -webkit-text-stroke: 1px #06b6d4;
+}
+.theme-electric-cyan .anim-slice-side.s-12,
+.theme-electric-cyan .anim-slice-side.s-11,
+.theme-electric-cyan .anim-slice-side.s-10,
+.theme-electric-cyan .anim-slice-side.s-9 {
+  color: #06b6d4;
+  -webkit-text-stroke: 1px #0891b2;
+}
+.theme-electric-cyan .anim-slice-side.s-8,
+.theme-electric-cyan .anim-slice-side.s-7,
+.theme-electric-cyan .anim-slice-side.s-6,
+.theme-electric-cyan .anim-slice-side.s-5 {
+  color: #0891b2;
+  -webkit-text-stroke: 1px #0e7490;
+}
+.theme-electric-cyan .anim-slice-side.s-4,
+.theme-electric-cyan .anim-slice-side.s-3,
+.theme-electric-cyan .anim-slice-side.s-2,
+.theme-electric-cyan .anim-slice-side.s-1 {
+  color: #0e7490;
+  -webkit-text-stroke: 1px #155e75;
+}
+.theme-electric-cyan .anim-slice-back {
+  color: #083344;
+  -webkit-text-stroke: 1px #041f2a;
+  filter: drop-shadow(0 22px 34px rgba(6, 182, 212, 0.55));
+}
+.theme-electric-cyan .anim-ref {
+  background: rgba(6, 182, 212, 0.18);
+  border-color: rgba(34, 211, 238, 0.5);
+  color: #67e8f9;
+  text-shadow: 0 0 16px rgba(34, 211, 238, 0.85);
+}
+
+/* 4. Sunset Amber 3D Copper Block */
+.theme-sunset-amber .anim-slice-front {
+  color: #fffbeb;
+  -webkit-text-stroke: 1px #fef3c7;
+  text-shadow: 0 0 20px rgba(245, 158, 11, 0.7);
+}
+.theme-sunset-amber .anim-slice-side.s-24,
+.theme-sunset-amber .anim-slice-side.s-23,
+.theme-sunset-amber .anim-slice-side.s-22,
+.theme-sunset-amber .anim-slice-side.s-21 {
+  color: #fed7aa;
+  -webkit-text-stroke: 1px #fcd34d;
+}
+.theme-sunset-amber .anim-slice-side.s-20,
+.theme-sunset-amber .anim-slice-side.s-19,
+.theme-sunset-amber .anim-slice-side.s-18,
+.theme-sunset-amber .anim-slice-side.s-17 {
+  color: #fcd34d;
+  -webkit-text-stroke: 1px #f59e0b;
+}
+.theme-sunset-amber .anim-slice-side.s-16,
+.theme-sunset-amber .anim-slice-side.s-15,
+.theme-sunset-amber .anim-slice-side.s-14,
+.theme-sunset-amber .anim-slice-side.s-13 {
+  color: #f59e0b;
+  -webkit-text-stroke: 1px #d97706;
+}
+.theme-sunset-amber .anim-slice-side.s-12,
+.theme-sunset-amber .anim-slice-side.s-11,
+.theme-sunset-amber .anim-slice-side.s-10,
+.theme-sunset-amber .anim-slice-side.s-9 {
+  color: #d97706;
+  -webkit-text-stroke: 1px #b45309;
+}
+.theme-sunset-amber .anim-slice-side.s-8,
+.theme-sunset-amber .anim-slice-side.s-7,
+.theme-sunset-amber .anim-slice-side.s-6,
+.theme-sunset-amber .anim-slice-side.s-5 {
+  color: #b45309;
+  -webkit-text-stroke: 1px #92400e;
+}
+.theme-sunset-amber .anim-slice-side.s-4,
+.theme-sunset-amber .anim-slice-side.s-3,
+.theme-sunset-amber .anim-slice-side.s-2,
+.theme-sunset-amber .anim-slice-side.s-1 {
+  color: #92400e;
+  -webkit-text-stroke: 1px #78350f;
+}
+.theme-sunset-amber .anim-slice-back {
+  color: #451a03;
+  -webkit-text-stroke: 1px #260e02;
+  filter: drop-shadow(0 22px 34px rgba(0, 0, 0, 0.95));
+}
+.theme-sunset-amber .anim-ref {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: rgba(251, 191, 36, 0.55);
+  color: #fef3c7;
+}
+
+/* 5. Ruby Crimson Crystal Block */
+.theme-ruby-crimson .anim-slice-front {
+  color: #fff1f2;
+  -webkit-text-stroke: 1px #ffe4e6;
+  text-shadow: 0 0 20px rgba(244, 63, 94, 0.7);
+}
+.theme-ruby-crimson .anim-slice-side.s-24,
+.theme-ruby-crimson .anim-slice-side.s-23,
+.theme-ruby-crimson .anim-slice-side.s-22,
+.theme-ruby-crimson .anim-slice-side.s-21 {
+  color: #fecdd3;
+  -webkit-text-stroke: 1px #fda4af;
+}
+.theme-ruby-crimson .anim-slice-side.s-20,
+.theme-ruby-crimson .anim-slice-side.s-19,
+.theme-ruby-crimson .anim-slice-side.s-18,
+.theme-ruby-crimson .anim-slice-side.s-17 {
+  color: #fda4af;
+  -webkit-text-stroke: 1px #f43f5e;
+}
+.theme-ruby-crimson .anim-slice-side.s-16,
+.theme-ruby-crimson .anim-slice-side.s-15,
+.theme-ruby-crimson .anim-slice-side.s-14,
+.theme-ruby-crimson .anim-slice-side.s-13 {
+  color: #f43f5e;
+  -webkit-text-stroke: 1px #e11d48;
+}
+.theme-ruby-crimson .anim-slice-side.s-12,
+.theme-ruby-crimson .anim-slice-side.s-11,
+.theme-ruby-crimson .anim-slice-side.s-10,
+.theme-ruby-crimson .anim-slice-side.s-9 {
+  color: #e11d48;
+  -webkit-text-stroke: 1px #be123c;
+}
+.theme-ruby-crimson .anim-slice-side.s-8,
+.theme-ruby-crimson .anim-slice-side.s-7,
+.theme-ruby-crimson .anim-slice-side.s-6,
+.theme-ruby-crimson .anim-slice-side.s-5 {
+  color: #be123c;
+  -webkit-text-stroke: 1px #9f1239;
+}
+.theme-ruby-crimson .anim-slice-side.s-4,
+.theme-ruby-crimson .anim-slice-side.s-3,
+.theme-ruby-crimson .anim-slice-side.s-2,
+.theme-ruby-crimson .anim-slice-side.s-1 {
+  color: #9f1239;
+  -webkit-text-stroke: 1px #881337;
+}
+.theme-ruby-crimson .anim-slice-back {
+  color: #4c0519;
+  -webkit-text-stroke: 1px #28020d;
+  filter: drop-shadow(0 22px 34px rgba(0, 0, 0, 0.95));
+}
+.theme-ruby-crimson .anim-ref {
+  background: rgba(225, 29, 72, 0.2);
+  border-color: rgba(251, 113, 133, 0.5);
+  color: #ffe4e6;
+}
+
+/* 6. Minimal Clean Modern */
+.theme-minimal-clean .anim-slice-front {
+  color: #ffffff;
+  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.9);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+.theme-minimal-clean .anim-slice-side {
+  color: #64748b;
+  -webkit-text-stroke: 1px #475569;
+}
+.theme-minimal-clean .anim-slice-back {
+  color: #1e293b;
+  -webkit-text-stroke: 1px #0f172a;
+  filter: drop-shadow(0 16px 24px rgba(0, 0, 0, 0.85));
+}
+.theme-minimal-clean .anim-ref {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+}
+
+/* ===========================================================================
+   BACKGROUND PRESETS
+   =========================================================================== */
+body.bg-pitch-black {
+  background-color: #000000 !important;
+}
+body.bg-cosmic-navy {
+  background: radial-gradient(circle at 50% 40%, #0d162d 0%, #030712 100%) !important;
+}
+body.bg-deep-violet {
+  background: radial-gradient(circle at 50% 30%, #1e1035 0%, #05020a 100%) !important;
+}
+body.bg-transparent {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* ===========================================================================
+   ANIMATION KEYFRAMES & UTILITIES
+   (Driven primarily by JS Web Animations API for dynamic 3D randomness,
+   with CSS fallbacks)
+   =========================================================================== */
+
+/* Ambient float is handled on #anim-float-rig */
+
+/* ===========================================================================
+   DISCREET FLOATING CONTROL BAR (Auto-hides, toggle with 'H' or Hover)
+   =========================================================================== */
+.anim-toolbar {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.anim-toolbar.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-10px);
+}
+
+.anim-pill-btn {
+  background: rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 9999px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  transition: all 0.2s ease;
+}
+
+.anim-pill-btn:hover {
+  background: rgba(30, 41, 59, 0.92);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.anim-pill-btn.active {
+  background: #3b82f6;
+  border-color: #60a5fa;
+  color: #ffffff;
+}
+
+/* Dropdown settings modal / popover */
+.anim-panel {
+  position: fixed;
+  top: 58px;
+  right: 14px;
+  z-index: 1000;
+  width: 340px;
+  background: rgba(15, 23, 42, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+  padding: 18px;
+  color: #f1f5f9;
+  display: none;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.anim-panel.open {
+  display: flex;
+  animation: panelIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes panelIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.anim-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 10px;
+}
+
+.anim-panel-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #93c5fd;
+}
+
+.anim-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.anim-group-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+}
+
+.anim-select {
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #f8fafc;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.anim-select:focus {
+  border-color: #3b82f6;
+}
+
+.anim-panel-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Status indicator badge in bottom corner */
+.anim-live-badge {
+  position: fixed;
+  bottom: 14px;
+  left: 14px;
+  z-index: 100;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: opacity 0.3s;
+}
+
+.anim-live-badge.connected {
+  color: #4ade80;
+}
+
+.anim-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+
+.anim-live-badge.connected .anim-live-dot {
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+}

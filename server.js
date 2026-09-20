@@ -2083,6 +2083,13 @@ app.get(['/obs', '/obs/'], (req, res) =>
   res.sendFile(path.join(__dirname, 'public', 'obs', 'index.html'));
 });
 
+// Experimental 3D Animated Projector Display
+app.get(['/animator', '/animator/'], (req, res) =>
+{
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.sendFile(path.join(__dirname, 'public', 'animator', 'index.html'));
+});
+
 app.get(['/obs/1', '/obs1'], (req, res) =>
 {
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>VerseView - 3D Kinetic Animator Projector</title>
+  <link rel="stylesheet" href="/animator/animator.css">
+</head>
+<body class="bg-pitch-black">
+
+  <!-- Ambient star / ember particles canvas -->
+  <canvas id="particles-canvas"></canvas>
+
+  <!-- 3D Perspective Staging Viewport -->
+  <main id="anim-stage" class="anim-stage">
+    <div id="anim-camera-rig" class="anim-camera-rig camera-isometric">
+      <div id="anim-float-rig" class="anim-float-rig floating">
+        <div id="anim-container" class="anim-container theme-stage-white-3d">
+          <!-- Active animated slides are mounted dynamically here -->
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Live Connection Indicator Badge -->
+  <div id="anim-live-badge" class="anim-live-badge">
+    <span class="anim-live-dot"></span>
+    <span id="anim-live-status">Connecting...</span>
+  </div>
+
+  <!-- Discreet Floating Control Toolbar -->
+  <nav id="anim-toolbar" class="anim-toolbar">
+    <button id="btn-test-slide" class="anim-pill-btn" title="Cycle through test slides (Key: T)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+      Test Slide (T)
+    </button>
+    <button id="btn-fullscreen" class="anim-pill-btn" title="Fullscreen (Key: F)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+      Fullscreen (F)
+    </button>
+    <button id="btn-toggle-settings" class="anim-pill-btn" title="Animation Settings & Themes">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      Styles
+    </button>
+  </nav>
+
+  <!-- Settings Popover Panel -->
+  <aside id="anim-panel" class="anim-panel">
+    <div class="anim-panel-header">
+      <span class="anim-panel-title">3D Animator Studio</span>
+      <button id="btn-close-panel" class="anim-pill-btn" style="padding: 4px 8px; font-size: 11px;">✕ Close</button>
+    </div>
+
+    <!-- Entrance Animation -->
+    <div class="anim-group">
+      <label for="sel-anim-style" class="anim-group-label">Word / Char Entrance</label>
+      <select id="sel-anim-style" class="anim-select">
+        <option value="solidworks-snap-right">⚡ SolidWorks "Tak" Snap from Right (Line by Line)</option>
+        <option value="tak-tak-char">⚡ Char Staccato 3D Stamp</option>
+        <option value="fly-by">Word 3D Fly-In & Assemble</option>
+        <option value="flip-3d">3D Tumble & Flip Cascade</option>
+        <option value="kinetic-zoom">Kinetic 3D Push & Zoom</option>
+        <option value="radiance-wave">Luminous Bounce Wave</option>
+        <option value="typewriter">Fast Progressive Snap</option>
+      </select>
+    </div>
+
+    <!-- Exit Animation -->
+    <div class="anim-group">
+      <label for="sel-exit-style" class="anim-group-label">Exit & Disappear Effect</label>
+      <select id="sel-exit-style" class="anim-select">
+        <option value="solidworks-sweep-left">⚡ SolidWorks Sweep Beyond Left (Line by Line)</option>
+        <option value="reverse-char">Reverse Character Exit Opposite</option>
+        <option value="fly-camera">Fly Past Camera (3D Swoosh)</option>
+        <option value="scatter-disperse">3D Particle Scatter</option>
+        <option value="flip-out">Flip Back into Horizon</option>
+        <option value="sink-abyss">3D Sink into Abyss</option>
+        <option value="fade-down">Smooth Broadcast Descent</option>
+      </select>
+    </div>
+
+    <!-- 3D Extrusion Depth Dimension (SolidWorks Style) -->
+    <div class="anim-group">
+      <label for="sel-extrude-depth" class="anim-group-label">3D Extrusion Depth Dimension</label>
+      <select id="sel-extrude-depth" class="anim-select">
+        <option value="24">24px Depth (Solid Chiseled)</option>
+        <option value="44" selected>44px Depth (SolidWorks Standard)</option>
+        <option value="64">64px Depth (Deep CAD Block)</option>
+        <option value="88">88px Depth (Massive Monolith 3D)</option>
+      </select>
+    </div>
+
+    <!-- 3D Camera Perspective Angle -->
+    <div class="anim-group">
+      <label for="sel-camera-angle" class="anim-group-label">3D Camera Perspective Angle</label>
+      <select id="sel-camera-angle" class="anim-select">
+        <option value="isometric" selected>SolidWorks CAD Isometric (Pitch 24°, Yaw -32°)</option>
+        <option value="deep-profile">Deep Profile Angle (Pitch 16°, Yaw -48° - Maximum Z-Depth)</option>
+        <option value="cinema-tilt">Cinematic 3D Tilt (Pitch 16°, Yaw -18°)</option>
+        <option value="top-down-cad">CAD Top-Down Chamfer (Pitch 38°, Yaw -30°)</option>
+        <option value="low-angle">Low-Angle Hero 3D (Pitch -22°, Yaw 20°)</option>
+        <option value="frontal-3d">Frontal 3D (Pitch 8°, Yaw -6°)</option>
+      </select>
+    </div>
+
+    <!-- 3D Typography Material -->
+    <div class="anim-group">
+      <label for="sel-theme-3d" class="anim-group-label">3D Typography Style</label>
+      <select id="sel-theme-3d" class="anim-select">
+        <option value="stage-white-3d">Stage Pure White 3D (High Legibility)</option>
+        <option value="gold-3d">Cinema Metallic Gold 3D (Extruded Ingot)</option>
+        <option value="electric-cyan">Electric Cyan Neon 3D</option>
+        <option value="sunset-amber">Sunset Amber Copper 3D</option>
+        <option value="ruby-crimson">Ruby Crimson Crystal 3D</option>
+        <option value="minimal-clean">Clean Modern Bold</option>
+      </select>
+    </div>
+
+    <!-- Background Environment -->
+    <div class="anim-group">
+      <label for="sel-bg-mode" class="anim-group-label">Background Mode</label>
+      <select id="sel-bg-mode" class="anim-select">
+        <option value="pitch-black">Pitch Black (Projectors & LED Wall)</option>
+        <option value="cosmic-navy">Cosmic Deep Navy</option>
+        <option value="deep-violet">Deep Violet Glow</option>
+        <option value="transparent">Transparent (OBS / Alpha Key)</option>
+      </select>
+    </div>
+
+    <!-- Animation Speed -->
+    <div class="anim-group">
+      <label for="sel-speed" class="anim-group-label">Pacing / Speed</label>
+      <select id="sel-speed" class="anim-select">
+        <option value="snappy">Snappy (0.35s)</option>
+        <option value="normal" selected>Balanced (0.6s)</option>
+        <option value="dramatic">Dramatic / Slow (1.0s)</option>
+      </select>
+    </div>
+
+    <!-- Toggles -->
+    <div class="anim-panel-row">
+      <span class="anim-group-label" style="text-transform: none; font-size: 12px; color: #cbd5e1;">Ambient Star Particles</span>
+      <input type="checkbox" id="chk-particles" checked style="cursor: pointer;">
+    </div>
+
+    <div class="anim-panel-row">
+      <span class="anim-group-label" style="text-transform: none; font-size: 12px; color: #cbd5e1;">Subtle 3D Breathing Float</span>
+      <input type="checkbox" id="chk-float" checked style="cursor: pointer;">
+    </div>
+
+    <div style="font-size: 11px; color: #64748b; line-height: 1.4; margin-top: 4px;">
+      Tip: Press <strong style="color: #94a3b8;">H</strong> to hide/show controls. Press <strong style="color: #94a3b8;">T</strong> to test slides. Press <strong style="color: #94a3b8;">F</strong> for fullscreen.
+    </div>
+  </aside>
+
+  <!-- Socket.io library -->
+  <script src="/socket.io/socket.io.js"></script>
+  <!-- Main Animator Engine -->
+  <script src="/animator/animator.js"></script>
+</body>
+</html>
