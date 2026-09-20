@@ -122,6 +122,14 @@
       i++;
     }
 
+    // Harmonize Tamil compound nasal-stop clusters:
+    // 1. ங் + க (ngk) -> nk (e.g. செங்கடலை, சிங்கம், மங்களம், பொங்கல், எங்கே)
+    key = key.replace(/ngk/g, 'nk');
+    // 2. ஞ் + ச (njs) -> nj (e.g. மஞ்சள், நெஞ்சம், கொஞ்சும், தஞ்சம்)
+    key = key.replace(/njs/g, 'nj');
+    // 3. Initial இயே (iye) -> ye (e.g. இயேசு -> Yesu)
+    key = key.replace(/^iye/, 'ye');
+
     return collapseSoundKey(key);
   }
 
@@ -133,8 +141,14 @@
     s = s.replace(/th|dh/g, 't');
     s = s.replace(/sh|ch/g, 's');
     s = s.replace(/zh/g, 'l');
-    s = s.replace(/ng/g, 'ng');
+
+    // Harmonize compound nasal-stop clusters matching Tamil phonology:
+    // 1. Velar nasal: ng, ngg, ngk -> nk (e.g. Sengada, Singam, Pongal, Mangalam, Enge)
+    s = s.replace(/ngk|ngg|ng/g, 'nk');
+    // 2. Palatal nasal: njs, nch, nj -> nj (e.g. Manjal, Nenjam, Konjum, Thanjam)
+    s = s.replace(/njs|nch/g, 'nj');
     s = s.replace(/nj|gn|ny/g, 'nj');
+    // 3. Alveolar nasal: ndr -> nr (e.g. Nandri, Ondru, Endru)
     s = s.replace(/ndr/g, 'nr');
 
     s = s.replace(/[bf]/g, 'p');
@@ -156,6 +170,7 @@
     s = s.replace(/oa|oe/g, 'o');
 
     s = s.replace(/^ie|^iae|^yae/, 'ye');
+    s = s.replace(/^iye/, 'ye');
 
     return collapseSoundKey(s);
   }
