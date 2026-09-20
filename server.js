@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { Server } from 'socket.io';
 import { isTamilBibleFont, baminiToUnicode } from './lib/bamini.js';
-import { matchContiguousPhoneticPhrase, matchesQueryPhonetic, tokenizeText, getSoundKey, matchWithPrecomputedKeys, matchTokenInfosWithKeys, buildTargetTokenInfos } from './lib/tamilPhonetic.js';
+import { matchContiguousPhoneticPhrase, matchesQueryPhonetic, tokenizeText, getSoundKey, matchWithPrecomputedKeys, matchTokenInfosWithKeys, buildTargetTokenInfos, compileQueryPattern } from './lib/tamilPhonetic.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1162,9 +1162,8 @@ app.get('/api/songs/search', async (req, res) =>
       res.setHeader('X-Accel-Buffering', 'no');
     }
 
-    // Precompute phonetic sound keys and lowercases for search query once
-    const qTokens = tokenizeText(q);
-    const qKeys = qTokens.map(t => getSoundKey(t)).filter(Boolean);
+    // Precompute query pattern and lowercases for search query once
+    const qPattern = compileQueryPattern(q);
     const qLower = q.toLowerCase();
 
     const matches = [];
@@ -1201,10 +1200,10 @@ app.get('/api/songs/search', async (req, res) =>
       let matchedTerm = '';
       let totalMatchesInSong = 0;
 
-      // 1. Search slides using pre-computed token sound keys
+      // 1. Search slides using pre-computed token sound keys and pattern
       for (const s of song.slides)
       {
-        const slideMatch = matchTokenInfosWithKeys(s.tokenInfos, s.tokens, s.cleanSlideLower, qKeys, qLower);
+        const slideMatch = matchTokenInfosWithKeys(s.tokenInfos, s.tokens, s.cleanSlideLower, qPattern, qLower);
         if (slideMatch.matched)
         {
           totalMatchesInSong++;
@@ -1212,12 +1211,12 @@ app.get('/api/songs/search', async (req, res) =>
           {
             songMatched = true;
             matchedSlideIndex = s.slideIndex;
-            matchedTerm = slideMatch.matchedTokens.join(' ') || q;
+            matchedTerm = (slideMatch.matchedWordTokens || slideMatch.matchedTokens).join(' ') || q;
 
             // Find specific line within this slide for preview snippet
             for (const l of s.lines)
             {
-              const lineMatch = matchTokenInfosWithKeys(l.tokenInfos, l.tokens, l.lineLower, qKeys, qLower);
+              const lineMatch = matchTokenInfosWithKeys(l.tokenInfos, l.tokens, l.lineLower, qPattern, qLower);
               if (lineMatch.matched)
               {
                 matchedLine = l.line;
@@ -1235,12 +1234,12 @@ app.get('/api/songs/search', async (req, res) =>
       // 2. Check title / alternate title / tags if no slide matched
       if (!songMatched)
       {
-        const nameMatch = matchTokenInfosWithKeys(song.nameTokenInfos, song.nameTokens, song.nameLower, qKeys, qLower);
+        const nameMatch = matchTokenInfosWithKeys(song.nameTokenInfos, song.nameTokens, song.nameLower, qPattern, qLower);
         const title2Match = song.title2Tokens.length > 0
-          ? matchTokenInfosWithKeys(song.title2TokenInfos, song.title2Tokens, song.title2Lower, qKeys, qLower)
+          ? matchTokenInfosWithKeys(song.title2TokenInfos, song.title2Tokens, song.title2Lower, qPattern, qLower)
           : { matched: false };
         const tagsMatch = song.tagsTokens.length > 0
-          ? matchTokenInfosWithKeys(song.tagsTokenInfos, song.tagsTokens, song.tagsLower, qKeys, qLower)
+          ? matchTokenInfosWithKeys(song.tagsTokenInfos, song.tagsTokens, song.tagsLower, qPattern, qLower)
           : { matched: false };
 
         if (nameMatch.matched || title2Match.matched || tagsMatch.matched)
@@ -1248,7 +1247,8 @@ app.get('/api/songs/search', async (req, res) =>
           songMatched = true;
           matchedSlideIndex = 1;
           matchedLine = song.firstLine || song.name;
-          matchedTerm = (nameMatch.matchedTokens || title2Match.matchedTokens || tagsMatch.matchedTokens || [q]).join(' ') || q;
+          const activeMatch = nameMatch.matched ? nameMatch : (title2Match.matched ? title2Match : tagsMatch);
+          matchedTerm = (activeMatch.matchedWordTokens || activeMatch.matchedTokens || [q]).join(' ') || q;
           totalMatchesInSong = 1;
         }
       }
@@ -1582,13 +1582,12 @@ app.get('/api/bible/search', (req, res) =>
       }
     }
 
-    // 2. Phonetic & Substring Verse Search
-    const qTokens = tokenizeText(q);
-    const qKeys = qTokens.map(t => getSoundKey(t)).filter(Boolean);
+    // 2. Phonetic & Substring Verse Search with wildcard and gap support
+    const qPattern = compileQueryPattern(q);
 
     for (const v of verses)
     {
-      const match = matchTokenInfosWithKeys(v.tokenInfos, v.tokens, v.wordLower, qKeys, qLower);
+      const match = matchTokenInfosWithKeys(v.tokenInfos, v.tokens, v.wordLower, qPattern, qLower);
       if (match.matched)
       {
         results.push({
@@ -1601,7 +1600,8 @@ app.get('/api/bible/search', (req, res) =>
           versionId: v.versionId,
           reference: `${v.bookName} ${v.chNum}:${v.verseNum}`,
           matchedTokens: match.matchedTokens,
-          matchedTerm: match.matchedTokens.join(' ') || q
+          matchedWordTokens: match.matchedWordTokens,
+          matchedTerm: (match.matchedWordTokens || match.matchedTokens).join(' ') || q
         });
 
         if (results.length >= limit) break;

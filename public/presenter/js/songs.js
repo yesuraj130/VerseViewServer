@@ -153,25 +153,27 @@ function loadSongsList(songSearchQuery, resetScroll = false)
   if (rawQuery.length > 0)
   {
     const queryLower = rawQuery.toLowerCase();
-    const qTokens = window.TamilPhonetic ? window.TamilPhonetic.tokenizeText(rawQuery) : [];
-    const qKeys = qTokens.map(t => window.TamilPhonetic.getSoundKey(t)).filter(Boolean);
+    const qPattern = window.TamilPhonetic ? window.TamilPhonetic.compileQueryPattern(rawQuery) : null;
 
     currentFilteredSongs = songsCache.filter(song =>
     {
       const name = song.name || '';
       const title2 = song.title2 || '';
 
-      // Direct substring match first (fastest check)
-      if (name.toLowerCase().includes(queryLower) || (title2 && title2.toLowerCase().includes(queryLower)))
+      // Direct substring match first (fastest check when not using wildcard query)
+      if (!rawQuery.includes('*'))
       {
-        return true;
+        if (name.toLowerCase().includes(queryLower) || (title2 && title2.toLowerCase().includes(queryLower)))
+        {
+          return true;
+        }
       }
 
-      // Phonetic contiguous match on song titles
-      if (window.TamilPhonetic && qKeys.length > 0)
+      // Phonetic pattern and wildcard match on song titles
+      if (window.TamilPhonetic && qPattern && qPattern.wordItems.length > 0)
       {
-        if (window.TamilPhonetic.matchWithPrecomputedKeys(name, qKeys, rawQuery).matched ||
-            (title2 && window.TamilPhonetic.matchWithPrecomputedKeys(title2, qKeys, rawQuery).matched))
+        if (window.TamilPhonetic.matchWithPrecomputedKeys(name, qPattern, rawQuery).matched ||
+            (title2 && window.TamilPhonetic.matchWithPrecomputedKeys(title2, qPattern, rawQuery).matched))
         {
           return true;
         }

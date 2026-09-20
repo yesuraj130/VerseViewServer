@@ -68,7 +68,7 @@
     const clean = text.replace(/<[^>]*>/g, ' ');
     const normalized = clean
       .replace(/[0-9]+[\.\)\-:]*/g, ' ')
-      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()—–"'\?\[\]\\|<>+@•]/g, ' ')
+      .replace(/[.,\/#!$%\^&;:{}=\-_`~()—–"'\?\[\]\\|<>+@•]/g, ' ')
       .trim();
     if (!normalized) return [];
     return normalized.split(/\s+/).filter(Boolean);
@@ -189,7 +189,7 @@
 
   function getSoundKey(word) {
     if (!word || typeof word !== 'string') return '';
-    const raw = word.trim().toLowerCase();
+    const raw = word.trim().toLowerCase().replace(/\*/g, '');
     if (!raw) return '';
 
     if (/[\u0B80-\u0BFF]/.test(raw)) {
@@ -232,36 +232,178 @@
     return infos;
   }
 
-  function matchWithPrecomputedKeys(targetText, qKeys, rawQuery) {
-    if (!targetText || typeof targetText !== 'string' || !targetText.trim()) {
-      return { matched: false, matchedTokens: [], matchStartIndex: -1 };
+  function compileQueryPattern(rawQuery) {
+    if (!rawQuery || typeof rawQuery !== 'string' || !rawQuery.trim()) {
+      return {
+        isPattern: true,
+        items: [],
+        wordItems: [],
+        hasWildcard: false,
+        qKeys: [],
+        length: 0
+      };
     }
-    if (!qKeys || qKeys.length === 0) {
-      return { matched: true, matchedTokens: [], matchStartIndex: 0 };
+
+    const rawTokens = tokenizeText(rawQuery);
+    const items = [];
+    let lastWasGap = false;
+
+    for (let idx = 0; idx < rawTokens.length; idx++) {
+      const token = rawTokens[idx];
+      const isLast = (idx === rawTokens.length - 1);
+
+      // Standalone asterisk(s) represent a gap of zero or more intervening words
+      if (/^\*+$/.test(token)) {
+        if (!lastWasGap && items.length > 0) {
+          items.push({ type: 'gap' });
+          lastWasGap = true;
+        }
+        continue;
+      }
+
+      const hasLeadingWildcard = token.startsWith('*');
+      const hasTrailingWildcard = token.endsWith('*');
+      const clean = token.replace(/\*/g, '');
+      if (!clean) continue;
+
+      const key = getSoundKey(clean);
+      if (!key) continue;
+
+      let mode = 'exact';
+      if (hasLeadingWildcard && hasTrailingWildcard) {
+        mode = 'contains';
+      } else if (hasLeadingWildcard) {
+        mode = 'suffix';
+      } else if (hasTrailingWildcard) {
+        mode = 'prefix';
+      } else if (isLast) {
+        // Incremental typing prefix match for the final word token
+        mode = 'prefix';
+      }
+
+      let internalParts = null;
+      if (!hasLeadingWildcard && !hasTrailingWildcard && token.includes('*')) {
+        const parts = token.split('*').filter(Boolean);
+        if (parts.length === 2) {
+          mode = 'internal';
+          internalParts = [getSoundKey(parts[0]), getSoundKey(parts[1])];
+        }
+      }
+
+      items.push({
+        type: 'word',
+        raw: token,
+        clean: clean,
+        key: key,
+        mode: mode,
+        internalParts: internalParts
+      });
+      lastWasGap = false;
     }
 
-    const tTokens = tokenizeText(targetText);
-    const K = qKeys.length;
+    // Remove redundant trailing gap
+    if (items.length > 0 && items[items.length - 1].type === 'gap') {
+      items.pop();
+    }
 
-    if (tTokens.length >= K) {
-      const tInfos = buildTargetTokenInfos(tTokens);
+    const wordItems = items.filter(it => it.type === 'word');
+    const hasWildcard = items.some(it =>
+      it.type === 'gap' ||
+      it.mode === 'suffix' ||
+      it.mode === 'contains' ||
+      it.mode === 'internal' ||
+      (it.raw && it.raw.includes('*'))
+    );
 
+    return {
+      isPattern: true,
+      items: items,
+      wordItems: wordItems,
+      hasWildcard: hasWildcard,
+      qKeys: wordItems.map(w => w.key),
+      length: wordItems.length
+    };
+  }
+
+  function matchesToken(T, qItem) {
+    if (!T) return false;
+    const check = (k) => {
+      if (!k) return false;
+      switch (qItem.mode) {
+        case 'prefix':
+          return k.startsWith(qItem.key);
+        case 'suffix':
+          return k.endsWith(qItem.key);
+        case 'contains':
+          return k.includes(qItem.key);
+        case 'internal':
+          return qItem.internalParts && k.startsWith(qItem.internalParts[0]) && k.endsWith(qItem.internalParts[1]);
+        case 'exact':
+        default:
+          return k === qItem.key;
+      }
+    };
+
+    return check(T.fullKey) || (T.strippedKey !== null && check(T.strippedKey));
+  }
+
+  function matchTokenInfosWithKeys(tInfos, tTokens, textLower, qKeys, rawQueryLower) {
+    let pattern = null;
+    if (qKeys && qKeys.isPattern) {
+      pattern = qKeys;
+    } else if (rawQueryLower && rawQueryLower.includes('*')) {
+      pattern = compileQueryPattern(rawQueryLower);
+    } else if (Array.isArray(qKeys)) {
+      const wordItems = qKeys.map((k, idx) => ({
+        type: 'word',
+        raw: k,
+        clean: k,
+        key: k,
+        mode: (idx === qKeys.length - 1) ? 'prefix' : 'exact'
+      }));
+      pattern = {
+        isPattern: true,
+        items: wordItems,
+        wordItems: wordItems,
+        hasWildcard: false,
+        qKeys: qKeys,
+        length: wordItems.length
+      };
+    }
+
+    if (!pattern || pattern.items.length === 0) {
+      return { matched: true, matchedTokens: [], matchedWordTokens: [], matchStartIndex: 0 };
+    }
+
+    const numWords = pattern.wordItems.length;
+    if (numWords === 0) {
+      return { matched: true, matchedTokens: [], matchedWordTokens: [], matchStartIndex: 0 };
+    }
+
+    if (!tInfos || tInfos.length < numWords) {
+      if (rawQueryLower && textLower && textLower.includes(rawQueryLower.replace(/\*/g, ''))) {
+        return { matched: true, matchedTokens: [rawQueryLower], matchedWordTokens: [rawQueryLower], matchStartIndex: 0 };
+      }
+      return { matched: false, matchedTokens: [], matchedWordTokens: [], matchStartIndex: -1 };
+    }
+
+    // Fast contiguous matching when no wildcards or gaps are present
+    if (!pattern.hasWildcard) {
+      const K = pattern.wordItems.length;
       for (let i = 0; i <= tInfos.length - K; i++) {
         let allMatched = true;
 
         for (let j = 0; j < K; j++) {
           const T = tInfos[i + j];
-          const Q = qKeys[j];
+          const Q = pattern.wordItems[j].key;
 
           if (j < K - 1) {
-            // Intermediate tokens: Strict exact match
             const tokenMatched = (T.fullKey === Q) || (T.strippedKey !== null && T.strippedKey === Q);
             if (!tokenMatched) {
               allMatched = false;
               break;
             }
           } else {
-            // Last token: Wildcard/prefix match (target token starts with query token sound-key)
             const tokenMatched = (T.fullKey && T.fullKey.startsWith(Q)) ||
                                  (T.strippedKey !== null && T.strippedKey.startsWith(Q));
             if (!tokenMatched) {
@@ -272,35 +414,97 @@
         }
 
         if (allMatched) {
+          const slice = tTokens.slice(i, i + K);
           return {
             matched: true,
-            matchedTokens: tTokens.slice(i, i + K),
+            matchedTokens: slice,
+            matchedWordTokens: slice,
             matchStartIndex: i
           };
         }
       }
+
+      if (rawQueryLower && textLower && textLower.includes(rawQueryLower)) {
+        return { matched: true, matchedTokens: [rawQueryLower], matchedWordTokens: [rawQueryLower], matchStartIndex: 0 };
+      }
+
+      return { matched: false, matchedTokens: [], matchedWordTokens: [], matchStartIndex: -1 };
     }
 
-    if (rawQuery) {
-      const qLower = rawQuery.trim().toLowerCase();
-      if (qLower && targetText.toLowerCase().includes(qLower)) {
-        return { matched: true, matchedTokens: [rawQuery.trim()], matchStartIndex: 0 };
+    // Wildcard pattern matching with gap and word wildcard support
+    const items = pattern.items;
+    for (let startIdx = 0; startIdx < tInfos.length; startIdx++) {
+      let tIdx = startIdx;
+      let matched = true;
+      const wordIndices = [];
+
+      for (let pIdx = 0; pIdx < items.length; pIdx++) {
+        const item = items[pIdx];
+        if (item.type === 'gap') continue;
+
+        const prevItem = pIdx > 0 ? items[pIdx - 1] : null;
+        if (prevItem && prevItem.type === 'gap') {
+          let found = false;
+          while (tIdx < tInfos.length) {
+            if (matchesToken(tInfos[tIdx], item)) {
+              wordIndices.push(tIdx);
+              tIdx++;
+              found = true;
+              break;
+            }
+            tIdx++;
+          }
+          if (!found) {
+            matched = false;
+            break;
+          }
+        } else {
+          if (tIdx >= tInfos.length || !matchesToken(tInfos[tIdx], item)) {
+            matched = false;
+            break;
+          }
+          wordIndices.push(tIdx);
+          tIdx++;
+        }
+      }
+
+      if (matched && wordIndices.length === numWords) {
+        const firstIdx = wordIndices[0];
+        const lastIdx = wordIndices[wordIndices.length - 1];
+        return {
+          matched: true,
+          matchedTokens: tTokens.slice(firstIdx, lastIdx + 1),
+          matchedWordTokens: wordIndices.map(idx => tTokens[idx]),
+          matchStartIndex: firstIdx
+        };
       }
     }
 
-    return { matched: false, matchedTokens: [], matchStartIndex: -1 };
+    return { matched: false, matchedTokens: [], matchedWordTokens: [], matchStartIndex: -1 };
+  }
+
+  function matchWithPrecomputedKeys(targetText, qKeysOrPattern, rawQuery) {
+    if (!targetText || typeof targetText !== 'string' || !targetText.trim()) {
+      return { matched: false, matchedTokens: [], matchedWordTokens: [], matchStartIndex: -1 };
+    }
+    if (!qKeysOrPattern) {
+      return { matched: true, matchedTokens: [], matchedWordTokens: [], matchStartIndex: 0 };
+    }
+
+    const tTokens = tokenizeText(targetText);
+    const tInfos = buildTargetTokenInfos(tTokens);
+    const textLower = targetText.toLowerCase();
+    const qLower = rawQuery ? rawQuery.trim().toLowerCase() : '';
+
+    return matchTokenInfosWithKeys(tInfos, tTokens, textLower, qKeysOrPattern, qLower);
   }
 
   function matchContiguousPhoneticPhrase(targetText, query) {
     if (!query || typeof query !== 'string' || !query.trim()) {
-      return { matched: true, matchedTokens: [], matchStartIndex: 0 };
+      return { matched: true, matchedTokens: [], matchedWordTokens: [], matchStartIndex: 0 };
     }
-    const qTokens = tokenizeText(query);
-    if (qTokens.length === 0) {
-      return { matched: true, matchedTokens: [], matchStartIndex: 0 };
-    }
-    const qKeys = qTokens.map(t => getSoundKey(t)).filter(Boolean);
-    return matchWithPrecomputedKeys(targetText, qKeys, query);
+    const pattern = compileQueryPattern(query);
+    return matchWithPrecomputedKeys(targetText, pattern, query);
   }
 
   function matchesQueryPhonetic(targetText, query) {
@@ -327,22 +531,31 @@
       return escapeHtml(rawString);
     }
 
-    if (matchRes.matchedTokens && matchRes.matchedTokens.length > 0) {
-      const tokenRegexes = matchRes.matchedTokens
+    const wordsToHighlight = (matchRes.matchedWordTokens && matchRes.matchedWordTokens.length > 0)
+      ? matchRes.matchedWordTokens
+      : matchRes.matchedTokens;
+
+    if (wordsToHighlight && wordsToHighlight.length > 0) {
+      const tokenRegexes = wordsToHighlight
         .map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
         .filter(Boolean);
 
       if (tokenRegexes.length > 0) {
-        // 1. Try matching the exact contiguous phrase of matched tokens
-        const phrasePattern = tokenRegexes.join('[^a-zA-Z\\u0B80-\\u0BFF0-9]+');
-        try {
-          const phraseRegex = new RegExp(phrasePattern, 'gi');
-          if (phraseRegex.test(rawString)) {
-            return rawString.replace(phraseRegex, (m) => `<mark class="search-match-hl">${escapeHtml(m)}</mark>`);
-          }
-        } catch (e) {}
+        // 1. If query does not use gap wildcards, try matching the contiguous phrase as a single highlight block
+        if (!query.includes('*') && matchRes.matchedTokens && matchRes.matchedTokens.length > 0) {
+          const phraseRegexes = matchRes.matchedTokens
+            .map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+            .filter(Boolean);
+          const phrasePattern = phraseRegexes.join('[^a-zA-Z\\u0B80-\\u0BFF0-9]+');
+          try {
+            const phraseRegex = new RegExp(phrasePattern, 'gi');
+            if (phraseRegex.test(rawString)) {
+              return rawString.replace(phraseRegex, (m) => `<mark class="search-match-hl">${escapeHtml(m)}</mark>`);
+            }
+          } catch (e) {}
+        }
 
-        // 2. Try matching individual tokens
+        // 2. Highlight individual matched query words
         try {
           const wordRegex = new RegExp(tokenRegexes.join('|'), 'gi');
           return rawString.replace(wordRegex, (m) => `<mark class="search-match-hl">${escapeHtml(m)}</mark>`);
@@ -363,6 +576,8 @@
   window.TamilPhonetic = {
     tokenizeText: tokenizeText,
     getSoundKey: getSoundKey,
+    compileQueryPattern: compileQueryPattern,
+    matchTokenInfosWithKeys: matchTokenInfosWithKeys,
     matchWithPrecomputedKeys: matchWithPrecomputedKeys,
     matchContiguousPhoneticPhrase: matchContiguousPhoneticPhrase,
     matchesQueryPhonetic: matchesQueryPhonetic,
