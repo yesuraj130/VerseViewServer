@@ -3,6 +3,55 @@
 // Ultra-lightweight, resilient real-time renderer for OBS Studio CEF
 // ===========================================================================
 
+// ===========================================================================
+// OBS CONFIGURATION (Easy Customization)
+// Change margins, font sizes, line heights, spacing, background color & blur here
+// ===========================================================================
+const CONFIG = {
+  // -------------------------------------------------------------------------
+  // MODE 1 & 3: FULLSCREEN OVERLAYS (1 = Transparent Centered, 3 = Black Top)
+  // -------------------------------------------------------------------------
+  fullScreen: {
+    minFontSize: 28,             // Minimum font size in pixels (e.g. 24, 28, 36)
+    maxFontSize: 140,            // Maximum font size in pixels (e.g. 110, 140, 180)
+    lineHeight: 1.35,            // Line height multiplier (e.g. 1.2, 1.35, 1.5)
+    lineGap: '0.2em',            // Spacing between lines (e.g. '0.2em' or '12px')
+    refFontSize: '1em',          // Bible reference size ('1em' = same as Bible text)
+    refMarginBottom: '0.25em',   // Space below the top Bible reference header
+    // Outer screen margins / padding:
+    paddingTop: '1.5vh',         // Top screen margin
+    paddingBottom: '1.5vh',      // Bottom screen margin
+    paddingLeft: '2vw',          // Left screen margin
+    paddingRight: '2vw'          // Right screen margin
+  },
+
+  // -------------------------------------------------------------------------
+  // MODE 2: LOWER THIRD / BOTTOM DOCK
+  // In OBS, size this source directly (30%, 50%, or 100% height as you prefer).
+  // The semi-transparent background hugs ONLY the text area and aligns to bottom.
+  // -------------------------------------------------------------------------
+  lowerThird: {
+    minFontSize: 24,             // Minimum font size in pixels
+    maxFontSize: 58,             // Maximum font size in pixels
+    lineHeight: 1.35,            // Line height multiplier
+    lineGap: '0.2em',            // Spacing between lines
+    refFontSize: '1em',          // Bible reference size ('1em' = same as Bible text)
+    // Box padding around text:
+    paddingTop: '8px',           // Padding above text inside dock
+    paddingBottom: '8px',        // Padding below text inside dock
+    paddingLeft: '16px',         // Padding left inside dock
+    paddingRight: '16px',        // Padding right inside dock
+    // Background color & transparency:
+    // Examples:
+    // 'rgba(10, 15, 29, 0.82)'  -> 82% dark navy/slate
+    // 'rgba(0, 0, 0, 0.70)'     -> 70% black
+    // 'rgba(0, 0, 0, 0.90)'     -> 90% black
+    backgroundColor: 'rgba(10, 15, 29, 0.82)',
+    backdropBlur: '12px',        // Glass blur ('0px' to turn off blur)
+    borderTop: '1px solid rgba(255, 255, 255, 0.16)', // Top border line ('none' to remove)
+  }
+};
+
 (function() {
   'use strict';
 
@@ -15,6 +64,34 @@
   // Track latest authoritative state
   let lastState = null;
   let resizeTimeout = null;
+
+  // Apply JavaScript configuration into CSS variables dynamically
+  function applyConfig() {
+    const root = document.documentElement;
+    if (mode === 1 || mode === 3) {
+      const fs = CONFIG.fullScreen;
+      root.style.setProperty('--obs-line-height', String(fs.lineHeight));
+      root.style.setProperty('--obs-line-gap', fs.lineGap);
+      root.style.setProperty('--obs-ref-font-size', fs.refFontSize);
+      root.style.setProperty('--obs-ref-margin-bottom', fs.refMarginBottom);
+      root.style.setProperty('--obs-fs-padding-top', fs.paddingTop);
+      root.style.setProperty('--obs-fs-padding-bottom', fs.paddingBottom);
+      root.style.setProperty('--obs-fs-padding-left', fs.paddingLeft);
+      root.style.setProperty('--obs-fs-padding-right', fs.paddingRight);
+    } else if (mode === 2) {
+      const lt = CONFIG.lowerThird;
+      root.style.setProperty('--obs-line-height', String(lt.lineHeight));
+      root.style.setProperty('--obs-line-gap', lt.lineGap);
+      root.style.setProperty('--obs-ref-font-size', lt.refFontSize);
+      root.style.setProperty('--obs-dock-bg', lt.backgroundColor);
+      root.style.setProperty('--obs-dock-blur', lt.backdropBlur);
+      root.style.setProperty('--obs-dock-border-top', lt.borderTop);
+      root.style.setProperty('--obs-dock-pad-top', lt.paddingTop);
+      root.style.setProperty('--obs-dock-pad-bottom', lt.paddingBottom);
+      root.style.setProperty('--obs-dock-pad-left', lt.paddingLeft);
+      root.style.setProperty('--obs-dock-pad-right', lt.paddingRight);
+    }
+  }
 
   // Connect via direct low-latency WebSocket
   const socket = (typeof io !== 'undefined') ? io({
@@ -44,7 +121,6 @@
       return state.title.trim();
     }
     if (state.reference && state.reference.trim()) {
-      // Clean off version in parentheses if desired, or keep as is
       return state.reference.trim();
     }
     if (state.verseInfo) {
@@ -55,17 +131,18 @@
   }
 
   // Auto-fit font size algorithm for Mode 1 and Mode 3 (Full Screen)
-  function autoFitFullScreen(container, content, minPx = 28, maxPx = 140) {
+  function autoFitFullScreen(container, content) {
     if (!container || !content) return;
+    const cfg = CONFIG.fullScreen;
 
     const comp = window.getComputedStyle(container);
-    const padY = (parseFloat(comp.paddingTop) || 40) + (parseFloat(comp.paddingBottom) || 40);
-    const maxH = container.clientHeight - padY - 10;
+    const padY = (parseFloat(comp.paddingTop) || 20) + (parseFloat(comp.paddingBottom) || 20);
+    const maxH = container.clientHeight - padY - 8;
     if (maxH <= 0) return;
 
-    let low = minPx;
-    let high = maxPx;
-    let best = minPx;
+    let low = cfg.minFontSize;
+    let high = cfg.maxFontSize;
+    let best = cfg.minFontSize;
 
     // Binary search for pixel-perfect font size
     while (low <= high) {
@@ -86,30 +163,42 @@
     content.style.fontSize = best + 'px';
   }
 
-  // Auto-fit for Mode 2 (Lower Third / Bottom Dock, max ~30vh)
-  function autoFitBottomDock(card, content) {
+  // Auto-fit for Mode 2 (Lower Third / Bottom Dock)
+  // Aligns to bottom with min and max font size, NO % calculation.
+  function autoFitLowerThird(card, content) {
     if (!card || !content) return;
+    const cfg = CONFIG.lowerThird;
 
-    // Reset to default CSS clamp first
-    content.style.fontSize = '';
+    const maxH = window.innerHeight - 8;
+    if (maxH <= 0) return;
 
-    // Max allowed height is ~30% of viewport height
-    const maxH = Math.min(window.innerHeight * 0.32, 340);
+    let low = cfg.minFontSize;
+    let high = cfg.maxFontSize;
+    let best = cfg.minFontSize;
 
-    // If text actually overflows the ~30% height or card width, gradually reduce font size
-    let currentSize = parseInt(window.getComputedStyle(content).fontSize, 10) || 40;
-    const minSize = 18;
+    // Binary search between minFontSize and maxFontSize
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      content.style.fontSize = mid + 'px';
 
-    while (currentSize > minSize && (content.scrollHeight > maxH || content.scrollWidth > content.clientWidth)) {
-      currentSize -= 1;
-      content.style.fontSize = currentSize + 'px';
+      // Overflow occurs if text exceeds available window height or unbroken word exceeds width
+      const isOverflow = (card.scrollHeight > maxH) || (content.scrollWidth > content.clientWidth);
+      if (!isOverflow) {
+        best = mid;
+        low = mid + 1; // Try larger font
+      } else {
+        high = mid - 1; // Try smaller font
+      }
     }
+
+    content.style.fontSize = best + 'px';
   }
 
   // Main Render Routine
   function render(state) {
     if (!state) return;
     lastState = state;
+    applyConfig();
 
     // 1. Handle Clear / Blank / None States
     if (state.status === 'clear' || state.status === 'blank' || state.type === 'none') {
@@ -143,6 +232,7 @@
       // MODE 1 & 3:
       // For song: only slide text enough.
       // For bible: reference in top line, and content in second onwards.
+      // Bible reference has same font size as bible text.
       // ---------------------------------------------------------------------
       if (state.type === 'bible') {
         const refText = getBibleRef(state);
@@ -190,7 +280,7 @@
       // MODE 2:
       // For song: slide text in bottom dock card.
       // For bible: bibleversetext (reference) in same paragraph!
-      // Vertical height varies based on content (e.g. 5-6 words shrinks height).
+      // Aligned to bottom, hugs text strictly, no % calculation.
       // ---------------------------------------------------------------------
       if (state.type === 'bible') {
         const refText = getBibleRef(state);
@@ -223,8 +313,8 @@
         contentEl.appendChild(linesWrapper);
       }
 
-      // Auto adjust font size if exceeding ~30vh
-      autoFitBottomDock(cardEl, contentEl);
+      // Auto fit font size between minFontSize and maxFontSize for lower third
+      autoFitLowerThird(cardEl, contentEl);
     }
   }
 
@@ -285,6 +375,7 @@
     }, 80);
   });
 
-  // Initial load
+  // Initial config apply & load
+  applyConfig();
   fetchState();
 })();

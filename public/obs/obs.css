@@ -25,6 +25,27 @@
   --sal: env(safe-area-inset-left, 0px);
   --sar: env(safe-area-inset-right, 0px);
   --font-obs: 'Baloo Thambi 2', 'Baloo Thambi', 'Mukta Malar', 'Noto Sans Tamil', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  /* Configurable styling defaults (overridden dynamically via obs.js CONFIG) */
+  --obs-line-height: 1.35;
+  --obs-line-gap: 0.2em;
+  --obs-ref-font-size: 1em; /* Bible reference font size same as bible text */
+  --obs-ref-margin-bottom: 0.25em;
+
+  /* Mode 1 & 3: Reduced screen margins */
+  --obs-fs-padding-top: 1.5vh;
+  --obs-fs-padding-bottom: 1.5vh;
+  --obs-fs-padding-left: 2vw;
+  --obs-fs-padding-right: 2vw;
+
+  /* Mode 2: Lower-Third dock appearance */
+  --obs-dock-bg: rgba(10, 15, 29, 0.82);
+  --obs-dock-blur: 12px;
+  --obs-dock-border-top: 1px solid rgba(255, 255, 255, 0.16);
+  --obs-dock-pad-top: 8px;
+  --obs-dock-pad-bottom: 8px;
+  --obs-dock-pad-left: 16px;
+  --obs-dock-pad-right: 16px;
 }
 
 /* Base resets for all OBS browser sources */
@@ -71,12 +92,12 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.25em;
+  gap: var(--obs-line-gap, 0.2em);
   width: 100%;
 }
 
 .obs-line {
-  line-height: 1.35;
+  line-height: var(--obs-line-height, 1.35);
   font-weight: 700;
   word-break: normal;
   overflow-wrap: normal;
@@ -108,7 +129,7 @@ body.obs-mode-1 {
   width: 100vw;
   height: 100vh;
   box-sizing: border-box;
-  padding: calc(4vh + var(--sat, 0px)) calc(5vw + var(--sar, 0px)) calc(4vh + var(--sab, 0px)) calc(5vw + var(--sal, 0px));
+  padding: calc(var(--obs-fs-padding-top, 1.5vh) + var(--sat, 0px)) calc(var(--obs-fs-padding-right, 2vw) + var(--sar, 0px)) calc(var(--obs-fs-padding-bottom, 1.5vh) + var(--sab, 0px)) calc(var(--obs-fs-padding-left, 2vw) + var(--sal, 0px));
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -127,13 +148,13 @@ body.obs-mode-1 {
 
 /* Bible Reference for Mode 1 & Mode 3 */
 .obs-bible-top-ref {
-  font-size: 0.65em;
+  font-size: var(--obs-ref-font-size, 1em); /* Same font size as Bible text */
   font-weight: 700;
   color: #ffffff; /* same white colour as bible text */
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.35em;
-  line-height: 1.2;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--obs-ref-margin-bottom, 0.25em);
+  line-height: var(--obs-line-height, 1.35);
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0, 0, 0, 1);
   word-break: normal;
   overflow-wrap: normal;
@@ -143,7 +164,7 @@ body.obs-mode-1 {
 }
 
 /* --------------------------------------------------------------------------
-   MODE 2: Semi-Transparent Bottom Dock, ~30% Max Vertical, Variable Height
+   MODE 2: Semi-Transparent Bottom Dock, Dynamic Text Hugging, No % Math
    -------------------------------------------------------------------------- */
 body.obs-mode-2 {
   background-color: transparent !important;
@@ -170,22 +191,22 @@ body.obs-mode-2 {
   pointer-events: none;
 }
 
-/* The semi-transparent background wraps strictly around the text area */
+/* The semi-transparent background wraps strictly around the active text area */
 .obs-dock-card {
   width: 100%;
   max-width: 100%;
   margin: 0;
-  height: auto; /* Vertical height varies strictly based on content */
-  max-height: 32vh; /* Expected ~30% of vertical bottom space */
-  background: rgba(10, 15, 29, 0.82); /* Semi-transparent broadcast slate */
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-radius: 0; /* Removed corner radius as requested */
+  height: auto; /* Hugs text height strictly */
+  max-height: 100%; /* Sized in OBS directly (30%, 50%, or 100%) */
+  background: var(--obs-dock-bg, rgba(10, 15, 29, 0.82));
+  backdrop-filter: blur(var(--obs-dock-blur, 12px));
+  -webkit-backdrop-filter: blur(var(--obs-dock-blur, 12px));
+  border-radius: 0;
   border: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  border-top: var(--obs-dock-border-top, 1px solid rgba(255, 255, 255, 0.16));
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.6);
   box-sizing: border-box;
-  padding: 0.8vh 2vw; /* Compact broadcast lower-third padding */
+  padding: var(--obs-dock-pad-top, 8px) var(--obs-dock-pad-right, 16px) var(--obs-dock-pad-bottom, 8px) var(--obs-dock-pad-left, 16px);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -197,7 +218,7 @@ body.obs-mode-2 {
 
 .obs-dock-content {
   width: 100%;
-  font-size: clamp(22px, 3.2vw, 44px);
+  font-size: inherit;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -210,7 +231,7 @@ body.obs-mode-2 {
   padding: 0;
   width: 100%;
   font-size: inherit;
-  line-height: 1.38;
+  line-height: var(--obs-line-height, 1.35);
   font-weight: 700;
   color: #ffffff;
   text-align: center;
@@ -226,6 +247,7 @@ body.obs-mode-2 {
 .obs-bible-inline-ref {
   display: inline;
   font-weight: 700;
+  font-size: var(--obs-ref-font-size, 1em); /* Same size as Bible text */
   color: #ffffff; /* same white colour as bible text */
   opacity: 1;
   margin-left: 0.35em;
@@ -256,7 +278,7 @@ body.obs-mode-3 {
   width: 100vw;
   height: 100vh;
   box-sizing: border-box;
-  padding: calc(5vh + var(--sat, 0px)) calc(6vw + var(--sar, 0px)) calc(5vh + var(--sab, 0px)) calc(6vw + var(--sal, 0px));
+  padding: calc(var(--obs-fs-padding-top, 1.5vh) + var(--sat, 0px)) calc(var(--obs-fs-padding-right, 2vw) + var(--sar, 0px)) calc(var(--obs-fs-padding-bottom, 1.5vh) + var(--sab, 0px)) calc(var(--obs-fs-padding-left, 2vw) + var(--sal, 0px));
   display: flex;
   flex-direction: column;
   justify-content: flex-start; /* Top align */
