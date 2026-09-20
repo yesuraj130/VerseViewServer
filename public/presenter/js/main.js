@@ -7,6 +7,10 @@ document.addEventListener('DOMContentLoaded', () =>
   initControls();
   initResizer();
   initTabNavigation();
+  if (typeof initRecents === 'function')
+  {
+    initRecents();
+  }
 
   // Load Songs and Bible catalogs concurrently in parallel
   Promise.all([

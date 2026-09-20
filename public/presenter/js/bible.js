@@ -351,7 +351,10 @@ function renderBibleTabSearchResults(results, query)
 
     verseSlide.innerHTML = `
       <span class="slide-card-badge">LIVE</span>
-      <div class="slide-card-content"><span class="verse-number">${escapeHtml(refText)}</span>${highlightedVerseText}</div>
+      <div class="slide-card-content">
+        <div class="verse-number bible-slide-reference">${escapeHtml(refText)}</div>
+        <div class="bible-slide-text">${highlightedVerseText}</div>
+      </div>
     `;
 
     verseSlide.addEventListener('click', () =>

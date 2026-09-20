@@ -138,7 +138,7 @@ function initTabNavigation()
   try
   {
     const savedTab = localStorage.getItem('presenter_active_tab');
-    if (savedTab && ['songs', 'bible', 'biblesearch'].includes(savedTab))
+    if (savedTab && ['songs', 'bible', 'biblesearch', 'recents'].includes(savedTab))
     {
       initialTab = savedTab;
     }
@@ -180,6 +180,11 @@ function switchTab(tabId)
   if (tabId === 'biblesearch' && typeof initBibleSearchTabEvents === 'function')
   {
     initBibleSearchTabEvents();
+  }
+
+  if (tabId === 'recents' && typeof onRecentsTabOpened === 'function')
+  {
+    onRecentsTabOpened();
   }
 
   try

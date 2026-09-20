@@ -107,6 +107,39 @@ catch (e)
 }
 
 // ---------------------------------------------------------------------------
+// 1b. Recents Database (data/recents.db) - Historical Projection Logging
+// ---------------------------------------------------------------------------
+const recentsDbPath = path.join(dataDir, 'recents.db');
+const recentsDb = new DatabaseSync(recentsDbPath);
+
+try
+{
+  recentsDb.exec('PRAGMA journal_mode = DELETE;');
+  recentsDb.exec(`
+    CREATE TABLE IF NOT EXISTS recents (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      item_type TEXT NOT NULL,
+      song_id INTEGER,
+      slide_index INTEGER DEFAULT 1,
+      bible_version TEXT,
+      book_num INTEGER,
+      chapter_num INTEGER,
+      verse_num INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_recents_created_at ON recents(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_recents_song ON recents(item_type, song_id, slide_index, created_at);
+    CREATE INDEX IF NOT EXISTS idx_recents_bible ON recents(item_type, bible_version, book_num, chapter_num, verse_num, created_at);
+  `);
+  // One-time startup prune of entries older than 60 days
+  recentsDb.exec("DELETE FROM recents WHERE created_at < datetime('now', '-60 days');");
+}
+catch (e)
+{
+  console.error('Error initializing recents.db:', e);
+}
+
+// ---------------------------------------------------------------------------
 // 2. Bible Versions Manager & Read-Only SQLite Database Connections
 // ---------------------------------------------------------------------------
 const bibleDbCache = new Map();
@@ -395,9 +428,73 @@ function getClientSummaries()
   return { presenters, displays, total: connectedClients.size };
 }
 
+function recordRecentProjection(state)
+{
+  if (!state || state.status !== 'live') return;
+  try
+  {
+    if (state.type === 'song' && state.songId)
+    {
+      const songId = Number(state.songId);
+      const slideIndex = Math.max(1, Number(state.slideIndex) || 1);
+
+      // 1-minute deduplication
+      const checkStmt = recentsDb.prepare(`
+        SELECT id FROM recents
+        WHERE item_type = 'song'
+          AND song_id = ?
+          AND slide_index = ?
+          AND created_at >= datetime('now', '-1 minute')
+        LIMIT 1
+      `);
+      const recent = checkStmt.get(songId, slideIndex);
+      if (!recent)
+      {
+        recentsDb.prepare(`
+          INSERT INTO recents (item_type, song_id, slide_index)
+          VALUES ('song', ?, ?)
+        `).run(songId, slideIndex);
+      }
+    }
+    else if (state.type === 'bible' && (state.verseInfo || (state.bookNum && state.chNum && state.verseNum)))
+    {
+      const vInfo = state.verseInfo || state;
+      const versionId = String(vInfo.version || vInfo.versionId || 'tamil').replace(/\.db$/i, '').trim().toLowerCase();
+      const bookNum = Number(vInfo.bookNum) || 1;
+      const chNum = Number(vInfo.chNum) || 1;
+      const verseNum = Number(vInfo.verseNum) || 1;
+
+      // 1-minute deduplication
+      const checkStmt = recentsDb.prepare(`
+        SELECT id FROM recents
+        WHERE item_type = 'bible'
+          AND bible_version = ?
+          AND book_num = ?
+          AND chapter_num = ?
+          AND verse_num = ?
+          AND created_at >= datetime('now', '-1 minute')
+        LIMIT 1
+      `);
+      const recent = checkStmt.get(versionId, bookNum, chNum, verseNum);
+      if (!recent)
+      {
+        recentsDb.prepare(`
+          INSERT INTO recents (item_type, bible_version, book_num, chapter_num, verse_num)
+          VALUES ('bible', ?, ?, ?, ?)
+        `).run(versionId, bookNum, chNum, verseNum);
+      }
+    }
+  }
+  catch (e)
+  {
+    console.error('Error recording recent projection:', e);
+  }
+}
+
 function broadcastState()
 {
   io.emit('display:update', currentState);
+  recordRecentProjection(currentState);
 }
 
 function broadcastStats()
@@ -1725,6 +1822,228 @@ app.get('/api/clients', (req, res) =>
   }
   catch (err)
   {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 6b. Recents API (Collapsible Date Grouped History, ~100 count batching)
+// ---------------------------------------------------------------------------
+function enrichRecentItem(row)
+{
+  if (row.item_type === 'song')
+  {
+    const songId = Number(row.song_id);
+    const slideIndex = Math.max(1, Number(row.slide_index) || 1);
+    let title = 'Song #' + songId;
+    let title2 = '';
+    let cat = 'Song';
+    let font = '';
+    let font2 = '';
+    let totalSlides = 1;
+    let snippet = '';
+
+    try
+    {
+      const songRow = getSongById(songId);
+      if (songRow)
+      {
+        title = songRow.name || title;
+        title2 = songRow.title2 || '';
+        cat = songRow.cat || 'Song';
+        font = songRow.font || '';
+        font2 = songRow.font2 || '';
+        const needsConversion = isTamilBibleFont(songRow.font);
+        const convertedLyrics = needsConversion ? baminiToUnicode(songRow.lyrics) : songRow.lyrics;
+        const rawSlides = (convertedLyrics || '').split('<slide>');
+        const validSlides = [];
+        rawSlides.forEach((s) =>
+        {
+          const clean = s.trim();
+          if (!clean) return;
+          const lines = clean.split(/<BR>|\r?\n/i).map(l => l.replace(/<[^>]*>/g, '').trim()).filter(Boolean);
+          if (lines.length > 0) validSlides.push(lines);
+        });
+        totalSlides = validSlides.length || 1;
+        const targetLines = validSlides[slideIndex - 1] || [];
+        snippet = targetLines.join('\n');
+      }
+    }
+    catch (e) {}
+
+    return {
+      id: row.id,
+      item_type: 'song',
+      song_id: songId,
+      slide_index: slideIndex,
+      total_slides: totalSlides,
+      title: title,
+      title2: title2,
+      category: cat,
+      font: font,
+      font2: font2,
+      snippet: snippet,
+      created_at: row.created_at,
+      time_str: row.time_str
+    };
+  }
+  else
+  {
+    const versionId = row.bible_version || 'tamil';
+    const bookNum = Number(row.book_num) || 1;
+    const chNum = Number(row.chapter_num) || 1;
+    const verseNum = Number(row.verse_num) || 1;
+
+    const versions = getVersionMetadata();
+    const ver = versions.find(v => v.id === versionId || v.file === versionId || v.dbFile === versionId);
+    const versionName = ver ? ver.name : versionId;
+    let bookName = `Book ${bookNum}`;
+    if (ver && ver.books && ver.books[bookNum - 1])
+    {
+      bookName = ver.books[bookNum - 1];
+    }
+
+    let snippet = '';
+    try
+    {
+      const db = getBibleDb(versionId);
+      if (db)
+      {
+        const stmt = getBibleVerseStmt(db);
+        const verseRow = stmt.get(bookNum, chNum, verseNum);
+        if (verseRow && verseRow.word) snippet = verseRow.word;
+      }
+    }
+    catch (e) {}
+
+    return {
+      id: row.id,
+      item_type: 'bible',
+      bible_version: versionId,
+      version_name: versionName,
+      book_num: bookNum,
+      chapter_num: chNum,
+      verse_num: verseNum,
+      book_name: bookName,
+      title: `${bookName} ${chNum}:${verseNum}`,
+      reference: `${bookName} ${chNum}:${verseNum}`,
+      snippet: snippet,
+      created_at: row.created_at,
+      time_str: row.time_str
+    };
+  }
+}
+
+app.get('/api/recents', (req, res) =>
+{
+  try
+  {
+    const todayRow = recentsDb.prepare("SELECT date('now', 'localtime') as today").get();
+    const todayDate = todayRow ? todayRow.today : new Date().toISOString().slice(0, 10);
+
+    let selectedDates = [];
+
+    if (!req.query.before_date)
+    {
+      // Initial load: Same day (Today) and any previous day that has entries (full day, not limited by count)
+      const allDatesStmt = recentsDb.prepare(`
+        SELECT DISTINCT date(created_at, 'localtime') as d
+        FROM recents
+        ORDER BY d DESC
+      `);
+      const allDates = allDatesStmt.all().map(r => r.d);
+
+      if (allDates.includes(todayDate))
+      {
+        selectedDates.push(todayDate);
+        const prevDate = allDates.find(d => d < todayDate);
+        if (prevDate)
+        {
+          selectedDates.push(prevDate);
+        }
+      }
+      else
+      {
+        // Today has no entries yet; take the most recent day with entries
+        if (allDates.length > 0)
+        {
+          selectedDates.push(allDates[0]);
+        }
+      }
+    }
+    else
+    {
+      // Load more: accumulate full days before before_date until item count reaches ~100
+      const beforeDate = String(req.query.before_date).trim();
+      const prevDatesStmt = recentsDb.prepare(`
+        SELECT DISTINCT date(created_at, 'localtime') as d
+        FROM recents
+        WHERE date(created_at, 'localtime') < ?
+        ORDER BY d DESC
+      `);
+      const availableDates = prevDatesStmt.all(beforeDate).map(r => r.d);
+
+      let accumulatedCount = 0;
+      const countStmt = recentsDb.prepare("SELECT COUNT(*) as c FROM recents WHERE date(created_at, 'localtime') = ?");
+
+      for (const d of availableDates)
+      {
+        selectedDates.push(d);
+        const countRow = countStmt.get(d);
+        accumulatedCount += (countRow ? countRow.c : 0);
+        if (accumulatedCount >= 90)
+        {
+          break; // Stop after completing this full day
+        }
+      }
+    }
+
+    const days = [];
+    const getItemsStmt = recentsDb.prepare(`
+      SELECT id, item_type, song_id, slide_index, bible_version, book_num, chapter_num, verse_num, created_at,
+             time(created_at, 'localtime') as time_str
+      FROM recents
+      WHERE date(created_at, 'localtime') = ?
+      ORDER BY id DESC
+    `);
+
+    for (const dateStr of selectedDates)
+    {
+      const rows = getItemsStmt.all(dateStr);
+      const items = rows.map(r => enrichRecentItem(r));
+      days.push({
+        date: dateStr,
+        isToday: (dateStr === todayDate),
+        items: items
+      });
+    }
+
+    let hasMore = false;
+    let nextBeforeDate = null;
+    if (selectedDates.length > 0)
+    {
+      const oldestDateInBatch = selectedDates[selectedDates.length - 1];
+      const checkOlder = recentsDb.prepare(`
+        SELECT 1 FROM recents WHERE date(created_at, 'localtime') < ? LIMIT 1
+      `).get(oldestDateInBatch);
+
+      if (checkOlder)
+      {
+        hasMore = true;
+        nextBeforeDate = oldestDateInBatch;
+      }
+    }
+
+    res.json({
+      days,
+      hasMore,
+      nextBeforeDate,
+      todayDate
+    });
+  }
+  catch (err)
+  {
+    console.error('Error fetching recents:', err);
     res.status(500).json({ error: err.message });
   }
 });

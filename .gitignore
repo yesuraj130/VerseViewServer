@@ -13,3 +13,9 @@ metadata.json
 # Lock files
 bun.lock
 
+# User data & databases
+data/recent.db
+data/recents.db
+data/recents.db-journal
+data/recents.db-wal
+data/recents.db-shm

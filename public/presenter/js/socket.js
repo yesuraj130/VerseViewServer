@@ -286,6 +286,11 @@ if (socket)
     {
       updateVirtualSongList(true);
     }
+
+    if (typeof handleLiveStateForRecents === 'function')
+    {
+      handleLiveStateForRecents(state);
+    }
   });
 
   socket.on('stats:update', (stats) =>
