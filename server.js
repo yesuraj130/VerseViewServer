@@ -2076,6 +2076,31 @@ app.get('/display', (req, res) =>
   res.sendFile(path.join(__dirname, 'public', 'display', 'index.html'));
 });
 
+// OBS Studio Browser Sources
+app.get(['/obs', '/obs/'], (req, res) =>
+{
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.sendFile(path.join(__dirname, 'public', 'obs', 'index.html'));
+});
+
+app.get(['/obs/1', '/obs1'], (req, res) =>
+{
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.sendFile(path.join(__dirname, 'public', 'obs', '1.html'));
+});
+
+app.get(['/obs/2', '/obs2'], (req, res) =>
+{
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.sendFile(path.join(__dirname, 'public', 'obs', '2.html'));
+});
+
+app.get(['/obs/3', '/obs3'], (req, res) =>
+{
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.sendFile(path.join(__dirname, 'public', 'obs', '3.html'));
+});
+
 // 404 for unhandled API routes
 app.all('/api/*', (req, res) =>
 {

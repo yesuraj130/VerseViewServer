@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OBS Studio Browser Sources — Verse View Server</title>
+  <link rel="stylesheet" href="/css/base.css">
+  <style>
+    body {
+      background-color: #0b1120;
+      color: #f8fafc;
+      font-family: var(--font-obs, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+      margin: 0;
+      padding: 2.5rem 1.5rem;
+      min-height: 100vh;
+      box-sizing: border-box;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .obs-hub-container {
+      width: 100%;
+      max-width: 900px;
+    }
+    .obs-header {
+      margin-bottom: 2rem;
+      border-bottom: 1px solid #1e293b;
+      padding-bottom: 1.25rem;
+    }
+    .obs-badge {
+      display: inline-block;
+      padding: 0.25rem 0.65rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      background-color: rgba(2, 132, 199, 0.2);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      margin-bottom: 0.75rem;
+    }
+    .obs-title {
+      font-size: 1.85rem;
+      font-weight: 800;
+      margin: 0 0 0.5rem 0;
+      color: #ffffff;
+    }
+    .obs-desc {
+      color: #94a3b8;
+      margin: 0;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+    .obs-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+    .obs-card {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 1.5rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .obs-card:hover {
+      border-color: #38bdf8;
+      box-shadow: 0 4px 20px rgba(2, 132, 199, 0.15);
+    }
+    .obs-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+    .obs-num-tag {
+      background: #0284c7;
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 0.8rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+    }
+    .obs-card-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin: 0;
+    }
+    .obs-card-specs {
+      color: #94a3b8;
+      font-size: 0.88rem;
+      line-height: 1.45;
+      margin: 0 0 1rem 0;
+    }
+    .obs-url-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 6px;
+      padding: 0.5rem 0.75rem;
+      font-family: monospace;
+      font-size: 0.88rem;
+      color: #38bdf8;
+      overflow-x: auto;
+    }
+    .obs-url-text {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .obs-btn {
+      background: #1e293b;
+      color: #f8fafc;
+      border: 1px solid #334155;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .obs-btn:hover {
+      background: #0284c7;
+      color: #ffffff;
+      border-color: #0284c7;
+    }
+    .obs-btn-primary {
+      background: #0284c7;
+      border-color: #0284c7;
+    }
+    .obs-btn-primary:hover {
+      background: #0369a1;
+    }
+    .obs-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+    .obs-guide {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px dashed #334155;
+      border-radius: 8px;
+      padding: 1.25rem;
+      font-size: 0.88rem;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+    .obs-guide h4 {
+      margin: 0 0 0.5rem 0;
+      color: #e2e8f0;
+      font-size: 0.95rem;
+    }
+    .obs-guide ol {
+      margin: 0;
+      padding-left: 1.25rem;
+    }
+    .obs-guide li {
+      margin-bottom: 0.35rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="obs-hub-container">
+    <div class="obs-header">
+      <span class="obs-badge">OBS Studio Integration</span>
+      <h1 class="obs-title">OBS Browser Source Overlays</h1>
+      <p class="obs-desc">Ultra-lightweight, zero-overhead browser endpoints configured for church live-streaming in OBS Studio, vMix, and Streamlabs.</p>
+    </div>
+
+    <div class="obs-grid">
+      <!-- Source 1 -->
+      <div class="obs-card">
+        <div class="obs-card-header">
+          <h2 class="obs-card-title">1. Transparent Full Page (Centered)</h2>
+          <span class="obs-num-tag">PAGE 1</span>
+        </div>
+        <p class="obs-card-specs">
+          • <strong>Background:</strong> Fully transparent (100% video pass-through)<br>
+          • <strong>Layout:</strong> Full screen, auto-fit responsive typography, centered horizontally & vertically<br>
+          • <strong>Song:</strong> Slide text only<br>
+          • <strong>Bible:</strong> Reference on top line, scripture content on second line onwards
+        </p>
+        <div class="obs-url-bar">
+          <span class="obs-url-text" id="url-1">/obs/1</span>
+        </div>
+        <div class="obs-actions">
+          <button class="obs-btn obs-btn-primary" onclick="copySourceUrl('url-1', this)">Copy OBS URL</button>
+          <a class="obs-btn" href="/obs/1" target="_blank">Open Preview ↗</a>
+        </div>
+      </div>
+
+      <!-- Source 2 -->
+      <div class="obs-card">
+        <div class="obs-card-header">
+          <h2 class="obs-card-title">2. Semi-Transparent Lower Third (Bottom Dock)</h2>
+          <span class="obs-num-tag">PAGE 2</span>
+        </div>
+        <p class="obs-card-specs">
+          • <strong>Background:</strong> Top area 100% transparent; semi-transparent background wraps strictly around the active text area<br>
+          • <strong>Layout:</strong> Vertical bottom dock, horizontally fills available space, fills up to ~30% vertical bottom space<br>
+          • <strong>Dynamic Height:</strong> Vertical height automatically reduces for short lines (e.g. 5–6 words)<br>
+          • <strong>Bible:</strong> Scripture text and reference formatted together in the same paragraph
+        </p>
+        <div class="obs-url-bar">
+          <span class="obs-url-text" id="url-2">/obs/2</span>
+        </div>
+        <div class="obs-actions">
+          <button class="obs-btn obs-btn-primary" onclick="copySourceUrl('url-2', this)">Copy OBS URL</button>
+          <a class="obs-btn" href="/obs/2" target="_blank">Open Preview ↗</a>
+        </div>
+      </div>
+
+      <!-- Source 3 -->
+      <div class="obs-card">
+        <div class="obs-card-header">
+          <h2 class="obs-card-title">3. Black Fullscreen (Top-Aligned)</h2>
+          <span class="obs-num-tag">PAGE 3</span>
+        </div>
+        <p class="obs-card-specs">
+          • <strong>Background:</strong> Solid pitch black (#000000)<br>
+          • <strong>Layout:</strong> Full screen, auto-fit responsive typography, text top-aligned<br>
+          • <strong>Song:</strong> Slide text only<br>
+          • <strong>Bible:</strong> Reference on top line, scripture content on second line onwards
+        </p>
+        <div class="obs-url-bar">
+          <span class="obs-url-text" id="url-3">/obs/3</span>
+        </div>
+        <div class="obs-actions">
+          <button class="obs-btn obs-btn-primary" onclick="copySourceUrl('url-3', this)">Copy OBS URL</button>
+          <a class="obs-btn" href="/obs/3" target="_blank">Open Preview ↗</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="obs-guide">
+      <h4>OBS Studio Quick Setup:</h4>
+      <ol>
+        <li>In OBS Studio, click <strong>+</strong> under the <strong>Sources</strong> dock and choose <strong>Browser</strong>.</li>
+        <li>Set the <strong>URL</strong> to any of the endpoints above (e.g. <code>http://&lt;your-server-ip-or-host&gt;/obs/1</code> or <code>/obs/2</code>).</li>
+        <li>Set <strong>Width</strong> to <code>1920</code> and <strong>Height</strong> to <code>1080</code> (or your stream canvas resolution).</li>
+        <li>Check <strong>"Shutdown source when not visible"</strong> and <strong>"Refresh browser when scene becomes active"</strong> if desired.</li>
+        <li>Click <strong>OK</strong>. The browser source will instantly receive real-time lyrics and scriptures with zero configuration.</li>
+      </ol>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const origin = window.location.origin;
+      document.getElementById('url-1').textContent = `${origin}/obs/1`;
+      document.getElementById('url-2').textContent = `${origin}/obs/2`;
+      document.getElementById('url-3').textContent = `${origin}/obs/3`;
+    });
+
+    function copySourceUrl(elementId, btn) {
+      const text = document.getElementById(elementId).textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const originalText = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = originalText; }, 2000);
+      });
+    }
+  </script>
+</body>
+</html>

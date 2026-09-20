@@ -1,0 +1,278 @@
+/* ==========================================================================
+   OBS Browser Source Overlay Styles (/obs/)
+   Ultra-lightweight, zero-overhead styles optimized for OBS Studio CEF
+   ========================================================================== */
+
+@font-face {
+  font-family: 'Baloo Thambi';
+  src: url('/fonts/baloo-thambi.woff2') format('woff2'), local('Baloo Thambi 2'), local('Baloo Thambi');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Baloo Thambi 2';
+  src: url('/fonts/baloo-thambi.woff2') format('woff2'), local('Baloo Thambi 2'), local('Baloo Thambi');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --font-obs: 'Baloo Thambi 2', 'Baloo Thambi', 'Mukta Malar', 'Noto Sans Tamil', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Base resets for all OBS browser sources */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  box-sizing: border-box;
+  font-family: var(--font-obs);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* High-contrast broadcast text shadow for video feeds */
+.obs-text-broadcast {
+  color: #ffffff;
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.95),
+    0 0 14px rgba(0, 0, 0, 0.85),
+    0 0 2px rgba(0, 0, 0, 1);
+  letter-spacing: -0.01em;
+}
+
+/* Visibility transitions */
+.obs-fade {
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.obs-hidden {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+.obs-visible {
+  opacity: 1 !important;
+}
+
+/* Line rendering */
+.obs-lines {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25em;
+  width: 100%;
+}
+
+.obs-line {
+  line-height: 1.35;
+  font-weight: 700;
+  word-break: normal;
+  overflow-wrap: normal;
+  word-wrap: normal;
+  hyphens: none;
+  -webkit-hyphens: none;
+  white-space: pre-wrap;
+  text-align: center;
+}
+
+.obs-line-gap {
+  min-height: 1.2em;
+}
+
+/* --------------------------------------------------------------------------
+   MODE 1: Full Page, Transparent Background, Center Horizontally & Vertically
+   -------------------------------------------------------------------------- */
+body.obs-mode-1 {
+  background-color: transparent !important;
+  background: transparent !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.obs-container-1 {
+  width: 100vw;
+  height: 100vh;
+  box-sizing: border-box;
+  padding: calc(4vh + var(--sat, 0px)) calc(5vw + var(--sar, 0px)) calc(4vh + var(--sab, 0px)) calc(5vw + var(--sal, 0px));
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.obs-content-1 {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  max-width: 92vw;
+  max-height: 92vh;
+  width: 100%;
+}
+
+/* Bible Reference for Mode 1 & Mode 3 */
+.obs-bible-top-ref {
+  font-size: 0.65em;
+  font-weight: 700;
+  color: #ffffff; /* same white colour as bible text */
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.35em;
+  line-height: 1.2;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0, 0, 0, 1);
+  word-break: normal;
+  overflow-wrap: normal;
+  word-wrap: normal;
+  hyphens: none;
+  -webkit-hyphens: none;
+}
+
+/* --------------------------------------------------------------------------
+   MODE 2: Semi-Transparent Bottom Dock, ~30% Max Vertical, Variable Height
+   -------------------------------------------------------------------------- */
+body.obs-mode-2 {
+  background-color: transparent !important;
+  background: transparent !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end; /* Vertical bottom dock */
+  align-items: center;
+  text-align: center;
+}
+
+.obs-dock-wrapper {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  pointer-events: none;
+}
+
+/* The semi-transparent background wraps strictly around the text area */
+.obs-dock-card {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  height: auto; /* Vertical height varies strictly based on content */
+  max-height: 32vh; /* Expected ~30% of vertical bottom space */
+  background: rgba(10, 15, 29, 0.82); /* Semi-transparent broadcast slate */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 0; /* Removed corner radius as requested */
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.6);
+  box-sizing: border-box;
+  padding: 0.8vh 2vw; /* Compact broadcast lower-third padding */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  overflow: hidden;
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.obs-dock-content {
+  width: 100%;
+  font-size: clamp(22px, 3.2vw, 44px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Bible slide for Mode 2: bibleversetext (reference) as same paragraph */
+.obs-bible-paragraph {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  font-size: inherit;
+  line-height: 1.38;
+  font-weight: 700;
+  color: #ffffff;
+  text-align: center;
+  word-break: normal;
+  overflow-wrap: normal;
+  word-wrap: normal;
+  hyphens: none;
+  -webkit-hyphens: none;
+  white-space: normal;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+}
+
+.obs-bible-inline-ref {
+  display: inline;
+  font-weight: 700;
+  color: #ffffff; /* same white colour as bible text */
+  opacity: 1;
+  margin-left: 0.35em;
+  white-space: nowrap;
+}
+
+/* Song lines inside Mode 2 dock */
+.obs-dock-song-lines {
+  width: 100%;
+  font-size: inherit;
+}
+
+/* --------------------------------------------------------------------------
+   MODE 3: Full Page, Black Background, Text Top-Aligned
+   -------------------------------------------------------------------------- */
+body.obs-mode-3 {
+  background-color: #000000 !important;
+  background: #000000 !important;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start; /* Text top align */
+  align-items: center;
+  text-align: center;
+}
+
+.obs-container-3 {
+  width: 100vw;
+  height: 100vh;
+  box-sizing: border-box;
+  padding: calc(5vh + var(--sat, 0px)) calc(6vw + var(--sar, 0px)) calc(5vh + var(--sab, 0px)) calc(6vw + var(--sal, 0px));
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start; /* Top align */
+  align-items: center;
+  text-align: center;
+}
+
+.obs-content-3 {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  text-align: center;
+  max-width: 92vw;
+  max-height: 90vh;
+  width: 100%;
+}
