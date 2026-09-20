@@ -55,16 +55,13 @@
   }
 
   // Auto-fit font size algorithm for Mode 1 and Mode 3 (Full Screen)
-  function autoFitFullScreen(container, content, minPx = 22, maxPx = 96) {
+  function autoFitFullScreen(container, content, minPx = 28, maxPx = 140) {
     if (!container || !content) return;
 
-    // Available boundary calculated from container's actual padding
     const comp = window.getComputedStyle(container);
-    const padX = (parseFloat(comp.paddingLeft) || 40) + (parseFloat(comp.paddingRight) || 40);
     const padY = (parseFloat(comp.paddingTop) || 40) + (parseFloat(comp.paddingBottom) || 40);
-    const maxW = container.clientWidth - padX - 8;
-    const maxH = container.clientHeight - padY - 8;
-    if (maxW <= 0 || maxH <= 0) return;
+    const maxH = container.clientHeight - padY - 10;
+    if (maxH <= 0) return;
 
     let low = minPx;
     let high = maxPx;
@@ -75,7 +72,9 @@
       const mid = Math.floor((low + high) / 2);
       content.style.fontSize = mid + 'px';
 
-      const isOverflow = content.scrollHeight > maxH || content.scrollWidth > maxW;
+      // Overflow occurs ONLY when text height exceeds available height
+      // or an unbroken word is wider than the content width
+      const isOverflow = (content.scrollHeight > maxH) || (content.scrollWidth > content.clientWidth);
       if (!isOverflow) {
         best = mid;
         low = mid + 1; // Try larger
@@ -96,15 +95,12 @@
 
     // Max allowed height is ~30% of viewport height
     const maxH = Math.min(window.innerHeight * 0.32, 340);
-    const comp = window.getComputedStyle(card);
-    const padX = (parseFloat(comp.paddingLeft) || 30) + (parseFloat(comp.paddingRight) || 30);
-    const maxW = card.clientWidth - padX - 8;
 
-    // If text overflows 30% height or card width, smoothly decrease font size
-    let currentSize = parseInt(window.getComputedStyle(content).fontSize, 10) || 36;
-    const minSize = 16;
+    // If text actually overflows the ~30% height or card width, gradually reduce font size
+    let currentSize = parseInt(window.getComputedStyle(content).fontSize, 10) || 40;
+    const minSize = 18;
 
-    while (currentSize > minSize && (content.scrollHeight > maxH || content.scrollWidth > maxW)) {
+    while (currentSize > minSize && (content.scrollHeight > maxH || content.scrollWidth > content.clientWidth)) {
       currentSize -= 1;
       content.style.fontSize = currentSize + 'px';
     }
