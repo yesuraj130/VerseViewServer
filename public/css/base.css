@@ -21,8 +21,14 @@
 }
 
 @font-face {
+  font-family: 'Bamini';
+  src: url('/fonts/bamini.ttf') format('truetype');
+  font-weight: 100 900; font-style: normal; font-display: swap;
+}
+
+@font-face {
   font-family: 'Tamil Bible';
-  src: local('Baloo Thambi 2'), local('Baloo Thambi'), url('/fonts/baloo-thambi.woff2') format('woff2');
+  src: url('/fonts/bamini.ttf') format('truetype'), local('Tamil Bible'), local('Bamini');
   font-weight: 100 900; font-style: normal; font-display: swap;
 }
 
@@ -34,7 +40,19 @@
 
 @font-face {
   font-family: 'Tamil-Ananthi';
-  src: url('/fonts/baloo-thambi.woff2') format('woff2'), local('Baloo Thambi 2'), local('Baloo Thambi');
+  src: url('/fonts/bamini.ttf') format('truetype'), local('Tamil-Ananthi'), local('Bamini');
+  font-weight: 100 900; font-style: normal; font-display: swap;
+}
+
+@font-face {
+  font-family: 'BAMINI-Tamil56';
+  src: url('/fonts/bamini.ttf') format('truetype'), local('BAMINI-Tamil56'), local('Bamini');
+  font-weight: 100 900; font-style: normal; font-display: swap;
+}
+
+@font-face {
+  font-family: 'BAMINI-Tamil50';
+  src: url('/fonts/bamini.ttf') format('truetype'), local('BAMINI-Tamil50'), local('Bamini');
   font-weight: 100 900; font-style: normal; font-display: swap;
 }
 

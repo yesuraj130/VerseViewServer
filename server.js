@@ -5,8 +5,11 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { Server } from 'socket.io';
-import { isTamilBibleFont, baminiToUnicode } from './lib/bamini.js';
+import { isTamilBibleFont, isKnownBaminiFont, baminiToUnicode } from './lib/bamini.js';
+import * as songsCleaner from './lib/songsCleaner.js';
 import { matchContiguousPhoneticPhrase, matchesQueryPhonetic, tokenizeText, getSoundKey, matchWithPrecomputedKeys, matchTokenInfosWithKeys, buildTargetTokenInfos, compileQueryPattern } from './public/presenter/js/tamilPhonetic.js';
+
+const isBamini = (f) => isTamilBibleFont(f) || isKnownBaminiFont(f);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -600,7 +603,7 @@ function resolveLiveState(payload)
           : [];
         while (rawLines.length > 0 && !rawLines[0]) rawLines.shift();
         while (rawLines.length > 0 && !rawLines[rawLines.length - 1]) rawLines.pop();
-        const lines = rawLines.map(l => (isTamilBibleFont(row.font) && l ? baminiToUnicode(l) : l));
+        const lines = rawLines.map(l => (isBamini(row.font) && l ? baminiToUnicode(l) : l));
 
         return {
           type: 'song',
@@ -629,7 +632,7 @@ function resolveLiveState(payload)
   const rawLines = Array.isArray(payload.lines)
     ? payload.lines
     : (payload.rawSlide ? payload.rawSlide.split('<BR>') : []);
-  const lines = rawLines.map(l => (isTamilBibleFont(payload.font) ? baminiToUnicode(l) : l));
+  const lines = rawLines.map(l => (isBamini(payload.font) ? baminiToUnicode(l) : l));
 
   return {
     ...currentState,
@@ -917,7 +920,7 @@ function extractFirstLine(lyrics, font = '')
     if (lines.length > 0)
     {
       const fullFirstSlide = lines.join(' ').replace(/\s+/g, ' ').trim();
-      return isTamilBibleFont(font) ? baminiToUnicode(fullFirstSlide) : fullFirstSlide;
+      return isBamini(font) ? baminiToUnicode(fullFirstSlide) : fullFirstSlide;
     }
   }
   return '';
@@ -944,7 +947,7 @@ const songSearchIndex = new Map();
 function indexSongRecord(r)
 {
   if (!r) return null;
-  const needsConversion = isTamilBibleFont(r.font);
+  const needsConversion = isBamini(r.font);
   const convertedLyrics = needsConversion ? baminiToUnicode(r.lyrics) : (r.lyrics || '');
   const rawSlides = convertedLyrics.split('<slide>');
   const slides = [];
@@ -1114,7 +1117,7 @@ app.get('/api/songs', (req, res) =>
     const songs = rows.map((r) =>
     {
       const slides = r.lyrics ? r.lyrics.split('<slide>').filter(s => s.trim().length > 0) : [];
-      const isConverted = isTamilBibleFont(r.font);
+      const isConverted = isBamini(r.font);
       return {
         id: r.id,
         name: r.name,
@@ -1337,7 +1340,7 @@ app.get('/api/songs/:id', (req, res) =>
       return res.status(404).json({ error: 'Song not found' });
     }
 
-    const needsConversion = isTamilBibleFont(song.font);
+    const needsConversion = isBamini(song.font);
     const convertedLyrics = needsConversion ? baminiToUnicode(song.lyrics) : song.lyrics;
 
     const rawSlides = (convertedLyrics || '').split('<slide>');
@@ -1466,6 +1469,7 @@ app.put('/api/songs/:id', (req, res) =>
       songSearchIndex.set(indexed.id, indexed);
       refreshSongsListCache();
     }
+    clearCleanerCache();
     res.json(updated);
   }
   catch (err)
@@ -1487,6 +1491,375 @@ app.delete('/api/songs/:id', (req, res) =>
   }
   catch (err)
   {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Songs Maintenance & Duplicate Remover Endpoints
+// ---------------------------------------------------------------------------
+let cleanerCache = {
+  exact: null,
+  diffTitle: null,
+  similar: null,
+  errors: null,
+  bamini: null,
+  summary: null,
+  cacheTime: 0
+};
+
+const CLEANER_CACHE_TTL = 30000; // 30 seconds
+
+function isCleanerCacheValid()
+{
+  return (Date.now() - cleanerCache.cacheTime) < CLEANER_CACHE_TTL;
+}
+
+function clearCleanerCache()
+{
+  cleanerCache = {
+    exact: null,
+    diffTitle: null,
+    similar: null,
+    errors: null,
+    bamini: null,
+    summary: null,
+    cacheTime: 0
+  };
+}
+
+// 0. High-level Summary for Cleaner Hub Badges
+app.get('/api/songs-cleaner/summary', (req, res) =>
+{
+  try
+  {
+    const forceRefresh = req.query.refresh === 'true';
+    if (!forceRefresh && isCleanerCacheValid() && cleanerCache.summary)
+    {
+      return res.json(cleanerCache.summary);
+    }
+
+    const totalSongs = smDb.prepare('SELECT COUNT(*) as count FROM sm').get()?.count || 0;
+
+    // Load or calculate exact duplicates
+    if (!cleanerCache.exact || forceRefresh)
+    {
+      cleanerCache.exact = songsCleaner.findExactDuplicates(smDb);
+    }
+
+    // Load or calculate diff title duplicates
+    if (!cleanerCache.diffTitle || forceRefresh)
+    {
+      cleanerCache.diffTitle = songsCleaner.findDifferentTitleDuplicates(smDb);
+    }
+
+    // Load or calculate Bamini status
+    if (!cleanerCache.bamini || forceRefresh)
+    {
+      cleanerCache.bamini = songsCleaner.analyzeBaminiConversion(smDb);
+    }
+
+    const summary = {
+      totalSongs,
+      exactDuplicateGroups: cleanerCache.exact.totalGroups,
+      exactDuplicateSongs: cleanerCache.exact.totalDuplicateSongs,
+      diffTitleGroups: cleanerCache.diffTitle.totalGroups,
+      diffTitleDuplicateSongs: cleanerCache.diffTitle.totalDuplicateSongs,
+      baminiTotal: cleanerCache.bamini.totalBaminiSongs,
+      baminiClean: cleanerCache.bamini.cleanCount,
+      baminiSuspicious: cleanerCache.bamini.suspiciousCount
+    };
+
+    cleanerCache.summary = summary;
+    cleanerCache.cacheTime = Date.now();
+    res.json(summary);
+  }
+  catch (err)
+  {
+    console.error('Error fetching cleaner summary:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 1. Exact Duplicate Songs (Same Title & Content)
+app.get('/api/songs-cleaner/exact-duplicates', (req, res) =>
+{
+  try
+  {
+    const forceRefresh = req.query.refresh === 'true';
+    if (!forceRefresh && isCleanerCacheValid() && cleanerCache.exact)
+    {
+      return res.json(cleanerCache.exact);
+    }
+
+    const data = songsCleaner.findExactDuplicates(smDb);
+    cleanerCache.exact = data;
+    cleanerCache.cacheTime = Date.now();
+    res.json(data);
+  }
+  catch (err)
+  {
+    console.error('Error finding exact duplicates:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 2. Duplicate Songs with Different Title (Same Content, Different Title)
+app.get('/api/songs-cleaner/diff-title-duplicates', (req, res) =>
+{
+  try
+  {
+    const forceRefresh = req.query.refresh === 'true';
+    if (!forceRefresh && isCleanerCacheValid() && cleanerCache.diffTitle)
+    {
+      return res.json(cleanerCache.diffTitle);
+    }
+
+    const data = songsCleaner.findDifferentTitleDuplicates(smDb);
+    cleanerCache.diffTitle = data;
+    cleanerCache.cacheTime = Date.now();
+    res.json(data);
+  }
+  catch (err)
+  {
+    console.error('Error finding diff-title duplicates:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3. Similar / Near-Duplicate Songs (Content More or Less Same)
+app.get('/api/songs-cleaner/similar-duplicates', (req, res) =>
+{
+  try
+  {
+    const forceRefresh = req.query.refresh === 'true';
+    const minSimilarity = Math.max(50, Math.min(98, Number(req.query.similarity) || 70));
+
+    if (!forceRefresh && isCleanerCacheValid() && cleanerCache.similar)
+    {
+      return res.json(cleanerCache.similar);
+    }
+
+    const data = songsCleaner.findSimilarDuplicates(smDb, minSimilarity);
+    cleanerCache.similar = data;
+    cleanerCache.cacheTime = Date.now();
+    res.json(data);
+  }
+  catch (err)
+  {
+    console.error('Error finding similar duplicates:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 4. Songs Error Analyse (Mixed Fonts, Typos, Language Misuse, Slide Structure)
+app.get('/api/songs-cleaner/error-analysis', (req, res) =>
+{
+  try
+  {
+    const forceRefresh = req.query.refresh === 'true';
+    if (!forceRefresh && isCleanerCacheValid() && cleanerCache.errors)
+    {
+      return res.json(cleanerCache.errors);
+    }
+
+    const data = songsCleaner.analyzeSongErrors(smDb);
+    cleanerCache.errors = data;
+    cleanerCache.cacheTime = Date.now();
+    res.json(data);
+  }
+  catch (err)
+  {
+    console.error('Error analyzing song errors:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 5. Bamini to Unicode Converter Analysis (Clean vs Suspicious)
+app.get('/api/songs-cleaner/bamini-analysis', (req, res) =>
+{
+  try
+  {
+    const forceRefresh = req.query.refresh === 'true';
+    if (!forceRefresh && isCleanerCacheValid() && cleanerCache.bamini)
+    {
+      return res.json(cleanerCache.bamini);
+    }
+
+    const data = songsCleaner.analyzeBaminiConversion(smDb);
+    cleanerCache.bamini = data;
+    cleanerCache.cacheTime = Date.now();
+    res.json(data);
+  }
+  catch (err)
+  {
+    console.error('Error analyzing Bamini songs:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Mass Convert Clean Bamini Songs
+app.post('/api/songs-cleaner/convert-clean-bamini', (req, res) =>
+{
+  try
+  {
+    const targetFont = (req.body && req.body.targetFont) ? String(req.body.targetFont).trim() : 'Baloo Thambi';
+    const result = songsCleaner.massConvertCleanBamini(smDb, dataDir, songsDbFileName, targetFont);
+
+    // Rebuild in-memory search index for updated songs
+    initSongSearchIndex();
+    clearCleanerCache();
+
+    res.json(result);
+  }
+  catch (err)
+  {
+    console.error('Error mass converting clean Bamini songs:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Convert Single Song after side-by-side review
+app.post('/api/songs-cleaner/convert-single-bamini', (req, res) =>
+{
+  try
+  {
+    const songId = Number(req.body.id);
+    if (!songId || isNaN(songId))
+    {
+      return res.status(400).json({ error: 'Valid song ID required' });
+    }
+
+    const updatedLyrics = req.body.lyrics !== undefined ? String(req.body.lyrics) : null;
+    const targetFont = (req.body.targetFont) ? String(req.body.targetFont).trim() : 'Baloo Thambi';
+
+    const result = songsCleaner.convertSingleBamini(smDb, dataDir, songsDbFileName, songId, updatedLyrics, targetFont);
+
+    // Update in-memory index
+    const updated = smDb.prepare('SELECT id, name, title2, cat, font, font2, key, notes, tags, lyrics, lyrics2 FROM sm WHERE id = ?').get(songId);
+    if (updated)
+    {
+      const indexed = indexSongRecord(updated);
+      if (indexed)
+      {
+        songSearchIndex.set(indexed.id, indexed);
+      }
+    }
+    refreshSongsListCache();
+    clearCleanerCache();
+
+    res.json(result);
+  }
+  catch (err)
+  {
+    console.error('Error converting single Bamini song:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete batch of songs (Features 1, 2, 3)
+app.post('/api/songs-cleaner/delete', (req, res) =>
+{
+  try
+  {
+    const ids = req.body && req.body.ids;
+    if (!Array.isArray(ids) || ids.length === 0)
+    {
+      return res.status(400).json({ error: 'Song IDs array required' });
+    }
+
+    const result = songsCleaner.deleteSongsBatch(smDb, dataDir, songsDbFileName, ids);
+
+    for (const id of ids)
+    {
+      songSearchIndex.delete(Number(id));
+    }
+    refreshSongsListCache();
+    clearCleanerCache();
+
+    res.json(result);
+  }
+  catch (err)
+  {
+    console.error('Error deleting duplicate songs:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update single song (from Error Analysis quick-fix editor)
+app.post('/api/songs-cleaner/update-song', (req, res) =>
+{
+  try
+  {
+    const { id, name, cat, font, lyrics } = req.body;
+    const songId = Number(id);
+    if (!songId || isNaN(songId))
+    {
+      return res.status(400).json({ error: 'Valid song ID required' });
+    }
+
+    songsCleaner.silentBackupSongsDb(dataDir, songsDbFileName);
+
+    const updateFields = [];
+    const params = [];
+    if (name !== undefined) { updateFields.push('name = ?'); params.push(String(name).trim()); }
+    if (cat !== undefined) { updateFields.push('cat = ?'); params.push(String(cat).trim()); }
+    if (font !== undefined) { updateFields.push('font = ?'); params.push(String(font).trim()); }
+    if (lyrics !== undefined) { updateFields.push('lyrics = ?'); params.push(String(lyrics).trim()); }
+
+    if (updateFields.length > 0)
+    {
+      params.push(songId);
+      smDb.prepare(`UPDATE sm SET ${updateFields.join(', ')} WHERE id = ?`).run(...params);
+    }
+
+    const updated = smDb.prepare('SELECT id, name, title2, cat, font, font2, key, notes, tags, lyrics, lyrics2 FROM sm WHERE id = ?').get(songId);
+    if (updated)
+    {
+      const indexed = indexSongRecord(updated);
+      if (indexed) songSearchIndex.set(indexed.id, indexed);
+      refreshSongsListCache();
+    }
+    clearCleanerCache();
+
+    res.json({ success: true, song: updated });
+  }
+  catch (err)
+  {
+    console.error('Error updating song from cleaner:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Batch assign "Tamil Bible" font to all songs with Bamini keystroke encoding
+app.post('/api/songs-cleaner/batch-assign-tamil-bible', (req, res) =>
+{
+  try
+  {
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids : null;
+    const result = songsCleaner.batchAssignTamilBibleFont(smDb, dataDir, songsDbFileName, ids);
+
+    // Re-index updated songs in search index
+    if (result.updatedIds && result.updatedIds.length > 0)
+    {
+      for (const id of result.updatedIds)
+      {
+        const updated = smDb.prepare('SELECT id, name, title2, cat, font, font2, key, notes, tags, lyrics, lyrics2 FROM sm WHERE id = ?').get(id);
+        if (updated)
+        {
+          const indexed = indexSongRecord(updated);
+          if (indexed) songSearchIndex.set(indexed.id, indexed);
+        }
+      }
+      refreshSongsListCache();
+    }
+    clearCleanerCache();
+
+    res.json(result);
+  }
+  catch (err)
+  {
+    console.error('Error batch updating Tamil Bible font:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1853,7 +2226,7 @@ function enrichRecentItem(row)
         cat = songRow.cat || 'Song';
         font = songRow.font || '';
         font2 = songRow.font2 || '';
-        const needsConversion = isTamilBibleFont(songRow.font);
+        const needsConversion = isBamini(songRow.font);
         const convertedLyrics = needsConversion ? baminiToUnicode(songRow.lyrics) : songRow.lyrics;
         const rawSlides = (convertedLyrics || '').split('<slide>');
         const validSlides = [];
@@ -2088,6 +2461,13 @@ app.get(['/animator', '/animator/'], (req, res) =>
 {
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.sendFile(path.join(__dirname, 'public', 'animator', 'index.html'));
+});
+
+// Duplicate Songs Remover & Database Quality Suite
+app.get(['/cleaner', '/cleaner/'], (req, res) =>
+{
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.sendFile(path.join(__dirname, 'public', 'cleaner', 'index.html'));
 });
 
 app.get(['/obs/1', '/obs1'], (req, res) =>

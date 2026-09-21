@@ -15,6 +15,7 @@
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
   <link rel="stylesheet" href="/css/base.css">
   <link rel="stylesheet" href="/css/hub.css">
+  <link rel="stylesheet" href="/css/cleaner.css">
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/config.js"></script>
   <script src="/js/pwa.js"></script>
@@ -75,6 +76,44 @@
         </div>
         <div style="display: flex; gap: 12px; align-items: center;">
           <a href="/animator/" target="_blank" class="btn-primary" style="background: linear-gradient(135deg, #8b5cf6, #ec4899); flex-grow: 1;">Open 3D Animator &nearr;</a>
+        </div>
+      </div>
+
+      <!-- Duplicate Songs Remover & Database Quality Suite Card -->
+      <div class="hub-card" id="card-duplicate-cleaner" style="border-color: rgba(2, 132, 199, 0.4); background: linear-gradient(180deg, #131d31 0%, #0f172a 100%);">
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <span class="hub-card-tag" style="background: rgba(2, 132, 199, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3);">🧹 Database Quality Suite</span>
+            <span id="hub-cleaner-quick-badge" style="font-size: 11px; font-weight: 700; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 12px;">754+ Duplicates</span>
+          </div>
+          <h2 class="hub-card-title">Duplicate Songs Remover</h2>
+          <p class="hub-card-desc">Comprehensive database maintenance: Clean duplicate songs (same or different titles), detect near-duplicates, analyze mixed fonts and diacritic typos, and mass-convert Bamini songs to Unicode.</p>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0;">
+            <button type="button" class="btn-cleaner-quick-opt" data-tab="exact" style="background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 6px 10px; text-align: left; color: #cbd5e1; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+              <span>📑</span> <span>1. Duplicate Songs</span>
+            </button>
+            <button type="button" class="btn-cleaner-quick-opt" data-tab="diffTitle" style="background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 6px 10px; text-align: left; color: #cbd5e1; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+              <span>🏷️</span> <span>2. Diff Titles</span>
+            </button>
+            <button type="button" class="btn-cleaner-quick-opt" data-tab="similar" style="background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 6px 10px; text-align: left; color: #cbd5e1; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+              <span>🔍</span> <span>3. Near-Duplicates</span>
+            </button>
+            <button type="button" class="btn-cleaner-quick-opt" data-tab="errors" style="background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 6px 10px; text-align: left; color: #cbd5e1; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+              <span>⚠️</span> <span>4. Error Diagnostics</span>
+            </button>
+            <button type="button" class="btn-cleaner-quick-opt" data-tab="bamini" style="grid-column: span 2; background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 6px 10px; text-align: left; color: #cbd5e1; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+              <span>🔄</span> <span>5. Bamini &rarr; Unicode (Mass Convert &amp; Review)</span>
+            </button>
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center; margin-top: 6px;">
+          <button type="button" id="btn-open-cleaner-modal" class="btn-primary" style="background: linear-gradient(135deg, #0284c7, #2563eb); flex-grow: 1;">
+            Open Duplicate Songs Remover &rarr;
+          </button>
+          <a href="/cleaner/" target="_blank" class="btn-secondary" style="font-size: 12px; padding: 10px 14px; text-decoration: none;" title="Open in dedicated full page tab">
+            ↗ Full Page
+          </a>
         </div>
       </div>
     </div>
@@ -537,6 +576,196 @@
     {
       if (hubSocket) hubSocket.emit('action:show');
     });
+
+    // Cleaner Suite Modal Launchers
+    document.getElementById('btn-open-cleaner-modal')?.addEventListener('click', () => {
+      if (window.SongCleanerSuite) window.SongCleanerSuite.open('exact');
+    });
+
+    document.querySelectorAll('.btn-cleaner-quick-opt').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const targetTab = e.currentTarget.dataset.tab || 'exact';
+        if (window.SongCleanerSuite) window.SongCleanerSuite.open(targetTab);
+      });
+    });
+
+    // Fetch quick badge counts for the hub
+    fetch('/api/songs-cleaner/summary')
+      .then(r => r.json())
+      .then(data => {
+        const badge = document.getElementById('hub-cleaner-quick-badge');
+        if (badge && data) {
+          badge.textContent = `${data.exactDuplicateSongs || 748} Duplicates`;
+        }
+      })
+      .catch(console.warn);
   </script>
+
+  <!-- Duplicate Songs Remover Suite Modal Dialog -->
+  <div class="cleaner-overlay" id="cleaner-suite-overlay" style="display: none;">
+    <div class="cleaner-window">
+      <!-- Top Header -->
+      <div class="cleaner-header">
+        <div class="cleaner-header-brand">
+          <div class="cleaner-icon-box">🧹</div>
+          <div>
+            <h2 class="cleaner-title">Duplicate Songs Remover &amp; Song Quality Suite</h2>
+            <p class="cleaner-subtitle">VerseView Database Maintenance • 3,629 Songs in Database</p>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <a href="/cleaner/" target="_blank" class="btn-secondary" style="font-size: 12px; text-decoration: none; padding: 6px 12px;" title="Open in separate browser tab">↗ Full Page</a>
+          <button id="btn-refresh-cleaner" class="btn-secondary" style="font-size: 12px; padding: 6px 12px;">🔄 Re-analyze</button>
+          <button id="btn-close-cleaner" class="cleaner-close-btn">&times;</button>
+        </div>
+      </div>
+
+      <!-- 5 Options Action Navigation -->
+      <div class="cleaner-options-grid">
+        <!-- 1. Duplicate Songs (Same Title & Content) -->
+        <button class="cleaner-option-card active" id="opt-btn-exact">
+          <div class="cleaner-opt-top">
+            <span class="cleaner-opt-icon">📑</span>
+            <span class="cleaner-opt-badge badge-danger" id="badge-count-exact">Scanning...</span>
+          </div>
+          <div>
+            <h3 class="cleaner-opt-title">1. Duplicate Songs</h3>
+            <p class="cleaner-opt-desc">Exact same title and song lyrics. Keep 1 copy, delete extra duplicates.</p>
+          </div>
+        </button>
+
+        <!-- 2. Duplicate Songs with Different Title -->
+        <button class="cleaner-option-card" id="opt-btn-diff-title">
+          <div class="cleaner-opt-top">
+            <span class="cleaner-opt-icon">🏷️</span>
+            <span class="cleaner-opt-badge badge-warn" id="badge-count-diff-title">Scanning...</span>
+          </div>
+          <div>
+            <h3 class="cleaner-opt-title">2. Duplicate Songs with Different Title</h3>
+            <p class="cleaner-opt-desc">Identical lyrics with differing titles. Select which title to keep.</p>
+          </div>
+        </button>
+
+        <!-- 3. Similar / Near-Duplicate Songs -->
+        <button class="cleaner-option-card" id="opt-btn-similar">
+          <div class="cleaner-opt-top">
+            <span class="cleaner-opt-icon">🔍</span>
+            <span class="cleaner-opt-badge" id="badge-count-similar">70%+ Match</span>
+          </div>
+          <div>
+            <h3 class="cleaner-opt-title">3. Similar / Near-Duplicates</h3>
+            <p class="cleaner-opt-desc">Content more or less same. Delete one or keep both.</p>
+          </div>
+        </button>
+
+        <!-- 4. Songs Error Analyse -->
+        <button class="cleaner-option-card" id="opt-btn-errors">
+          <div class="cleaner-opt-top">
+            <span class="cleaner-opt-icon">⚠️</span>
+            <span class="cleaner-opt-badge badge-warn" id="badge-count-errors">Diagnostics</span>
+          </div>
+          <div>
+            <h3 class="cleaner-opt-title">4. Songs Error Analyse</h3>
+            <p class="cleaner-opt-desc">Analyze mixed fonts, typography typos, and language misuse. Deletion not required.</p>
+          </div>
+        </button>
+
+        <!-- 5. Bamini to Unicode Converter -->
+        <button class="cleaner-option-card" id="opt-btn-bamini">
+          <div class="cleaner-opt-top">
+            <span class="cleaner-opt-icon">🔄</span>
+            <span class="cleaner-opt-badge badge-success" id="badge-count-bamini">Mass &amp; Review</span>
+          </div>
+          <div>
+            <h3 class="cleaner-opt-title">5. Bamini to Unicode Converter</h3>
+            <p class="cleaner-opt-desc">Mass convert clean songs. Side-by-side preview decision for songs with typos.</p>
+          </div>
+        </button>
+      </div>
+
+      <!-- Active Workspace -->
+      <div class="cleaner-workspace">
+        <div class="cleaner-toolbar">
+          <div>
+            <h3 id="cleaner-workspace-title" style="margin: 0; font-size: 15px; font-weight: 700; color: #fff;">Exact Duplicate Songs</h3>
+            <div id="cleaner-workspace-subtitle" style="font-size: 12px; color: #94a3b8; margin-top: 2px;">Analyzing songs...</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <input type="text" id="cleaner-search-input" class="cleaner-search-input" placeholder="🔍 Filter by title or lyrics...">
+            <div id="cleaner-toolbar-actions"></div>
+          </div>
+        </div>
+
+        <!-- Main Scrollable List Container -->
+        <div class="cleaner-list-container" id="cleaner-list-container">
+          <!-- Injected dynamically by cleaner.js -->
+        </div>
+
+        <!-- Action Footer -->
+        <div class="cleaner-footer">
+          <div id="cleaner-footer-left"></div>
+          <div id="cleaner-footer-right"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Irreversible Action Confirmation Modal -->
+  <div class="confirm-danger-dialog" id="cleaner-confirm-dialog" style="display: none;">
+    <div class="confirm-danger-box">
+      <div class="danger-icon">⚠️</div>
+      <h3 class="danger-title" id="confirm-dialog-title">Action is Irreversible</h3>
+      <p class="danger-desc" id="confirm-dialog-message">
+        This action is irreversible. You are about to permanently delete <strong id="confirm-dialog-count">0</strong> duplicate song(s) from the database. Are you sure you want to proceed?
+      </p>
+      <div class="danger-actions">
+        <button id="btn-confirm-cancel" class="btn-secondary" style="padding: 10px 20px; font-size: 13px;">Cancel</button>
+        <button id="btn-confirm-proceed" class="btn-primary" style="background: #ef4444; padding: 10px 22px; font-size: 13px; font-weight: 700;">Yes, Permanently Proceed</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Edit Song Modal (for Feature 4 Error Fixes) -->
+  <div class="cleaner-overlay" id="cleaner-edit-song-modal" style="display: none; z-index: 1500;">
+    <div class="cleaner-window" style="max-width: 680px; max-height: 85vh;">
+      <div class="cleaner-header">
+        <div>
+          <h3 style="margin: 0; font-size: 16px; color: #fff;">Inspect &amp; Fix Song</h3>
+          <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">Edit font declaration, category, and lyrics text</div>
+        </div>
+        <button class="cleaner-close-btn" id="btn-close-edit-song">&times;</button>
+      </div>
+      <div style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+        <input type="hidden" id="edit-song-id">
+        <div>
+          <label style="font-size: 12px; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 4px;">Song Title</label>
+          <input type="text" id="edit-song-title" class="cleaner-search-input" style="width: 100%; box-sizing: border-box;">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div>
+            <label style="font-size: 12px; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 4px;">Font Declaration</label>
+            <input type="text" id="edit-song-font" class="cleaner-search-input" style="width: 100%; box-sizing: border-box;" placeholder="e.g. Baloo Thambi, Tamil Bible">
+          </div>
+          <div>
+            <label style="font-size: 12px; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 4px;">Category</label>
+            <input type="text" id="edit-song-cat" class="cleaner-search-input" style="width: 100%; box-sizing: border-box;">
+          </div>
+        </div>
+        <div style="flex: 1; display: flex; flex-direction: column;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <label style="font-size: 12px; font-weight: 600; color: #cbd5e1;">Lyrics</label>
+            <span style="font-size: 11px; color: #94a3b8;">Enter for next line • 2 blank lines between slides</span>
+          </div>
+          <textarea id="edit-song-lyrics" class="preview-lyrics-textarea" style="flex: 1; min-height: 220px;"></textarea>
+        </div>
+      </div>
+      <div class="cleaner-footer">
+        <button class="btn-secondary" onclick="document.getElementById('cleaner-edit-song-modal').style.display='none'">Cancel</button>
+        <button id="btn-save-edit-song" class="btn-primary" style="background: #10b981; font-weight: 700; padding: 8px 20px;">Save Fix to Database</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/cleaner.js"></script>
 </body>
 </html>

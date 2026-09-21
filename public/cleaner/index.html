@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Duplicate Songs Remover & Quality Suite - VerseView</title>
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/hub.css">
+  <link rel="stylesheet" href="/css/cleaner.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #090e1a;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .cleaner-page-window {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      border: none;
+      border-radius: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="cleaner-page-window cleaner-window" style="max-width: 100%; max-height: 100%; height: 100vh; border-radius: 0;">
+    <!-- Top Header -->
+    <div class="cleaner-header">
+      <div class="cleaner-header-brand">
+        <div class="cleaner-icon-box">🧹</div>
+        <div>
+          <h1 class="cleaner-title">Duplicate Songs Remover & Song Quality Suite</h1>
+          <p class="cleaner-subtitle">VerseView Database Maintenance • 3,629 Songs in Database</p>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <a href="/" class="btn-secondary" style="font-size: 13px; text-decoration: none; padding: 6px 12px;">&larr; Back to Hub</a>
+        <button id="btn-refresh-cleaner" class="btn-secondary" style="font-size: 13px; padding: 6px 12px;">🔄 Re-analyze</button>
+      </div>
+    </div>
+
+    <!-- 5 Options Action Navigation -->
+    <div class="cleaner-options-grid">
+      <!-- 1. Duplicate Songs (Same Title & Content) -->
+      <button class="cleaner-option-card active" id="opt-btn-exact">
+        <div class="cleaner-opt-top">
+          <span class="cleaner-opt-icon">📑</span>
+          <span class="cleaner-opt-badge badge-danger" id="badge-count-exact">Scanning...</span>
+        </div>
+        <div>
+          <h3 class="cleaner-opt-title">1. Duplicate Songs</h3>
+          <p class="cleaner-opt-desc">Exact same title and song lyrics. Keep 1 copy and permanently delete extra duplicates.</p>
+        </div>
+      </button>
+
+      <!-- 2. Duplicate Songs with Different Title -->
+      <button class="cleaner-option-card" id="opt-btn-diff-title">
+        <div class="cleaner-opt-top">
+          <span class="cleaner-opt-icon">🏷️</span>
+          <span class="cleaner-opt-badge badge-warn" id="badge-count-diff-title">Scanning...</span>
+        </div>
+        <div>
+          <h3 class="cleaner-opt-title">2. Duplicate Songs with Different Title</h3>
+          <p class="cleaner-opt-desc">Identical song content with differing titles. Select which title to keep.</p>
+        </div>
+      </button>
+
+      <!-- 3. Similar / Near-Duplicate Songs -->
+      <button class="cleaner-option-card" id="opt-btn-similar">
+        <div class="cleaner-opt-top">
+          <span class="cleaner-opt-icon">🔍</span>
+          <span class="cleaner-opt-badge" id="badge-count-similar">70%+ Match</span>
+        </div>
+        <div>
+          <h3 class="cleaner-opt-title">3. Similar / Near-Duplicates</h3>
+          <p class="cleaner-opt-desc">Content more or less same. Side-by-side compare, delete one or keep both.</p>
+        </div>
+      </button>
+
+      <!-- 4. Songs Error Analyse -->
+      <button class="cleaner-option-card" id="opt-btn-errors">
+        <div class="cleaner-opt-top">
+          <span class="cleaner-opt-icon">⚠️</span>
+          <span class="cleaner-opt-badge badge-warn" id="badge-count-errors">Diagnostics</span>
+        </div>
+        <div>
+          <h3 class="cleaner-opt-title">4. Songs Error Analyse</h3>
+          <p class="cleaner-opt-desc">Analyze mixed fonts, font assignment errors, typography typos, and language misuse. Deletion not required.</p>
+        </div>
+      </button>
+
+      <!-- 5. Bamini to Unicode Converter -->
+      <button class="cleaner-option-card" id="opt-btn-bamini">
+        <div class="cleaner-opt-top">
+          <span class="cleaner-opt-icon">🔄</span>
+          <span class="cleaner-opt-badge badge-success" id="badge-count-bamini">Mass &amp; Review</span>
+        </div>
+        <div>
+          <h3 class="cleaner-opt-title">5. Bamini to Unicode Converter</h3>
+          <p class="cleaner-opt-desc">Mass convert clean songs. Side-by-side preview decision for songs with typos.</p>
+        </div>
+      </button>
+    </div>
+
+    <!-- Active Workspace -->
+    <div class="cleaner-workspace">
+      <div class="cleaner-toolbar">
+        <div>
+          <h2 id="cleaner-workspace-title" style="margin: 0; font-size: 16px; font-weight: 700; color: #fff;">Exact Duplicate Songs</h2>
+          <div id="cleaner-workspace-subtitle" style="font-size: 12px; color: #94a3b8; margin-top: 2px;">Analyzing songs...</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <input type="text" id="cleaner-search-input" class="cleaner-search-input" placeholder="🔍 Filter by title or lyrics...">
+          <div id="cleaner-toolbar-actions"></div>
+        </div>
+      </div>
+
+      <!-- Main Scrollable List Container -->
+      <div class="cleaner-list-container" id="cleaner-list-container">
+        <!-- Injected dynamically by cleaner.js -->
+      </div>
+
+      <!-- Action Footer -->
+      <div class="cleaner-footer">
+        <div id="cleaner-footer-left"></div>
+        <div id="cleaner-footer-right"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Irreversible Action Confirmation Modal -->
+  <div class="confirm-danger-dialog" id="cleaner-confirm-dialog" style="display: none;">
+    <div class="confirm-danger-box">
+      <div class="danger-icon">⚠️</div>
+      <h3 class="danger-title" id="confirm-dialog-title">Action is Irreversible</h3>
+      <p class="danger-desc" id="confirm-dialog-message">
+        This action is irreversible. You are about to permanently delete <strong id="confirm-dialog-count">0</strong> duplicate song(s) from the database. Are you sure you want to proceed?
+      </p>
+      <div class="danger-actions">
+        <button id="btn-confirm-cancel" class="btn-secondary" style="padding: 10px 20px; font-size: 13px;">Cancel</button>
+        <button id="btn-confirm-proceed" class="btn-primary" style="background: #ef4444; padding: 10px 22px; font-size: 13px; font-weight: 700;">Yes, Permanently Proceed</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Edit Song Modal (for Feature 4 Error Fixes) -->
+  <div class="cleaner-overlay" id="cleaner-edit-song-modal" style="display: none; z-index: 1500;">
+    <div class="cleaner-window" style="max-width: 680px; max-height: 85vh;">
+      <div class="cleaner-header">
+        <div>
+          <h3 style="margin: 0; font-size: 16px; color: #fff;">Inspect &amp; Fix Song</h3>
+          <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">Edit font declaration, category, and lyrics text</div>
+        </div>
+        <button class="cleaner-close-btn" id="btn-close-edit-song">&times;</button>
+      </div>
+      <div style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+        <input type="hidden" id="edit-song-id">
+        <div>
+          <label style="font-size: 12px; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 4px;">Song Title</label>
+          <input type="text" id="edit-song-title" class="cleaner-search-input" style="width: 100%; box-sizing: border-box;">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div>
+            <label style="font-size: 12px; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 4px;">Font Declaration</label>
+            <input type="text" id="edit-song-font" class="cleaner-search-input" style="width: 100%; box-sizing: border-box;" placeholder="e.g. Baloo Thambi, Tamil Bible">
+            <div style="margin-top: 4px; display: flex; gap: 6px;">
+              <button type="button" class="btn-secondary" style="font-size: 10px; padding: 2px 8px;" onclick="document.getElementById('edit-song-font').value='Tamil Bible'">Tamil Bible</button>
+              <button type="button" class="btn-secondary" style="font-size: 10px; padding: 2px 8px;" onclick="document.getElementById('edit-song-font').value='Baloo Thambi'">Baloo Thambi</button>
+            </div>
+          </div>
+          <div>
+            <label style="font-size: 12px; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 4px;">Category</label>
+            <input type="text" id="edit-song-cat" class="cleaner-search-input" style="width: 100%; box-sizing: border-box;">
+          </div>
+        </div>
+        <div style="flex: 1; display: flex; flex-direction: column;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <label style="font-size: 12px; font-weight: 600; color: #cbd5e1;">Lyrics</label>
+            <span style="font-size: 11px; color: #94a3b8;">Enter for next line • 2 blank lines between slides</span>
+          </div>
+          <textarea id="edit-song-lyrics" class="preview-lyrics-textarea" style="flex: 1; min-height: 220px;"></textarea>
+        </div>
+      </div>
+      <div class="cleaner-footer">
+        <button class="btn-secondary" onclick="document.getElementById('cleaner-edit-song-modal').style.display='none'">Cancel</button>
+        <button id="btn-save-edit-song" class="btn-primary" style="background: #10b981; font-weight: 700; padding: 8px 20px;">Save Fix to Database</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/cleaner.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Open standalone view
+      if (window.SongCleanerSuite) {
+        window.SongCleanerSuite.open('exact');
+      }
+    });
+  </script>
+</body>
+</html>
