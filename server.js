@@ -1550,6 +1550,30 @@ app.post('/api/songs', (req, res) =>
     {
       return res.status(400).json({ error: 'Name and lyrics are required' });
     }
+    if (typeof name !== 'string' || name.length > 255)
+    {
+      return res.status(400).json({ error: 'Song title must be 255 characters or fewer' });
+    }
+    if (typeof lyrics !== 'string' || lyrics.length > 200000)
+    {
+      return res.status(400).json({ error: 'Song lyrics too large (maximum 200KB)' });
+    }
+    if (title2 && (typeof title2 !== 'string' || title2.length > 255))
+    {
+      return res.status(400).json({ error: 'Alternate title must be 255 characters or fewer' });
+    }
+    if (cat && (typeof cat !== 'string' || cat.length > 100))
+    {
+      return res.status(400).json({ error: 'Category must be 100 characters or fewer' });
+    }
+    if (font && (typeof font !== 'string' || font.length > 100))
+    {
+      return res.status(400).json({ error: 'Font name must be 100 characters or fewer' });
+    }
+    if (tags && (typeof tags !== 'string' || tags.length > 500))
+    {
+      return res.status(400).json({ error: 'Tags must be 500 characters or fewer' });
+    }
 
     const stmt = smDb.prepare(
       'INSERT INTO sm (name, title2, cat, font, tags, lyrics, lyrics2) VALUES (?, ?, ?, ?, ?, ?, ?)'
@@ -1595,11 +1619,34 @@ app.put('/api/songs/:id', (req, res) =>
     const allowedFields = ['name', 'title2', 'cat', 'font', 'font2', 'tags', 'lyrics', 'lyrics2', 'key', 'notes', 'yvideo', 'bkgndfname', 'copy', 'subcat', 'slideseq'];
     const fieldsToUpdate = {};
 
+    const maxLens = {
+      name: 255,
+      title2: 255,
+      cat: 100,
+      subcat: 100,
+      font: 100,
+      font2: 100,
+      key: 50,
+      tags: 500,
+      lyrics: 200000,
+      lyrics2: 200000,
+      notes: 10000,
+      copy: 255,
+      yvideo: 500,
+      bkgndfname: 500,
+      slideseq: 500
+    };
+
     for (const field of allowedFields)
     {
       if (req.body[field] !== undefined)
       {
-        fieldsToUpdate[field] = typeof req.body[field] === 'string' ? req.body[field].trim() : req.body[field];
+        const val = typeof req.body[field] === 'string' ? req.body[field].trim() : req.body[field];
+        if (typeof val === 'string' && maxLens[field] && val.length > maxLens[field])
+        {
+          return res.status(400).json({ error: `Field '${field}' exceeds maximum length of ${maxLens[field]} characters` });
+        }
+        fieldsToUpdate[field] = val;
       }
     }
 
@@ -2538,17 +2585,20 @@ app.get('/api/recents', (req, res) =>
     }
 
     const days = [];
+    // Use indexed timestamp range query: created_at >= startOfDay AND created_at < nextDayStart
+    // This utilizes idx_recents_created_at directly instead of running a full-table date() function scan.
     const getItemsStmt = recentsDb.prepare(`
       SELECT id, item_type, song_id, slide_index, bible_version, book_num, chapter_num, verse_num, created_at,
              time(created_at, 'localtime') as time_str
       FROM recents
-      WHERE date(created_at, 'localtime') = ?
+      WHERE created_at >= datetime(?, 'start of day', 'utc')
+        AND created_at < datetime(?, '+1 day', 'start of day', 'utc')
       ORDER BY id DESC
     `);
 
     for (const dateStr of selectedDates)
     {
-      const rows = getItemsStmt.all(dateStr);
+      const rows = getItemsStmt.all(dateStr, dateStr);
       const items = rows.map(r => enrichRecentItem(r));
       days.push({
         date: dateStr,
@@ -2563,7 +2613,9 @@ app.get('/api/recents', (req, res) =>
     {
       const oldestDateInBatch = selectedDates[selectedDates.length - 1];
       const checkOlder = recentsDb.prepare(`
-        SELECT 1 FROM recents WHERE date(created_at, 'localtime') < ? LIMIT 1
+        SELECT 1 FROM recents
+        WHERE created_at < datetime(?, 'start of day', 'utc')
+        LIMIT 1
       `).get(oldestDateInBatch);
 
       if (checkOlder)
