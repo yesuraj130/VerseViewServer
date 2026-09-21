@@ -871,7 +871,7 @@
           <button class="chip ${errorCategoryFilter === 'fontNameIssue' ? 'active' : ''}" data-cat="fontNameIssue">Font Name (${counts.fontNameIssue || 0})</button>
           <button class="chip ${errorCategoryFilter === 'typographyTypo' ? 'active' : ''}" data-cat="typographyTypo">Diacritics & Typos (${counts.typographyTypo || 0})</button>
           <button class="chip ${errorCategoryFilter === 'slideStructure' ? 'active' : ''}" data-cat="slideStructure">Slide Format (${counts.slideStructure || 0})</button>
-          <button class="chip ${errorCategoryFilter === 'mixedLanguage' ? 'active' : ''}" data-cat="mixedLanguage">Language Misuse (${counts.mixedLanguage || 0})</button>
+          ${counts.mixedLanguage > 0 ? `<button class="chip ${errorCategoryFilter === 'mixedLanguage' ? 'active' : ''}" data-cat="mixedLanguage">Language Misuse (${counts.mixedLanguage})</button>` : ''}
         </div>
         ${baminiNeedsTbSongs.length > 0 ? `
           <div>
