@@ -29,6 +29,8 @@ const STANDARD_FONTS = [
 const BIBLE_SAMPLE_TEXTS = {
   tamil: 'ஆதியிலே தேவன் வானத்தையும் பூமியையும் சிருஷ்டித்தார்.',
   kjv: 'In the beginning God created the heaven and the earth.',
+  niv1984: 'In the beginning God created the heavens and the earth.',
+  niv2011: 'In the beginning God created the heavens and the earth.',
   municode: 'ആദിയിൽ ദൈവം ആകാശവും ഭൂമിയും സൃഷ്ടിച്ചു.',
   hindi_unicode: 'आदि में परमेश्वर ने आकाश और पृथ्वी की सृष्टि की।',
   telugu: 'ఆదియందు దేవుడు భూమ్యాకాశములను సృజించెను.',

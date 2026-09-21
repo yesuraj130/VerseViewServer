@@ -14,6 +14,8 @@ let APP_SETTINGS = {
     bible: {
       tamil: 'Baloo Thambi',
       kjv: 'Baloo Chettan',
+      niv1984: 'Baloo Chettan',
+      niv2011: 'Baloo Chettan',
       municode: 'Baloo Chettan',
       hindi_unicode: 'Baloo',
       telugu: 'Ramabhadra Telugu',
