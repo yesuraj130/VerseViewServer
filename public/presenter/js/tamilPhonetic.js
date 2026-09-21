@@ -266,6 +266,60 @@ function getProtheticAlternateKey(soundKey, rawWord)
 }
 
 /**
+ * Common colloquial pronoun and devotional variants where spoken/Tanglish '-a'
+ * corresponds to literary accusative '-ai' or Sanskrit '-a' loanwords.
+ * Explicit mapping ensures 100% precision with zero side effects on general words (e.g. nalla vs naalai).
+ */
+const COLLOQUIAL_ALTERNATES = {
+  // ennai (me) <-> enna
+  'eny': ['ena'],
+  'ena': ['eny'],
+
+  // unnai (you) <-> unna
+  'uny': ['una'],
+  'una': ['uny'],
+
+  // nammai (us) <-> namma
+  'namy': ['nama'],
+  'nama': ['namy'],
+
+  // avanai (him) <-> avana
+  'avany': ['avana'],
+  'avana': ['avany'],
+
+  // avalai (her) <-> avala
+  'avaly': ['avala'],
+  'avala': ['avaly'],
+
+  // engalai (us pl.) <-> engala
+  'enkaly': ['enkala'],
+  'enkala': ['enkaly'],
+
+  // ungalai (you pl.) <-> ungala
+  'unkaly': ['unkala'],
+  'unkala': ['unkaly'],
+
+  // avarkalai (them) <-> avarkala
+  'avarkaly': ['avarkala'],
+  'avarkala': ['avarkaly'],
+
+  // kirubai / kiruba / krupa (grace)
+  'kirupy': ['kirupa', 'krupa'],
+  'kirupa': ['kirupy', 'krupa'],
+  'krupa': ['kirupy', 'kirupa'],
+
+  // aasai (desire) <-> aasa
+  'asy': ['asa'],
+  'asa': ['asy'],
+};
+
+function getColloquialAlternates(key)
+{
+  if (!key) return [];
+  return COLLOQUIAL_ALTERNATES[key] || [];
+}
+
+/**
  * Analyzes target tokens and computes sound keys for validated Tamil Sandhi pairs
  * (வல்லினம் மிகல் புணர்ச்சி) as well as prothetic loanword alternate keys (இரத்தம் <-> ரத்தம்).
  */
@@ -310,6 +364,16 @@ function buildTargetTokenInfos(tokens)
     if (strippedKey && !validKeys.includes(strippedKey)) validKeys.push(strippedKey);
     if (protheticKey && !validKeys.includes(protheticKey)) validKeys.push(protheticKey);
     if (altKey && !validKeys.includes(altKey)) validKeys.push(altKey);
+
+    // Add colloquial alternates (e.g. ennai <-> enna, unnai <-> unna)
+    for (const k of [fullKey, strippedKey, protheticKey].filter(Boolean))
+    {
+      const alts = getColloquialAlternates(k);
+      for (const alt of alts)
+      {
+        if (!validKeys.includes(alt)) validKeys.push(alt);
+      }
+    }
 
     infos.push({
       raw: word,
@@ -374,6 +438,11 @@ function compileQueryPattern(rawQuery)
     if (protheticKey && !qKeysList.includes(protheticKey))
     {
       qKeysList.push(protheticKey);
+    }
+    const alts = getColloquialAlternates(key);
+    for (const alt of alts)
+    {
+      if (!qKeysList.includes(alt)) qKeysList.push(alt);
     }
 
     let mode = 'exact';
@@ -505,6 +574,11 @@ function matchTokenInfosWithKeys(tInfos, tTokens, textLower, qKeys, rawQueryLowe
       const prothetic = getProtheticAlternateKey(k, '');
       const qList = [k];
       if (prothetic && !qList.includes(prothetic)) qList.push(prothetic);
+      const alts = getColloquialAlternates(k);
+      for (const alt of alts)
+      {
+        if (!qList.includes(alt)) qList.push(alt);
+      }
       return {
         type: 'word',
         raw: k,
