@@ -49,42 +49,6 @@ if (!fs.existsSync(dataDir))
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-// Ensure all databases in data/ use standard DELETE journal mode so no -wal or -shm files are created
-for (const file of fs.readdirSync(dataDir))
-{
-  if (file.endsWith('.db'))
-  {
-    try
-    {
-      const fullPath = path.join(dataDir, file);
-      const db = new DatabaseSync(fullPath);
-      db.exec('PRAGMA wal_checkpoint(TRUNCATE);');
-      db.exec('PRAGMA journal_mode = DELETE;');
-      db.close();
-    }
-    catch
-    {
-      // Ignore if cannot write
-    }
-  }
-}
-
-// Remove any remaining -wal or -shm sidecar files
-for (const file of fs.readdirSync(dataDir))
-{
-  if (file.endsWith('-wal') || file.endsWith('-shm'))
-  {
-    try
-    {
-      fs.unlinkSync(path.join(dataDir, file));
-    }
-    catch
-    {
-      // Ignore
-    }
-  }
-}
-
 // ---------------------------------------------------------------------------
 // 1. Songs Database (songs.db / sm.db) - Read & Query existing data
 // ---------------------------------------------------------------------------
@@ -100,9 +64,15 @@ try
     CREATE TABLE IF NOT EXISTS sm (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT,
+      title2 TEXT,
+      cat TEXT,
       font TEXT,
+      font2 TEXT,
+      key TEXT,
+      notes TEXT,
+      tags TEXT,
       lyrics TEXT,
-      category TEXT
+      lyrics2 TEXT
     );
   `);
 }
@@ -333,6 +303,38 @@ function getVersionMetadata(forceReload = false)
 // ---------------------------------------------------------------------------
 // Pre-Computed In-Memory Bible Search Engine (Zero-Disk Low-Latency Querying)
 // ---------------------------------------------------------------------------
+const bookLookupCache = new Map();
+function getBookLookup(versionId = 'tamil')
+{
+  const targetId = versionId.replace(/\.db$/i, '');
+  if (bookLookupCache.has(targetId))
+  {
+    return bookLookupCache.get(targetId);
+  }
+  const versions = getVersionMetadata();
+  const matchedVer = versions.find(v => v.id === targetId || v.file === targetId || v.file === `${targetId}.db`);
+  const bookNames = (matchedVer && (matchedVer.booknames || matchedVer.books)) || [];
+  const kjvVer = versions.find(v => v.id === 'kjv' || v.file === 'kjv.db');
+  const englishBookNames = (kjvVer && (kjvVer.booknames || kjvVer.books)) || [];
+
+  const list = [];
+  const maxBooks = Math.max(bookNames.length, englishBookNames.length, 66);
+  for (let i = 0; i < maxBooks; i++)
+  {
+    const bName = bookNames[i] || `Book ${i + 1}`;
+    const eName = englishBookNames[i] || `Book ${i + 1}`;
+    list.push({
+      bookNum: i + 1,
+      bookName: bName,
+      bookNameLower: bName.toLowerCase(),
+      engName: eName,
+      engNameLower: eName.toLowerCase()
+    });
+  }
+  bookLookupCache.set(targetId, list);
+  return list;
+}
+
 function getOrBuildBibleSearchIndex(versionId = 'tamil')
 {
   const targetId = versionId.replace(/\.db$/i, '');
@@ -359,15 +361,12 @@ function getOrBuildBibleSearchIndex(versionId = 'tamil')
     const rows = db.prepare('SELECT wordId, bookNum, chNum, verseNum, word FROM words ORDER BY bookNum, chNum, verseNum').all();
     
     const bookNames = (matchedVer && (matchedVer.booknames || matchedVer.books)) || [];
-    const kjvVer = versions.find(v => v.id === 'kjv' || v.file === 'kjv.db');
-    const englishBookNames = (kjvVer && (kjvVer.booknames || kjvVer.books)) || [];
 
     const indexedVerses = rows.map(r => {
       const bNum = Number(r.bookNum);
       const chNum = Number(r.chNum);
       const vNum = Number(r.verseNum);
       const bookName = (bookNames && bookNames[bNum - 1]) ? bookNames[bNum - 1] : `Book ${bNum}`;
-      const engName = (englishBookNames && englishBookNames[bNum - 1]) ? englishBookNames[bNum - 1] : `Book ${bNum}`;
       const tokens = tokenizeText(r.word);
       const tokenInfos = buildTargetTokenInfos(tokens);
 
@@ -377,9 +376,6 @@ function getOrBuildBibleSearchIndex(versionId = 'tamil')
         chNum: chNum,
         verseNum: vNum,
         bookName,
-        bookNameLower: bookName.toLowerCase(),
-        engName,
-        engNameLower: engName.toLowerCase(),
         word: r.word,
         wordLower: (r.word || '').toLowerCase(),
         tokens,
@@ -387,6 +383,20 @@ function getOrBuildBibleSearchIndex(versionId = 'tamil')
         versionId: actualVersionId
       };
     });
+
+    // LRU cache limit: keep at most 2 Bible version indexes in memory, always retaining 'tamil'
+    if (bibleSearchIndex.size >= 2)
+    {
+      for (const key of bibleSearchIndex.keys())
+      {
+        if (key !== 'tamil' && key !== actualVersionId)
+        {
+          bibleSearchIndex.delete(key);
+          console.log(`Evicted in-memory Bible search index for '${key}' to conserve RAM`);
+          break;
+        }
+      }
+    }
 
     bibleSearchIndex.set(actualVersionId, indexedVerses);
     console.log(`In-memory Bible search index built for '${actualVersionId}': ${indexedVerses.length} verses in ${Date.now() - t0}ms`);
@@ -414,17 +424,18 @@ function getBibleVerseStmt(db)
 
 function getBibleDb(versionIdOrFile)
 {
+  if (!versionIdOrFile || typeof versionIdOrFile !== 'string') return null;
+  const cleanId = path.basename(versionIdOrFile).replace(/\.db$/i, '').trim();
   const versions = getVersionMetadata();
   const matched = versions.find(
-    v => v.id === versionIdOrFile || v.file === versionIdOrFile || v.dbFile === versionIdOrFile
+    v => v.id === cleanId || v.file === `${cleanId}.db` || v.file === cleanId
   );
-
-  let targetFile = matched ? matched.file : versionIdOrFile;
-  if (!targetFile.endsWith('.db'))
+  if (!matched)
   {
-    targetFile = `${targetFile}.db`;
+    return null;
   }
 
+  const targetFile = matched.file.endsWith('.db') ? matched.file : `${matched.file}.db`;
   const dbPath = path.join(dataDir, targetFile);
   if (!fs.existsSync(dbPath))
   {
@@ -525,9 +536,36 @@ function getClientSummaries()
   return { presenters, displays, total: connectedClients.size };
 }
 
+let stmtRecentSongCheck = null;
+let stmtRecentSongInsert = null;
+let stmtRecentBibleCheck = null;
+let stmtRecentBibleInsert = null;
+let lastRecentKey = null;
+let lastRecentTime = 0;
+
 function recordRecentProjection(state)
 {
   if (!state || state.status !== 'live') return;
+
+  // In-memory 60s debounce check before hitting SQLite
+  let recentKey = null;
+  if (state.type === 'song' && state.songId)
+  {
+    recentKey = `song:${state.songId}:${state.slideIndex || 1}`;
+  }
+  else if (state.type === 'bible' && (state.verseInfo || (state.bookNum && state.chNum && state.verseNum)))
+  {
+    const vInfo = state.verseInfo || state;
+    const versionId = String(vInfo.version || vInfo.versionId || 'tamil').replace(/\.db$/i, '').trim().toLowerCase();
+    recentKey = `bible:${versionId}:${vInfo.bookNum || 1}:${vInfo.chNum || 1}:${vInfo.verseNum || 1}`;
+  }
+
+  const now = Date.now();
+  if (recentKey && recentKey === lastRecentKey && (now - lastRecentTime < 60000))
+  {
+    return;
+  }
+
   try
   {
     if (state.type === 'song' && state.songId)
@@ -535,22 +573,31 @@ function recordRecentProjection(state)
       const songId = Number(state.songId);
       const slideIndex = Math.max(1, Number(state.slideIndex) || 1);
 
-      // 1-minute deduplication
-      const checkStmt = recentsDb.prepare(`
-        SELECT id FROM recents
-        WHERE item_type = 'song'
-          AND song_id = ?
-          AND slide_index = ?
-          AND created_at >= datetime('now', '-1 minute')
-        LIMIT 1
-      `);
-      const recent = checkStmt.get(songId, slideIndex);
-      if (!recent)
+      if (!stmtRecentSongCheck)
       {
-        recentsDb.prepare(`
+        stmtRecentSongCheck = recentsDb.prepare(`
+          SELECT id FROM recents
+          WHERE item_type = 'song'
+            AND song_id = ?
+            AND slide_index = ?
+            AND created_at >= datetime('now', '-1 minute')
+          LIMIT 1
+        `);
+      }
+      if (!stmtRecentSongInsert)
+      {
+        stmtRecentSongInsert = recentsDb.prepare(`
           INSERT INTO recents (item_type, song_id, slide_index)
           VALUES ('song', ?, ?)
-        `).run(songId, slideIndex);
+        `);
+      }
+
+      const recent = stmtRecentSongCheck.get(songId, slideIndex);
+      if (!recent)
+      {
+        stmtRecentSongInsert.run(songId, slideIndex);
+        lastRecentKey = recentKey;
+        lastRecentTime = now;
       }
     }
     else if (state.type === 'bible' && (state.verseInfo || (state.bookNum && state.chNum && state.verseNum)))
@@ -561,24 +608,33 @@ function recordRecentProjection(state)
       const chNum = Number(vInfo.chNum) || 1;
       const verseNum = Number(vInfo.verseNum) || 1;
 
-      // 1-minute deduplication
-      const checkStmt = recentsDb.prepare(`
-        SELECT id FROM recents
-        WHERE item_type = 'bible'
-          AND bible_version = ?
-          AND book_num = ?
-          AND chapter_num = ?
-          AND verse_num = ?
-          AND created_at >= datetime('now', '-1 minute')
-        LIMIT 1
-      `);
-      const recent = checkStmt.get(versionId, bookNum, chNum, verseNum);
-      if (!recent)
+      if (!stmtRecentBibleCheck)
       {
-        recentsDb.prepare(`
+        stmtRecentBibleCheck = recentsDb.prepare(`
+          SELECT id FROM recents
+          WHERE item_type = 'bible'
+            AND bible_version = ?
+            AND book_num = ?
+            AND chapter_num = ?
+            AND verse_num = ?
+            AND created_at >= datetime('now', '-1 minute')
+          LIMIT 1
+        `);
+      }
+      if (!stmtRecentBibleInsert)
+      {
+        stmtRecentBibleInsert = recentsDb.prepare(`
           INSERT INTO recents (item_type, bible_version, book_num, chapter_num, verse_num)
           VALUES ('bible', ?, ?, ?, ?)
-        `).run(versionId, bookNum, chNum, verseNum);
+        `);
+      }
+
+      const recent = stmtRecentBibleCheck.get(versionId, bookNum, chNum, verseNum);
+      if (!recent)
+      {
+        stmtRecentBibleInsert.run(versionId, bookNum, chNum, verseNum);
+        lastRecentKey = recentKey;
+        lastRecentTime = now;
       }
     }
   }
@@ -947,8 +1003,6 @@ app.use((req, res, next) =>
   next();
 });
 
-app.use(express.json());
-
 // Standard container liveness & health check probe
 app.get('/healthz', (req, res) =>
 {
@@ -1238,6 +1292,10 @@ app.get('/api/songs/search', async (req, res) =>
     {
       return res.json([]);
     }
+    if (q.length > 200)
+    {
+      return res.status(400).json({ error: 'Search query too long' });
+    }
 
     const limit = req.query.limit ? Math.min(Number(req.query.limit) || 500, 2000) : 500;
     const isStreamRequested = req.query.stream !== 'false';
@@ -1426,13 +1484,17 @@ app.get('/api/songs/search', async (req, res) =>
   }
 });
 
+let stmtGetSongFullById = null;
 app.get('/api/songs/:id', (req, res) =>
 {
   try
   {
     const songId = Number(req.params.id);
-    const stmt = smDb.prepare('SELECT id, name, title2, cat, font, font2, key, notes, tags, lyrics, lyrics2 FROM sm WHERE id = ?');
-    const song = stmt.get(songId);
+    if (!stmtGetSongFullById)
+    {
+      stmtGetSongFullById = smDb.prepare('SELECT id, name, title2, cat, font, font2, key, notes, tags, lyrics, lyrics2 FROM sm WHERE id = ?');
+    }
+    const song = stmtGetSongFullById.get(songId);
 
     if (!song)
     {
@@ -1973,6 +2035,10 @@ app.get('/api/bible/search', (req, res) =>
     {
       return res.json([]);
     }
+    if (q.length > 200)
+    {
+      return res.status(400).json({ error: 'Search query too long' });
+    }
 
     const versionId = req.query.versionId || req.query.version || 'tamil';
     const limit = req.query.limit ? Math.min(Number(req.query.limit) || 100, 500) : 100;
@@ -2000,12 +2066,13 @@ app.get('/api/bible/search', (req, res) =>
       targetChNum = Number(refMatch[2]);
       targetVerseNum = refMatch[3] ? Number(refMatch[3]) : null;
 
-      for (const v of verses)
+      const bookLookup = getBookLookup(versionId);
+      for (const b of bookLookup)
       {
-        if (v.bookNameLower === rawBookStr || v.engNameLower === rawBookStr ||
-            v.bookNameLower.startsWith(rawBookStr) || v.engNameLower.startsWith(rawBookStr))
+        if (b.bookNameLower === rawBookStr || b.engNameLower === rawBookStr ||
+            b.bookNameLower.startsWith(rawBookStr) || b.engNameLower.startsWith(rawBookStr))
         {
-          targetBookNum = v.bookNum;
+          targetBookNum = b.bookNum;
           break;
         }
       }

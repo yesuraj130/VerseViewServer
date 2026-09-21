@@ -198,7 +198,6 @@ const CONFIG = {
   function render(state) {
     if (!state) return;
     lastState = state;
-    applyConfig();
 
     // 1. Handle Clear / Blank / None States
     if (state.status === 'clear' || state.status === 'blank' || state.type === 'none') {

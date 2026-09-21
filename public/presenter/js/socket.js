@@ -388,29 +388,24 @@ function highlightActiveInDecks(state)
   {
     const isThisSong = isLive && selectedSongId && Number(state.songId) === Number(selectedSongId);
     const targetIndex = isThisSong ? (Number(state.slideIndex) - 1) : -1;
+    const targetCard = (isThisSong && targetIndex >= 0 && targetIndex < slideDeckSongsEl.children.length)
+      ? slideDeckSongsEl.children[targetIndex]
+      : null;
 
-    // Ensure any previously highlighted card in this deck is cleaned up
-    slideDeckSongsEl.querySelectorAll('.slide-card.live').forEach((card) =>
+    if (lastLiveSongCard && lastLiveSongCard !== targetCard)
     {
-      if (!isThisSong || card !== slideDeckSongsEl.children[targetIndex])
-      {
-        card.classList.remove('live');
-        const badge = card.querySelector('.slide-card-badge');
-        if (badge) badge.style.display = 'none';
-      }
-    });
-
-    if (isThisSong && targetIndex >= 0 && targetIndex < slideDeckSongsEl.children.length)
-    {
-      const newActiveCard = slideDeckSongsEl.children[targetIndex];
-      newActiveCard.classList.add('live');
-      const badge = newActiveCard.querySelector('.slide-card-badge');
-      if (badge) badge.style.display = 'inline-block';
-      lastLiveSongCard = newActiveCard;
-    }
-    else
-    {
+      lastLiveSongCard.classList.remove('live');
+      const badge = lastLiveSongCard.querySelector('.slide-card-badge');
+      if (badge) badge.style.display = 'none';
       lastLiveSongCard = null;
+    }
+
+    if (targetCard)
+    {
+      targetCard.classList.add('live');
+      const badge = targetCard.querySelector('.slide-card-badge');
+      if (badge) badge.style.display = 'inline-block';
+      lastLiveSongCard = targetCard;
     }
   }
 
@@ -419,14 +414,11 @@ function highlightActiveInDecks(state)
   const songListContainer = document.getElementById('song-list-container');
   if (songListContainer)
   {
-    // Remove live class from all items that do not match the current live song
-    songListContainer.querySelectorAll('.song-searchresult.live, .song-item.live').forEach((it) =>
+    if (lastLiveSongItem && (!currentSongId || Number(lastLiveSongItem.getAttribute('data-id')) !== currentSongId))
     {
-      if (!currentSongId || Number(it.getAttribute('data-id')) !== currentSongId)
-      {
-        it.classList.remove('live');
-      }
-    });
+      lastLiveSongItem.classList.remove('live');
+      lastLiveSongItem = null;
+    }
 
     if (currentSongId)
     {
@@ -436,10 +428,6 @@ function highlightActiveInDecks(state)
         targetItem.classList.add('live');
       }
       lastLiveSongItem = targetItem || null;
-    }
-    else
-    {
-      lastLiveSongItem = null;
     }
   }
   lastLiveSongId = currentSongId;
@@ -458,28 +446,24 @@ function highlightActiveInDecks(state)
       Number(liveVerse.chNum) === Number(selectedChapterNumber);
 
     const targetVerseIndex = isCurrentChapter ? (Number(liveVerse.verseNum) - 1) : -1;
+    const targetBibleCard = (isCurrentChapter && targetVerseIndex >= 0 && targetVerseIndex < slideDeckBible.children.length)
+      ? slideDeckBible.children[targetVerseIndex]
+      : null;
 
-    slideDeckBible.querySelectorAll('.slide-card.live').forEach((card) =>
+    if (lastLiveBibleCard && lastLiveBibleCard !== targetBibleCard)
     {
-      if (!isCurrentChapter || card !== slideDeckBible.children[targetVerseIndex])
-      {
-        card.classList.remove('live');
-        const badge = card.querySelector('.slide-card-badge');
-        if (badge) badge.style.display = 'none';
-      }
-    });
-
-    if (isCurrentChapter && targetVerseIndex >= 0 && targetVerseIndex < slideDeckBible.children.length)
-    {
-      const newActiveBibleCard = slideDeckBible.children[targetVerseIndex];
-      newActiveBibleCard.classList.add('live');
-      const badge = newActiveBibleCard.querySelector('.slide-card-badge');
-      if (badge) badge.style.display = 'inline-block';
-      lastLiveBibleCard = newActiveBibleCard;
-    }
-    else
-    {
+      lastLiveBibleCard.classList.remove('live');
+      const badge = lastLiveBibleCard.querySelector('.slide-card-badge');
+      if (badge) badge.style.display = 'none';
       lastLiveBibleCard = null;
+    }
+
+    if (targetBibleCard)
+    {
+      targetBibleCard.classList.add('live');
+      const badge = targetBibleCard.querySelector('.slide-card-badge');
+      if (badge) badge.style.display = 'inline-block';
+      lastLiveBibleCard = targetBibleCard;
     }
   }
 
