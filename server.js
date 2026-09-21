@@ -1055,15 +1055,6 @@ function indexSongRecord(r)
 
     const tokens = tokenizeText(clean);
     const rawLines = clean.split(/<BR>|\r?\n/i).map(l => l.replace(/<[^>]*>/g, '').trim()).filter(Boolean);
-    const indexedLines = rawLines.map(line => {
-      const lTokens = tokenizeText(line);
-      return {
-        line,
-        lineLower: line.toLowerCase(),
-        tokens: lTokens,
-        tokenInfos: buildTargetTokenInfos(lTokens)
-      };
-    });
 
     slides.push({
       slideIndex: currentIdx,
@@ -1071,7 +1062,7 @@ function indexSongRecord(r)
       cleanSlideLower: clean.toLowerCase(),
       tokens,
       tokenInfos: buildTargetTokenInfos(tokens),
-      lines: indexedLines
+      lines: rawLines
     });
   }
 
@@ -1311,18 +1302,32 @@ app.get('/api/songs/search', async (req, res) =>
             matchedTerm = (slideMatch.matchedWordTokens || slideMatch.matchedTokens).join(' ') || q;
 
             // Find specific line within this slide for preview snippet
-            for (const l of s.lines)
+            if (Array.isArray(s.lines) && s.lines.length > 0)
             {
-              const lineMatch = matchTokenInfosWithKeys(l.tokenInfos, l.tokens, l.lineLower, qPattern, qLower);
-              if (lineMatch.matched)
+              const qTermLower = qLower.replace(/\*/g, '').trim();
+              if (qTermLower)
               {
-                matchedLine = l.line;
-                break;
+                matchedLine = s.lines.find(l => typeof l === 'string' && l.toLowerCase().includes(qTermLower)) || '';
               }
-            }
-            if (!matchedLine && s.lines.length > 0)
-            {
-              matchedLine = s.lines[0].line;
+              if (!matchedLine)
+              {
+                // Fallback: match against line tokens on-the-fly for the matched slide only
+                for (const lineStr of s.lines)
+                {
+                  const lTokens = tokenizeText(lineStr);
+                  const lInfos = buildTargetTokenInfos(lTokens);
+                  const lineMatch = matchTokenInfosWithKeys(lInfos, lTokens, lineStr.toLowerCase(), qPattern, qLower);
+                  if (lineMatch.matched)
+                  {
+                    matchedLine = lineStr;
+                    break;
+                  }
+                }
+              }
+              if (!matchedLine)
+              {
+                matchedLine = s.lines[0];
+              }
             }
           }
         }

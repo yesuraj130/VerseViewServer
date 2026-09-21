@@ -323,7 +323,7 @@ function getColloquialAlternates(key)
 
 /**
  * Analyzes target tokens and computes sound keys for validated Tamil Sandhi pairs
- * (வல்லினம் மிகல் புணர்ச்சி) as well as prothetic loanword alternate keys (இரத்தம் <-> ரத்தம்).
+ * (வல்லினம் மிகல் புணர்ச்சி). Target tokens only store lean canonical and stripped keys.
  */
 function buildTargetTokenInfos(tokens)
 {
@@ -340,7 +340,7 @@ function buildTargetTokenInfos(tokens)
     if (i + 1 < len)
     {
       const nextWord = tokens[i + 1];
-      // Vallinam sandhi check
+      // Vallinam sandhi check (க், ச், த், ப்)
       if (word.endsWith('க்') && nextWord.startsWith('க'))
       {
         strippedKey = getSoundKey(word.slice(0, -2));
@@ -359,47 +359,55 @@ function buildTargetTokenInfos(tokens)
       }
     }
 
-    const protheticKey = getProtheticAlternateKey(fullKey, word);
-    const altKey = (strippedKey && protheticKey) ? getProtheticAlternateKey(strippedKey, word) : null;
-
-    const validKeys = [fullKey];
-    if (strippedKey && !validKeys.includes(strippedKey)) validKeys.push(strippedKey);
-    if (protheticKey && !validKeys.includes(protheticKey)) validKeys.push(protheticKey);
-    if (altKey && !validKeys.includes(altKey)) validKeys.push(altKey);
-
-    // Backward-compatibility: if sound key contains 'tr' (from ற்+ற), also accept 'r'
-    if (fullKey.includes('tr'))
-    {
-      const rKey = fullKey.replace(/tr/g, 'r');
-      if (!validKeys.includes(rKey)) validKeys.push(rKey);
-    }
-    if (strippedKey && strippedKey.includes('tr'))
-    {
-      const rKey = strippedKey.replace(/tr/g, 'r');
-      if (!validKeys.includes(rKey)) validKeys.push(rKey);
-    }
-
-    // Add colloquial alternates (e.g. ennai <-> enna, unnai <-> unna)
-    for (const k of [fullKey, strippedKey, protheticKey].filter(Boolean))
-    {
-      const alts = getColloquialAlternates(k);
-      for (const alt of alts)
-      {
-        if (!validKeys.includes(alt)) validKeys.push(alt);
-      }
-    }
-
     infos.push({
       raw: word,
       fullKey: fullKey,
-      strippedKey: strippedKey,
-      protheticKey: protheticKey,
-      altKey: altKey,
-      validKeys: validKeys
+      strippedKey: strippedKey
     });
   }
 
   return infos;
+}
+
+/**
+ * Builds all valid phonetic variations (prothetic vowels, colloquial alternates, tr/r)
+ * for a query search token at query time.
+ */
+function buildQueryWordKeys(key, clean)
+{
+  if (!key) return [];
+  const qList = [key];
+
+  const protheticKey = getProtheticAlternateKey(key, clean);
+  if (protheticKey && !qList.includes(protheticKey))
+  {
+    qList.push(protheticKey);
+  }
+
+  // Add colloquial alternates (e.g. enna <-> ennai, unna <-> unnai)
+  const baseKeys = [...qList];
+  for (const k of baseKeys)
+  {
+    const alts = getColloquialAlternates(k);
+    for (const alt of alts)
+    {
+      if (!qList.includes(alt)) qList.push(alt);
+    }
+  }
+
+  // 'tr' vs 'r' variations
+  const currentCount = qList.length;
+  for (let i = 0; i < currentCount; i++)
+  {
+    const k = qList[i];
+    if (k.includes('tr'))
+    {
+      const rKey = k.replace(/tr/g, 'r');
+      if (!qList.includes(rKey)) qList.push(rKey);
+    }
+  }
+
+  return qList;
 }
 
 /**
@@ -448,16 +456,7 @@ function compileQueryPattern(rawQuery)
     if (!key) continue;
 
     const protheticKey = getProtheticAlternateKey(key, clean);
-    const qKeysList = [key];
-    if (protheticKey && !qKeysList.includes(protheticKey))
-    {
-      qKeysList.push(protheticKey);
-    }
-    const alts = getColloquialAlternates(key);
-    for (const alt of alts)
-    {
-      if (!qKeysList.includes(alt)) qKeysList.push(alt);
-    }
+    const qKeysList = buildQueryWordKeys(key, clean);
 
     let mode = 'exact';
     if (hasLeadingWildcard && hasTrailingWildcard)
@@ -528,42 +527,45 @@ function compileQueryPattern(rawQuery)
   };
 }
 
+function checkKeyMatch(tKey, qKey, mode, internalParts)
+{
+  if (!tKey || !qKey) return false;
+  switch (mode)
+  {
+    case 'prefix':
+      return tKey.startsWith(qKey);
+    case 'suffix':
+      return tKey.endsWith(qKey);
+    case 'contains':
+      return tKey.includes(qKey);
+    case 'internal':
+      return internalParts && tKey.startsWith(internalParts[0]) && tKey.endsWith(internalParts[1]);
+    case 'exact':
+    default:
+      return (tKey === qKey) || (qKey.length >= 4 && tKey.startsWith(qKey));
+  }
+}
+
 /**
  * Checks if target token T satisfies query word item qItem
  */
 function matchesToken(T, qItem)
 {
   if (!T) return false;
-  const tKeys = T.validKeys || [T.fullKey, T.strippedKey, T.protheticKey, T.altKey].filter(Boolean);
-  const qKeys = qItem.qKeysList || [qItem.key];
+  const qKeys = qItem.qKeysList || (qItem.key ? [qItem.key] : []);
+  const tFull = T.fullKey;
+  const tStrip = T.strippedKey;
 
-  for (const qKey of qKeys)
+  for (let i = 0; i < qKeys.length; i++)
   {
-    for (const tKey of tKeys)
+    const qKey = qKeys[i];
+    if (!qKey) continue;
+    let ok = checkKeyMatch(tFull, qKey, qItem.mode, qItem.internalParts);
+    if (!ok && tStrip)
     {
-      if (!tKey || !qKey) continue;
-      let ok = false;
-      switch (qItem.mode)
-      {
-        case 'prefix':
-          ok = tKey.startsWith(qKey);
-          break;
-        case 'suffix':
-          ok = tKey.endsWith(qKey);
-          break;
-        case 'contains':
-          ok = tKey.includes(qKey);
-          break;
-        case 'internal':
-          ok = qItem.internalParts && tKey.startsWith(qItem.internalParts[0]) && tKey.endsWith(qItem.internalParts[1]);
-          break;
-        case 'exact':
-        default:
-          ok = (tKey === qKey) || (qKey.length >= 4 && tKey.startsWith(qKey));
-          break;
-      }
-      if (ok) return true;
+      ok = checkKeyMatch(tStrip, qKey, qItem.mode, qItem.internalParts);
     }
+    if (ok) return true;
   }
   return false;
 }
@@ -586,13 +588,7 @@ function matchTokenInfosWithKeys(tInfos, tTokens, textLower, qKeys, rawQueryLowe
   {
     const wordItems = qKeys.map((k, idx) => {
       const prothetic = getProtheticAlternateKey(k, '');
-      const qList = [k];
-      if (prothetic && !qList.includes(prothetic)) qList.push(prothetic);
-      const alts = getColloquialAlternates(k);
-      for (const alt of alts)
-      {
-        if (!qList.includes(alt)) qList.push(alt);
-      }
+      const qList = buildQueryWordKeys(k, '');
       return {
         type: 'word',
         raw: k,
@@ -646,16 +642,34 @@ function matchTokenInfosWithKeys(tInfos, tTokens, textLower, qKeys, rawQueryLowe
         const qItem = pattern.wordItems[j];
         const isLast = (j === K - 1);
         const qKeys = qItem.qKeysList || [qItem.key];
-        const tKeys = T.validKeys || [T.fullKey, T.strippedKey, T.protheticKey, T.altKey].filter(Boolean);
+        const tFull = T.fullKey;
+        const tStrip = T.strippedKey;
 
         let tokenMatched = false;
         if (!isLast)
         {
-          tokenMatched = tKeys.some(tk => qKeys.some(qk => (tk === qk) || (qk.length >= 4 && tk.startsWith(qk))));
+          for (let qkIdx = 0; qkIdx < qKeys.length; qkIdx++)
+          {
+            const qk = qKeys[qkIdx];
+            if ((tFull === qk) || (qk.length >= 4 && tFull.startsWith(qk)) ||
+                (tStrip && ((tStrip === qk) || (qk.length >= 4 && tStrip.startsWith(qk)))))
+            {
+              tokenMatched = true;
+              break;
+            }
+          }
         }
         else
         {
-          tokenMatched = tKeys.some(tk => qKeys.some(qk => tk.startsWith(qk)));
+          for (let qkIdx = 0; qkIdx < qKeys.length; qkIdx++)
+          {
+            const qk = qKeys[qkIdx];
+            if (tFull.startsWith(qk) || (tStrip && tStrip.startsWith(qk)))
+            {
+              tokenMatched = true;
+              break;
+            }
+          }
         }
 
         if (!tokenMatched)
