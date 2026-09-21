@@ -828,6 +828,11 @@ function renderBibleVersesSlides(bibleChapterVersesText)
   if (!slideDeckBible) return;
   slideDeckBible.innerHTML = '';
 
+  const effectiveBibleFont = (typeof window.getEffectiveBibleFont === 'function')
+    ? window.getEffectiveBibleFont(selectedBibleVersionId)
+    : 'Baloo Thambi 2';
+  const bibleFontFamily = `"${effectiveBibleFont}", 'Baloo Thambi 2', 'Baloo Thambi', 'Mukta Malar', 'Noto Sans Tamil', var(--font-display)`;
+
   const liveVerse = getLiveBibleVerseInfo();
   const isVersionLive = liveVerse && isSameBibleVersion(liveVerse.versionId || liveVerse.version, selectedBibleVersionId);
   const isCurrentChapterLive = isVersionLive &&
@@ -847,7 +852,7 @@ function renderBibleVersesSlides(bibleChapterVersesText)
 
     verseSlide.innerHTML = `
       <span class="slide-card-badge" style="display: ${isThisVerseLive ? 'inline-block' : 'none'};">LIVE</span>
-      <div class="slide-card-content"><span class="verse-number">${verseText.verseNum}</span>${escapeHtml(verseText.word)}</div>
+      <div class="slide-card-content" style="font-family: ${bibleFontFamily};"><span class="verse-number">${verseText.verseNum}</span>${escapeHtml(verseText.word)}</div>
     `;
 
     verseSlide.addEventListener('click', () =>

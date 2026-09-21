@@ -255,6 +255,12 @@ function updateVirtualSongList(force = false)
     const isSelected = selectedSongId && Number(selectedSongId) === Number(song.id);
     const isLive = currentLiveSongId && currentLiveSongId === Number(song.id);
 
+    const rawFont = song.font;
+    const effectiveFont = (typeof window.getEffectiveSongFont === 'function')
+      ? window.getEffectiveSongFont(rawFont)
+      : (rawFont || 'Baloo Thambi 2');
+    const itemFontFamily = `"${effectiveFont}", 'Baloo Thambi 2', 'Baloo Thambi', 'Mukta Malar', 'Noto Sans Tamil', var(--font-display)`;
+
     const classes = ['song-searchresult'];
     if (isSelected) classes.push('selected');
     if (isLive) classes.push('live');
@@ -285,10 +291,10 @@ function updateVirtualSongList(force = false)
 
     html += `
       <div class="${classes.join(' ')}" data-id="${song.id}" data-matched-slide="${song.matchedSlideIndex || 1}">
-        <div class="song-searchresult-name" style="font-family: ${songFontFamily};">
+        <div class="song-searchresult-name" style="font-family: ${itemFontFamily};">
           ${highlightedName}
         </div>
-        <div class="song-searchresult-previewfirstline" style="font-family: ${songFontFamily};" title="${titleAttr}">
+        <div class="song-searchresult-previewfirstline" style="font-family: ${itemFontFamily};" title="${titleAttr}">
           ${previewLineHtml}
         </div>
       </div>
@@ -457,8 +463,14 @@ function renderSongSlides(song)
 {
   slideDeckSongs.innerHTML = '';
 
+  const rawFont = song.font;
+  const effectiveFont = (typeof window.getEffectiveSongFont === 'function')
+    ? window.getEffectiveSongFont(rawFont)
+    : (rawFont || 'Baloo Thambi 2');
+  const songFontFamily = `"${effectiveFont}", 'Baloo Thambi 2', 'Baloo Thambi', 'Mukta Malar', 'Noto Sans Tamil', var(--font-display)`;
+
   activeSongTitle.textContent = song.name;
-  activeSongTitle.style.fontFamily = `'Baloo Thambi 2', 'Baloo Thambi', 'Mukta Malar', 'Noto Sans Tamil', var(--font-display)`;
+  activeSongTitle.style.fontFamily = songFontFamily;
   
   if (buttonDeckEditSong) buttonDeckEditSong.style.display = 'inline-flex';
 
@@ -469,8 +481,6 @@ function renderSongSlides(song)
     slideDeckSongs.innerHTML = 'This song has no slides.';
     return;
   }
-
-  const songFontFamily = `'Baloo Thambi 2', 'Baloo Thambi', 'Mukta Malar', 'Noto Sans Tamil', var(--font-display)`;
 
   slides.forEach((slide) =>
   {

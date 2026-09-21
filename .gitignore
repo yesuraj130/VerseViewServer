@@ -19,3 +19,5 @@ data/recents.db
 data/recents.db-journal
 data/recents.db-wal
 data/recents.db-shm
+data/backups/
+data/backups/*

@@ -30,9 +30,10 @@
           <p class="hub-subtitle">Real-Time Express + Socket.io + SQLite WAL Engine</p>
         </div>
       </div>
-      <div style="display: flex; align-items: center; gap: 12px;">
-        <button type="button" class="btn-secondary" data-fullscreen-btn style="font-size: 12px; padding: 4px 10px;" title="Toggle Fullscreen Edge-to-Edge">⛶ Fullscreen</button>
-        <button type="button" class="btn-secondary" data-pwa-install-btn style="display: none; font-size: 12px; padding: 4px 10px;">📲 Install App</button>
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <a href="/settings/" class="btn-secondary" style="font-size: 12px; padding: 5px 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; font-weight: 600;" title="Open Application Settings & Font Mapper">⚙️ Settings</a>
+        <button type="button" class="btn-secondary" data-fullscreen-btn style="font-size: 12px; padding: 5px 10px;" title="Toggle Fullscreen Edge-to-Edge">⛶ Fullscreen</button>
+        <button type="button" class="btn-secondary" data-pwa-install-btn style="display: none; font-size: 12px; padding: 5px 10px;">📲 Install App</button>
         <span class="server-dot" id="hub-server-dot"></span>
         <span style="font-size: 13px; color: var(--text-secondary);" id="hub-server-status">Socket Synchronized</span>
       </div>
@@ -156,19 +157,6 @@
         </div>
         <div style="font-size: 28px; font-weight: 800; color: #a78bfa; margin-top: 4px;" id="stat-displays">--</div>
         <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Real-time output screens • Click to view</div>
-      </div>
-    </div>
-
-    <!-- Keyboard Shortcuts Guide -->
-    <div style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 20px;">
-      <h4 style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 12px;">⚡ Keyboard Shortcuts for Live Presentation</h4>
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; font-size: 13px; color: var(--text-secondary);">
-        <div><kbd style="background: #334155; padding: 2px 6px; border-radius: 4px; color: #fff;">&rarr;</kbd> or <kbd style="background: #334155; padding: 2px 6px; border-radius: 4px; color: #fff;">PageDown</kbd> : Next Slide</div>
-        <div><kbd style="background: #334155; padding: 2px 6px; border-radius: 4px; color: #fff;">&larr;</kbd> or <kbd style="background: #334155; padding: 2px 6px; border-radius: 4px; color: #fff;">PageUp</kbd> : Previous Slide</div>
-        <div><kbd style="background: #334155; padding: 2px 6px; border-radius: 4px; color: #fff;">B</kbd> : Blank Screen (Blackout)</div>
-        <div><kbd style="background: #334155; padding: 2px 6px; border-radius: 4px; color: #fff;">C</kbd> : Clear Slide Text</div>
-        <div><kbd style="background: #334155; padding: 2px 6px; border-radius: 4px; color: #fff;">S</kbd> : Show / Restore Active Slide</div>
-        <div><kbd style="background: #334155; padding: 2px 6px; border-radius: 4px; color: #fff;">F</kbd> : Toggle Fullscreen (Display)</div>
       </div>
     </div>
   </div>

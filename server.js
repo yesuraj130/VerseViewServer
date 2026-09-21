@@ -15,6 +15,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 const server = http.createServer(app);
 
 // Disable Nagle's algorithm for immediate low-latency packet delivery
@@ -194,6 +196,85 @@ function getBibleStructure(versionId)
   }
 }
 
+// ---------------------------------------------------------------------------
+// 0. Settings Configuration Manager (data/config.json)
+// ---------------------------------------------------------------------------
+const configFilePath = path.join(dataDir, 'config.json');
+
+function getDefaultConfig()
+{
+  const versions = getVersionMetadata();
+  const defaultBibleFonts = {};
+  for (const v of versions)
+  {
+    defaultBibleFonts[v.id] = v.selectedfont || 'Baloo Thambi';
+  }
+  return {
+    fontMapping: {
+      bible: defaultBibleFonts,
+      songOverrides: {}
+    }
+  };
+}
+
+function loadConfig()
+{
+  try
+  {
+    if (fs.existsSync(configFilePath))
+    {
+      const parsed = JSON.parse(fs.readFileSync(configFilePath, 'utf8'));
+      if (parsed && typeof parsed === 'object')
+      {
+        if (!parsed.fontMapping) parsed.fontMapping = {};
+        if (!parsed.fontMapping.bible) parsed.fontMapping.bible = {};
+        if (!parsed.fontMapping.songOverrides) parsed.fontMapping.songOverrides = {};
+        return parsed;
+      }
+    }
+  }
+  catch (err)
+  {
+    console.error('Error reading config.json:', err);
+  }
+  const def = getDefaultConfig();
+  saveConfig(def);
+  return def;
+}
+
+function saveConfig(config)
+{
+  try
+  {
+    fs.writeFileSync(configFilePath, JSON.stringify(config, null, 2), 'utf8');
+    return true;
+  }
+  catch (err)
+  {
+    console.error('Error saving config.json:', err);
+    return false;
+  }
+}
+
+function getDistinctSongFonts()
+{
+  try
+  {
+    const rows = smDb.prepare(`
+      SELECT DISTINCT font 
+      FROM sm 
+      WHERE font IS NOT NULL AND TRIM(font) != '' 
+      ORDER BY font COLLATE NOCASE ASC
+    `).all();
+    return rows.map(r => r.font.trim()).filter(Boolean);
+  }
+  catch (err)
+  {
+    console.error('Error querying distinct song fonts:', err);
+    return ['Baloo Thambi', 'Bamini', 'Tamil Bible', 'Tamil-Ananthi', 'Mukta Malar', 'Latha', 'Arial'];
+  }
+}
+
 let cachedVersionMetadata = null;
 
 function getVersionMetadata(forceReload = false)
@@ -208,12 +289,24 @@ function getVersionMetadata(forceReload = false)
   {
     const raw = JSON.parse(fs.readFileSync(versionFile, 'utf8'));
     const list = raw.version || raw.versions || [];
+    let bibleFontMap = {};
+    try
+    {
+      if (fs.existsSync(configFilePath))
+      {
+        const parsedCfg = JSON.parse(fs.readFileSync(configFilePath, 'utf8'));
+        bibleFontMap = (parsedCfg && parsedCfg.fontMapping && parsedCfg.fontMapping.bible) || {};
+      }
+    }
+    catch (e) {}
+
     cachedVersionMetadata = list.map((item, idx) =>
     {
       const file = item.file || item.dbFile || `${item.id || 'bible'}.db`;
       const id = item.id || file.replace(/\.db$/i, '');
       const dbExists = fs.existsSync(path.join(dataDir, file));
       const booknames = item.booknames || item.books || [];
+      const configuredFont = bibleFontMap[id] || item.selectedfont || 'Arial';
       return {
         id,
         name: item.name || `Version ${idx + 1}`,
@@ -221,7 +314,8 @@ function getVersionMetadata(forceReload = false)
         dbFile: file,
         books: booknames,
         booknames: booknames,
-        selectedfont: item.selectedfont || 'Arial',
+        selectedfont: configuredFont,
+        defaultfont: item.selectedfont || 'Arial',
         copyright: item.copyright || '',
         left2right: item.left2right !== undefined ? item.left2right : true,
         available: dbExists
@@ -2422,6 +2516,79 @@ app.get('/api/recents', (req, res) =>
 });
 
 // ---------------------------------------------------------------------------
+// 6c. Application Settings & Font Mapper API
+// ---------------------------------------------------------------------------
+app.get('/api/settings', (req, res) =>
+{
+  try
+  {
+    const config = loadConfig();
+    const versions = getVersionMetadata(true);
+    const detectedSongFonts = getDistinctSongFonts();
+    res.json({
+      config,
+      fontMapping: config.fontMapping || { bible: {}, songOverrides: {} },
+      bibleVersions: versions.map(v => ({
+        id: v.id,
+        name: v.name,
+        file: v.file,
+        defaultFont: v.defaultfont || v.selectedfont || 'Baloo Thambi',
+        configuredFont: (config.fontMapping?.bible && config.fontMapping.bible[v.id]) || v.selectedfont || 'Baloo Thambi',
+        available: v.available
+      })),
+      detectedSongFonts
+    });
+  }
+  catch (err)
+  {
+    console.error('Error fetching settings:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/settings', (req, res) =>
+{
+  try
+  {
+    const { fontMapping } = req.body || {};
+    const currentConfig = loadConfig();
+    if (fontMapping && typeof fontMapping === 'object')
+    {
+      currentConfig.fontMapping = {
+        bible: (fontMapping.bible && typeof fontMapping.bible === 'object') ? fontMapping.bible : {},
+        songOverrides: (fontMapping.songOverrides && typeof fontMapping.songOverrides === 'object') ? fontMapping.songOverrides : {}
+      };
+    }
+    const saved = saveConfig(currentConfig);
+    if (!saved)
+    {
+      return res.status(500).json({ error: 'Failed to write config.json' });
+    }
+    // Invalidate cached version metadata so updated bible fonts reflect
+    cachedVersionMetadata = null;
+    res.json({ success: true, config: currentConfig });
+  }
+  catch (err)
+  {
+    console.error('Error saving settings:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/fonts/songs-detected', (req, res) =>
+{
+  try
+  {
+    const detected = getDistinctSongFonts();
+    res.json({ fonts: detected });
+  }
+  catch (err)
+  {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // 7. Static Files & Routing
 // ---------------------------------------------------------------------------
 app.use(express.static(path.join(__dirname, 'public'), {
@@ -2468,6 +2635,13 @@ app.get(['/cleaner', '/cleaner/'], (req, res) =>
 {
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.sendFile(path.join(__dirname, 'public', 'cleaner', 'index.html'));
+});
+
+// Application Settings & Font Mapper
+app.get(['/settings', '/settings/'], (req, res) =>
+{
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.sendFile(path.join(__dirname, 'public', 'settings', 'index.html'));
 });
 
 app.get(['/obs/1', '/obs1'], (req, res) =>

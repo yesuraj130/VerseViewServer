@@ -44,10 +44,25 @@ function renderDisplayState(state)
   const lines = rawLines;
   linesContainer.innerHTML = '';
 
-  // Apply font family: use Baloo Thambi for all
-  if (state.font && state.font !== 'Tamil Bible' && state.font !== 'Tamil-Ananthi' && state.font !== 'Latha' && state.font !== 'Mukta Malar' && state.font !== 'Baloo Thambi' && state.font !== 'Baloo Thambi 2')
+  // Apply font family using central font mapper
+  let targetFont = '';
+  if (state.type === 'bible' && state.verseInfo)
   {
-    linesContainer.style.fontFamily = `"${state.font}", 'Baloo Thambi 2', 'Baloo Thambi', 'Mukta Malar', var(--font-display)`;
+    const verId = state.verseInfo.versionId || state.verseInfo.version;
+    targetFont = (typeof window.getEffectiveBibleFont === 'function')
+      ? window.getEffectiveBibleFont(verId)
+      : (state.font || 'Baloo Thambi 2');
+  }
+  else
+  {
+    targetFont = (typeof window.getEffectiveSongFont === 'function')
+      ? window.getEffectiveSongFont(state.font)
+      : (state.font || 'Baloo Thambi 2');
+  }
+
+  if (targetFont)
+  {
+    linesContainer.style.fontFamily = `"${targetFont}", 'Baloo Thambi 2', 'Baloo Thambi', 'Mukta Malar', 'Noto Sans Tamil', var(--font-display)`;
   }
   else
   {

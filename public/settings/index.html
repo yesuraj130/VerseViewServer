@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+  <title>Verse View Server — Settings &amp; Font Mapper</title>
+  <meta name="description" content="Configure Bible version fonts and song font overrides for Verse View Server">
+  <meta name="theme-color" content="#0b1120">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/hub.css">
+  <link rel="stylesheet" href="/settings/settings.css">
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/config.js"></script>
+  <script src="/js/pwa.js"></script>
+</head>
+<body class="settings-body">
+  <div class="settings-container">
+    <!-- Top Header -->
+    <header class="settings-header">
+      <div class="settings-brand">
+        <a href="/" class="settings-back-link" title="Return to Server Hub">&larr; Back to Hub</a>
+        <div style="display: flex; align-items: center; gap: 12px; margin-top: 8px;">
+          <div class="settings-icon-badge">⚙️</div>
+          <div>
+            <h1 class="settings-title">Application Settings</h1>
+            <p class="settings-subtitle">Configure typography mappings and font overrides saved in <code>data/config.json</code></p>
+          </div>
+        </div>
+      </div>
+      <div class="settings-header-actions">
+        <a href="/presenter/" class="btn-secondary" style="text-decoration: none; font-size: 13px;">Presenter &rarr;</a>
+        <a href="/display/" target="_blank" class="btn-secondary" style="text-decoration: none; font-size: 13px;">Display Screen &nearr;</a>
+        <button type="button" id="btn-save-settings-top" class="btn-primary" style="font-size: 13px; padding: 7px 16px;">
+          💾 Save Settings
+        </button>
+      </div>
+    </header>
+
+    <!-- Notification Alert Bar -->
+    <div id="settings-alert" class="settings-alert" style="display: none;">
+      <span id="settings-alert-icon">✅</span>
+      <span id="settings-alert-text">Settings saved successfully to data/config.json</span>
+    </div>
+
+    <!-- Main Settings Form Grid -->
+    <div class="settings-content">
+      <!-- Section 1: Bible Versions Font Mapper -->
+      <section class="settings-card" id="section-bible-fonts">
+        <div class="settings-card-header">
+          <div class="settings-card-title-group">
+            <span class="settings-card-tag tag-bible">Bible Scriptures</span>
+            <h2 class="settings-card-title">📖 Bible Versions Font Mapper</h2>
+            <p class="settings-card-desc">
+              Assign specific font families for each installed Bible version. Presenter slides and Projector displays will render verses in the selected font.
+            </p>
+          </div>
+        </div>
+
+        <div class="settings-card-body">
+          <div class="bible-fonts-table-wrapper">
+            <table class="settings-table" id="bible-versions-table">
+              <thead>
+                <tr>
+                  <th style="width: 28%;">Bible Version</th>
+                  <th style="width: 16%;">Database</th>
+                  <th style="width: 26%;">Assigned Font</th>
+                  <th style="width: 30%;">Live Script Preview</th>
+                </tr>
+              </thead>
+              <tbody id="bible-versions-tbody">
+                <tr>
+                  <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">
+                    Loading Bible versions...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 2: Song Font Override Mapper -->
+      <section class="settings-card" id="section-song-fonts">
+        <div class="settings-card-header">
+          <div class="settings-card-title-group">
+            <span class="settings-card-tag tag-songs">Song Presentations</span>
+            <h2 class="settings-card-title">🎵 Song Font Override Mapper</h2>
+            <p class="settings-card-desc">
+              Override song fonts configured in <code>songs.db</code> without editing songs individually. For example, mapping <code>Baloo Thambi</code> &rarr; <code>Latha</code> will render all songs tagged with <em>Baloo Thambi</em> using <em>Latha</em> in Presenter and Display upon reload.
+            </p>
+          </div>
+          <button type="button" id="btn-add-song-override" class="btn-secondary" style="font-size: 12px; padding: 6px 12px;">
+            + Add Override Rule
+          </button>
+        </div>
+
+        <div class="settings-card-body">
+          <div id="song-overrides-container" class="song-overrides-list">
+            <!-- Dynamically populated override rows -->
+          </div>
+
+          <div class="detected-fonts-box">
+            <div class="detected-fonts-title">Fonts detected in your Songs Database (<code>songs.db</code>):</div>
+            <div class="detected-fonts-chips" id="detected-fonts-chips">
+              <span style="font-size: 12px; color: var(--text-muted);">Scanning songs database...</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Bottom Sticky Actions Bar -->
+      <div class="settings-footer-bar">
+        <div class="settings-footer-info">
+          <span class="config-file-badge">📁 data/config.json</span>
+          <span id="config-sync-status" class="config-sync-text">Changes will apply on page reload</span>
+        </div>
+        <div class="settings-footer-buttons">
+          <button type="button" id="btn-reset-settings" class="btn-secondary" style="font-size: 13px;">
+            ↺ Reset to Defaults
+          </button>
+          <button type="button" id="btn-save-settings" class="btn-primary" style="font-size: 13px; padding: 9px 20px;">
+            💾 Save Settings
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/settings/settings.js"></script>
+</body>
+</html>

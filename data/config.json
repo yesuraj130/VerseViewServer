@@ -1,0 +1,13 @@
+{
+  "fontMapping": {
+    "bible": {
+      "tamil": "Baloo Thambi",
+      "kjv": "Baloo Chettan",
+      "municode": "Baloo Chettan",
+      "hindi_unicode": "Baloo",
+      "telugu": "Ramabhadra Telugu",
+      "lbla": "Baloo Chettan"
+    },
+    "songOverrides": {}
+  }
+}
