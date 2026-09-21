@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { Server } from 'socket.io';
 import { isTamilBibleFont, baminiToUnicode } from './lib/bamini.js';
-import { matchContiguousPhoneticPhrase, matchesQueryPhonetic, tokenizeText, getSoundKey, matchWithPrecomputedKeys, matchTokenInfosWithKeys, buildTargetTokenInfos, compileQueryPattern } from './lib/tamilPhonetic.js';
+import { matchContiguousPhoneticPhrase, matchesQueryPhonetic, tokenizeText, getSoundKey, matchWithPrecomputedKeys, matchTokenInfosWithKeys, buildTargetTokenInfos, compileQueryPattern } from './public/presenter/js/tamilPhonetic.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

@@ -1,587 +1,816 @@
 // ===========================================================================
-// Presenter Console — Client-Side Tamil Phonetic Sound-Key & Phrase Matcher
+// Presenter Console & Server — Tamil Phonetic Sound-Key & Phrase Matcher
 // Zero-Dictionary, High-Performance Deterministic Acoustic Sound-Folding Engine
+// Single Universal Source of Truth for Browser & Node.js Server
 // ===========================================================================
 
-(function(window) {
-  'use strict';
+// Standalone Tamil Vowels -> Canonical Vowel Sound
+const standaloneTamilVowels = {
+  'அ': 'a',
+  'ஆ': 'a',
+  'இ': 'i',
+  'ஈ': 'i',
+  'உ': 'u',
+  'ஊ': 'u',
+  'எ': 'e',
+  'ஏ': 'e',
+  'ஐ': 'y',
+  'ஒ': 'o',
+  'ஓ': 'o',
+  'ஔ': 'av'
+};
 
-  // Standalone Tamil Vowels -> Canonical Vowel Sound
-  const standaloneTamilVowels = {
-    'அ': 'a',
-    'ஆ': 'a',
-    'இ': 'i',
-    'ஈ': 'i',
-    'உ': 'u',
-    'ஊ': 'u',
-    'எ': 'e',
-    'ஏ': 'e',
-    'ஐ': 'y',
-    'ஒ': 'o',
-    'ஓ': 'o',
-    'ஔ': 'av'
-  };
+// Attached Tamil Vowel Matras (attached to consonants)
+const tamilVowelMatras = {
+  'ா': 'a',
+  'ி': 'i',
+  'ீ': 'i',
+  'ு': 'u',
+  'ூ': 'u',
+  'ெ': 'e',
+  'ே': 'e',
+  'ை': 'y',
+  'ொ': 'o',
+  'ோ': 'o',
+  'ௌ': 'av'
+};
 
-  // Attached Tamil Vowel Matras (attached to consonants)
-  const tamilVowelMatras = {
-    'ா': 'a',
-    'ி': 'i',
-    'ீ': 'i',
-    'ு': 'u',
-    'ூ': 'u',
-    'ெ': 'e',
-    'ே': 'e',
-    'ை': 'y',
-    'ொ': 'o',
-    'ோ': 'o',
-    'ௌ': 'av'
-  };
+// Tamil Consonants -> Canonical Base Consonant Sound
+const tamilConsonants = {
+  'க': 'k',
+  'ங': 'ng',
+  'ச': 's',
+  'ஞ': 'nj',
+  'ட': 't',
+  'ண': 'n',
+  'த': 't',
+  'ந': 'n',
+  'ன': 'n',
+  'ப': 'p',
+  'ம': 'm',
+  'ய': 'y',
+  'ர': 'r',
+  'ற': 'r',
+  'ல': 'l',
+  'ள': 'l',
+  'ழ': 'l',
+  'வ': 'v',
+  'ஸ': 's',
+  'ஷ': 's',
+  'ஹ': 'h',
+  'ஜ': 'j'
+};
 
-  // Tamil Consonants -> Canonical Base Consonant Sound
-  const tamilConsonants = {
-    'க': 'k',
-    'ங': 'ng',
-    'ச': 's',
-    'ஞ': 'nj',
-    'ட': 't',
-    'ண': 'n',
-    'த': 't',
-    'ந': 'n',
-    'ன': 'n',
-    'ப': 'p',
-    'ம': 'm',
-    'ய': 'y',
-    'ர': 'r',
-    'ற': 'r',
-    'ல': 'l',
-    'ள': 'l',
-    'ழ': 'l',
-    'வ': 'v',
-    'ஸ': 's',
-    'ஷ': 's',
-    'ஜ': 'j',
-    'ஹ': 'h'
-  };
+/**
+ * Splits text into tokens while preserving search delimiters (* and ?)
+ */
+function tokenizeText(text)
+{
+  if (!text || typeof text !== 'string') return [];
+  return text.trim().split(/[\s,;:.!?"'()\[\]{}<>\/\\|\-_=+~`@#$%^&]+/g).filter(Boolean);
+}
 
-  function tokenizeText(text) {
-    if (!text || typeof text !== 'string') return [];
-    const clean = text.replace(/<[^>]*>/g, ' ');
-    const normalized = clean
-      .replace(/[0-9]+[\.\)\-:]*/g, ' ')
-      .replace(/[.,\/#!$%\^&;:{}=\-_`~()—–"'\?\[\]\\|<>+@•]/g, ' ')
-      .trim();
-    if (!normalized) return [];
-    return normalized.split(/\s+/).filter(Boolean);
-  }
+/**
+ * Converts a Tamil Unicode word into a canonical acoustic sound key
+ */
+function getTamilScriptSoundKey(word)
+{
+  let key = '';
+  const len = word.length;
+  let i = 0;
 
-  function getTamilScriptSoundKey(word) {
-    let key = '';
-    const len = word.length;
-    let i = 0;
-
-    while (i < len) {
-      const ch = word[i];
-
-      if (ch === 'ஸ்ரீ') {
-        key += 'sri';
-        i++;
-        continue;
-      }
-
-      if (standaloneTamilVowels[ch] !== undefined) {
-        key += standaloneTamilVowels[ch];
-        i++;
-        continue;
-      }
-
-      if (tamilConsonants[ch] !== undefined) {
-        const consSound = tamilConsonants[ch];
-        const nextCh = i + 1 < len ? word[i + 1] : '';
-
-        if (nextCh === '\u0BCD') {
-          key += consSound;
-          i += 2;
-        } else if (tamilVowelMatras[nextCh] !== undefined) {
-          key += consSound + tamilVowelMatras[nextCh];
-          i += 2;
-        } else {
-          key += consSound + 'a';
-          i += 1;
-        }
-        continue;
-      }
-
-      if (ch === 'ஃ' || ch === '\u0BCD') {
-        i++;
-        continue;
-      }
-
-      if (/[a-z]/i.test(ch)) {
-        key += ch.toLowerCase();
-      }
+  while (i < len)
+  {
+    const ch = word[i];
+    if (ch === 'ஸ்ரீ')
+    {
+      key += 'sri';
       i++;
+      continue;
     }
-
-    // Harmonize Tamil compound nasal-stop clusters:
-    // 1. ங் + க (ngk) -> nk (e.g. செங்கடலை, சிங்கம், மங்களம், பொங்கல், எங்கே)
-    key = key.replace(/ngk/g, 'nk');
-    // 2. ஞ் + ச (njs) -> nj (e.g. மஞ்சள், நெஞ்சம், கொஞ்சும், தஞ்சம்)
-    key = key.replace(/njs/g, 'nj');
-    // 3. Initial இயே (iye) -> ye (e.g. இயேசு -> Yesu)
-    key = key.replace(/^iye/, 'ye');
-
-    return collapseSoundKey(key);
+    if (standaloneTamilVowels[ch] !== undefined)
+    {
+      key += standaloneTamilVowels[ch];
+      i++;
+      continue;
+    }
+    if (tamilConsonants[ch] !== undefined)
+    {
+      const consSound = tamilConsonants[ch];
+      const nextCh = i + 1 < len ? word[i + 1] : '';
+      if (nextCh === '\u0BCD') // Pulli / virama -> pure consonant
+      {
+        key += consSound;
+        i += 2;
+      }
+      else if (tamilVowelMatras[nextCh] !== undefined) // Consonant + vowel sign
+      {
+        key += consSound + tamilVowelMatras[nextCh];
+        i += 2;
+      }
+      else // Unmarked consonant has implicit 'a'
+      {
+        key += consSound + 'a';
+        i += 1;
+      }
+      continue;
+    }
+    if (ch === 'ஃ' || ch === '\u0BCD')
+    {
+      i++;
+      continue;
+    }
+    if (/[a-z]/i.test(ch))
+    {
+      key += ch.toLowerCase();
+    }
+    i++;
   }
 
-  function getRomanizedSoundKey(word) {
-    let s = word.toLowerCase();
+  // Harmonize Tamil compound nasal-stop clusters:
+  // 1. ங் + க (ngk) -> nk (e.g. செங்கடலை, சிங்கம், மங்களம், பொங்கல், எங்கே)
+  key = key.replace(/ngk/g, 'nk');
+  // 2. ஞ் + ச (njs) -> nj (e.g. மஞ்சள், நெஞ்சம், கொஞ்சும், தஞ்சம்)
+  key = key.replace(/njs/g, 'nj');
+  // 3. Initial இயே (iye) -> ye (e.g. இயேசு -> Yesu)
+  key = key.replace(/^iye/, 'ye');
+  // 4. Harmonize intervocalic Grantha ஹ to k (e.g. ஆஹா -> aaka -> aka, எலோஹிம் -> elokim)
+  key = key.replace(/([aeiou])h([aeiou])/g, '$1k$2');
+  key = key.replace(/([aeiou])h([aeiou])/g, '$1k$2');
 
-    s = s.replace(/shri|sree|sri/g, 'sri');
-    s = s.replace(/ksh/g, 'ks');
-    s = s.replace(/th|dh/g, 't');
-    s = s.replace(/sh|ch/g, 's');
-    s = s.replace(/zh/g, 'l');
+  return collapseSoundKey(key);
+}
 
-    // Harmonize compound nasal-stop clusters matching Tamil phonology:
-    // 1. Velar nasal: ng, ngg, ngk -> nk (e.g. Sengada, Singam, Pongal, Mangalam, Enge)
-    s = s.replace(/ngk|ngg|ng/g, 'nk');
-    // 2. Palatal nasal: njs, nch, nj -> nj (e.g. Manjal, Nenjam, Konjum, Thanjam)
-    s = s.replace(/njs|nch/g, 'nj');
-    s = s.replace(/nj|gn|ny/g, 'nj');
-    // 3. Alveolar nasal: ndr -> nr (e.g. Nandri, Ondru, Endru)
-    s = s.replace(/ndr/g, 'nr');
+/**
+ * Converts a Romanized (Tanglish) word into a canonical acoustic sound key
+ */
+function getRomanizedSoundKey(word)
+{
+  let s = word.toLowerCase();
 
-    s = s.replace(/[bf]/g, 'p');
-    s = s.replace(/g/g, 'k');
-    s = s.replace(/d/g, 't');
-    s = s.replace(/c/g, 's');
-    s = s.replace(/z/g, 'j');
-    s = s.replace(/w/g, 'v');
-    s = s.replace(/q/g, 'k');
-    s = s.replace(/x/g, 'ks');
+  s = s.replace(/shri|sree|sri/g, 'sri');
+  s = s.replace(/ksh/g, 'ks');
+  s = s.replace(/th|dh/g, 't');
+  s = s.replace(/sh|ch/g, 's');
+  s = s.replace(/zh/g, 'l');
 
-    s = s.replace(/aai|aae/g, 'y');
-    s = s.replace(/ai(?![aeiou])/g, 'y');
-    s = s.replace(/(?:ay|ey)(?![aeiou])/g, 'y');
-    s = s.replace(/au|ou|ow/g, 'av');
-    s = s.replace(/aa/g, 'a');
-    s = s.replace(/ee|ea|ae|ii/g, 'i');
-    s = s.replace(/oo|uu/g, 'u');
-    s = s.replace(/oa|oe/g, 'o');
+  // Harmonize compound nasal-stop clusters matching Tamil phonology:
+  // 1. Velar nasal: ng, ngg, ngk -> nk (e.g. Sengada, Singam, Pongal, Mangalam, Enge)
+  s = s.replace(/ngk|ngg|ng/g, 'nk');
+  // 2. Palatal nasal: njs, nch, nj -> nj (e.g. Manjal, Nenjam, Konjum, Thanjam)
+  s = s.replace(/njs|nch/g, 'nj');
+  s = s.replace(/nj|gn|ny/g, 'nj');
+  // 3. Alveolar nasal: ndr -> nr (e.g. Nandri, Ondru, Endru)
+  s = s.replace(/ndr/g, 'nr');
 
-    s = s.replace(/^ie|^iae|^yae/, 'ye');
-    s = s.replace(/^iye/, 'ye');
+  s = s.replace(/[bf]/g, 'p');
+  s = s.replace(/g/g, 'k');
+  s = s.replace(/d/g, 't');
+  s = s.replace(/c/g, 's');
+  s = s.replace(/z/g, 'j');
+  s = s.replace(/w/g, 'v');
+  s = s.replace(/q/g, 'k');
+  s = s.replace(/x/g, 'ks');
 
-    return collapseSoundKey(s);
+  // Tanglish soft க: map intervocalic h (surrounded by vowels) to k
+  // e.g. enakaha -> enakaka, anbaha -> anbaka, pohiren -> pokiren, yehova -> yekova, mahima -> makima
+  // Safeguard: does NOT affect initial h (hosanna, halleluya) or trailing h (appah)
+  s = s.replace(/([aeiou])h([aeiou])/g, '$1k$2');
+  s = s.replace(/([aeiou])h([aeiou])/g, '$1k$2');
+
+  s = s.replace(/aai|aae/g, 'y');
+  s = s.replace(/ai(?![aeiou])/g, 'y');
+  s = s.replace(/(?:ay|ey)(?![aeiou])/g, 'y');
+  s = s.replace(/au|ou|ow/g, 'av');
+  s = s.replace(/aa/g, 'a');
+  s = s.replace(/ee|ea|ae|ii/g, 'i');
+  s = s.replace(/oo|uu/g, 'u');
+  s = s.replace(/oa|oe/g, 'o');
+  s = s.replace(/^ie|^iae|^yae/, 'ye');
+  s = s.replace(/^iye/, 'ye');
+
+  return collapseSoundKey(s);
+}
+
+/**
+ * Collapses duplicate adjacent identical characters
+ */
+function collapseSoundKey(rawKey)
+{
+  if (!rawKey) return '';
+  let out = '';
+  for (let i = 0; i < rawKey.length; i++)
+  {
+    const char = rawKey[i];
+    if (i === 0 || char !== rawKey[i - 1])
+    {
+      out += char;
+    }
+  }
+  return out;
+}
+
+/**
+ * Primary public acoustic key generator for both Tamil and Tanglish
+ * Zero dictionary, purely algorithmic
+ */
+function getSoundKey(word)
+{
+  if (!word || typeof word !== 'string') return '';
+  const raw = word.trim().toLowerCase().replace(/\*/g, '');
+  if (!raw) return '';
+
+  if (/[\u0B80-\u0BFF]/.test(raw))
+  {
+    return getTamilScriptSoundKey(raw);
+  }
+  return getRomanizedSoundKey(raw);
+}
+
+/**
+ * Checks if a Tamil or Romanized word has a prothetic initial 'i' (loanword trill prefix).
+ * Classic examples: இரத்தம்/ரத்தம், இராஜா/ராஜா, இரட்சகர்/ரட்சகர், இரட்சிப்பு/ரட்சிப்பு,
+ * இராத்திரி/ராத்திரி, இரதம்/ரதம், இரத்தினம்/ரத்தினம், இலட்சம்/லட்சம்.
+ * Strictly excludes native roots like இரு (iru), இரண்டு (iran), இரட்டை (iratt), இரவு (irav).
+ */
+function getProtheticAlternateKey(soundKey, rawWord)
+{
+  if (!soundKey || !soundKey.startsWith('i')) return null;
+
+  // If raw Tamil word is available, apply strict morphological safeguards
+  if (rawWord && /[\u0B80-\u0BFF]/.test(rawWord))
+  {
+    const isProthetic = (rawWord.startsWith('இர') || rawWord.startsWith('இரா') ||
+                         rawWord.startsWith('இரே') || rawWord.startsWith('இரோ') ||
+                         rawWord.startsWith('இலட்ச')) &&
+                        !rawWord.startsWith('இரு') &&
+                        !rawWord.startsWith('இரண்') &&
+                        !rawWord.startsWith('இரட்ட') &&
+                        !rawWord.startsWith('இரவ') &&
+                        !rawWord.startsWith('இற');
+    if (isProthetic)
+    {
+      return soundKey.slice(1);
+    }
+    return null;
   }
 
-  function collapseSoundKey(rawKey) {
-    if (!rawKey) return '';
-    let out = '';
-    for (let i = 0; i < rawKey.length; i++) {
-      const char = rawKey[i];
-      if (i === 0 || char !== rawKey[i - 1]) {
-        out += char;
+  // For Romanized query tokens (e.g. iratham, iraja, iratchagar, ilatcham):
+  // Safe loanword prefixes
+  const protheticRomanPrefixes = ['irat', 'iraj', 'irats', 'iras', 'iranu', 'ilats', 'ilok', 'iles'];
+  if (protheticRomanPrefixes.some(p => soundKey.startsWith(p)))
+  {
+    return soundKey.slice(1);
+  }
+  return null;
+}
+
+/**
+ * Analyzes target tokens and computes sound keys for validated Tamil Sandhi pairs
+ * (வல்லினம் மிகல் புணர்ச்சி) as well as prothetic loanword alternate keys (இரத்தம் <-> ரத்தம்).
+ */
+function buildTargetTokenInfos(tokens)
+{
+  if (!tokens || !Array.isArray(tokens)) return [];
+  const infos = [];
+  const len = tokens.length;
+
+  for (let i = 0; i < len; i++)
+  {
+    const word = tokens[i];
+    const fullKey = getSoundKey(word);
+    let strippedKey = null;
+
+    if (i + 1 < len)
+    {
+      const nextWord = tokens[i + 1];
+      // Vallinam sandhi check
+      if (word.endsWith('க்') && nextWord.startsWith('க'))
+      {
+        strippedKey = getSoundKey(word.slice(0, -2));
+      }
+      else if (word.endsWith('ச்') && nextWord.startsWith('ச'))
+      {
+        strippedKey = getSoundKey(word.slice(0, -2));
+      }
+      else if (word.endsWith('த்') && nextWord.startsWith('த'))
+      {
+        strippedKey = getSoundKey(word.slice(0, -2));
+      }
+      else if (word.endsWith('ப்') && nextWord.startsWith('ப'))
+      {
+        strippedKey = getSoundKey(word.slice(0, -2));
       }
     }
-    return out;
+
+    const protheticKey = getProtheticAlternateKey(fullKey, word);
+    const altKey = (strippedKey && protheticKey) ? getProtheticAlternateKey(strippedKey, word) : null;
+
+    const validKeys = [fullKey];
+    if (strippedKey && !validKeys.includes(strippedKey)) validKeys.push(strippedKey);
+    if (protheticKey && !validKeys.includes(protheticKey)) validKeys.push(protheticKey);
+    if (altKey && !validKeys.includes(altKey)) validKeys.push(altKey);
+
+    infos.push({
+      raw: word,
+      fullKey: fullKey,
+      strippedKey: strippedKey,
+      protheticKey: protheticKey,
+      altKey: altKey,
+      validKeys: validKeys
+    });
   }
 
-  function getSoundKey(word) {
-    if (!word || typeof word !== 'string') return '';
-    const raw = word.trim().toLowerCase().replace(/\*/g, '');
-    if (!raw) return '';
+  return infos;
+}
 
-    if (/[\u0B80-\u0BFF]/.test(raw)) {
-      return getTamilScriptSoundKey(raw);
-    }
-    return getRomanizedSoundKey(raw);
-  }
-
-  function buildTargetTokenInfos(tokens) {
-    if (!tokens || !Array.isArray(tokens)) return [];
-    const infos = [];
-    const len = tokens.length;
-
-    for (let i = 0; i < len; i++) {
-      const word = tokens[i];
-      const fullKey = getSoundKey(word);
-      let strippedKey = null;
-
-      if (i + 1 < len) {
-        const nextWord = tokens[i + 1];
-        // Vallinam sandhi check (க், ச், த், ப் matching following consonant)
-        if (word.endsWith('க்') && nextWord.startsWith('க')) {
-          strippedKey = getSoundKey(word.slice(0, -2));
-        } else if (word.endsWith('ச்') && nextWord.startsWith('ச')) {
-          strippedKey = getSoundKey(word.slice(0, -2));
-        } else if (word.endsWith('த்') && nextWord.startsWith('த')) {
-          strippedKey = getSoundKey(word.slice(0, -2));
-        } else if (word.endsWith('ப்') && nextWord.startsWith('ப')) {
-          strippedKey = getSoundKey(word.slice(0, -2));
-        }
-      }
-
-      infos.push({
-        raw: word,
-        fullKey: fullKey,
-        strippedKey: strippedKey
-      });
-    }
-
-    return infos;
-  }
-
-  function compileQueryPattern(rawQuery) {
-    if (!rawQuery || typeof rawQuery !== 'string' || !rawQuery.trim()) {
-      return {
-        isPattern: true,
-        items: [],
-        wordItems: [],
-        hasWildcard: false,
-        qKeys: [],
-        length: 0
-      };
-    }
-
-    const rawTokens = tokenizeText(rawQuery);
-    const items = [];
-    let lastWasGap = false;
-
-    for (let idx = 0; idx < rawTokens.length; idx++) {
-      const token = rawTokens[idx];
-      const isLast = (idx === rawTokens.length - 1);
-
-      // Standalone asterisk(s) represent a gap of zero or more intervening words
-      if (/^\*+$/.test(token)) {
-        if (!lastWasGap && items.length > 0) {
-          items.push({ type: 'gap' });
-          lastWasGap = true;
-        }
-        continue;
-      }
-
-      const hasLeadingWildcard = token.startsWith('*');
-      const hasTrailingWildcard = token.endsWith('*');
-      const clean = token.replace(/\*/g, '');
-      if (!clean) continue;
-
-      const key = getSoundKey(clean);
-      if (!key) continue;
-
-      let mode = 'exact';
-      if (hasLeadingWildcard && hasTrailingWildcard) {
-        mode = 'contains';
-      } else if (hasLeadingWildcard) {
-        mode = 'suffix';
-      } else if (hasTrailingWildcard) {
-        mode = 'prefix';
-      } else if (isLast) {
-        // Incremental typing prefix match for the final word token
-        mode = 'prefix';
-      }
-
-      let internalParts = null;
-      if (!hasLeadingWildcard && !hasTrailingWildcard && token.includes('*')) {
-        const parts = token.split('*').filter(Boolean);
-        if (parts.length === 2) {
-          mode = 'internal';
-          internalParts = [getSoundKey(parts[0]), getSoundKey(parts[1])];
-        }
-      }
-
-      items.push({
-        type: 'word',
-        raw: token,
-        clean: clean,
-        key: key,
-        mode: mode,
-        internalParts: internalParts
-      });
-      lastWasGap = false;
-    }
-
-    // Remove redundant trailing gap
-    if (items.length > 0 && items[items.length - 1].type === 'gap') {
-      items.pop();
-    }
-
-    const wordItems = items.filter(it => it.type === 'word');
-    const hasWildcard = items.some(it =>
-      it.type === 'gap' ||
-      it.mode === 'suffix' ||
-      it.mode === 'contains' ||
-      it.mode === 'internal' ||
-      (it.raw && it.raw.includes('*'))
-    );
-
+/**
+ * Compiles a query string into an optimized token pattern with wildcard and gap support
+ */
+function compileQueryPattern(rawQuery)
+{
+  if (!rawQuery || typeof rawQuery !== 'string' || !rawQuery.trim())
+  {
     return {
       isPattern: true,
-      items: items,
-      wordItems: wordItems,
-      hasWildcard: hasWildcard,
-      qKeys: wordItems.map(w => w.key),
-      length: wordItems.length
+      items: [],
+      wordItems: [],
+      hasWildcard: false,
+      qKeys: [],
+      length: 0
     };
   }
 
-  function matchesToken(T, qItem) {
-    if (!T) return false;
-    const check = (k) => {
-      if (!k) return false;
-      switch (qItem.mode) {
+  const rawTokens = tokenizeText(rawQuery);
+  const items = [];
+  let lastWasGap = false;
+
+  for (let idx = 0; idx < rawTokens.length; idx++)
+  {
+    const token = rawTokens[idx];
+    const isLast = (idx === rawTokens.length - 1);
+
+    // Standalone asterisk(s) represent a gap of zero or more intervening words
+    if (/^\*+$/.test(token))
+    {
+      if (!lastWasGap && items.length > 0)
+      {
+        items.push({ type: 'gap' });
+        lastWasGap = true;
+      }
+      continue;
+    }
+
+    const hasLeadingWildcard = token.startsWith('*');
+    const hasTrailingWildcard = token.endsWith('*');
+    const clean = token.replace(/\*/g, '');
+    if (!clean) continue;
+
+    const key = getSoundKey(clean);
+    if (!key) continue;
+
+    const protheticKey = getProtheticAlternateKey(key, clean);
+    const qKeysList = [key];
+    if (protheticKey && !qKeysList.includes(protheticKey))
+    {
+      qKeysList.push(protheticKey);
+    }
+
+    let mode = 'exact';
+    if (hasLeadingWildcard && hasTrailingWildcard)
+    {
+      mode = 'contains';
+    }
+    else if (hasLeadingWildcard)
+    {
+      mode = 'suffix';
+    }
+    else if (hasTrailingWildcard)
+    {
+      mode = 'prefix';
+    }
+    else if (isLast)
+    {
+      // Incremental typing prefix match for the final word token
+      mode = 'prefix';
+    }
+
+    let internalParts = null;
+    if (!hasLeadingWildcard && !hasTrailingWildcard && token.includes('*'))
+    {
+      const parts = token.split('*').filter(Boolean);
+      if (parts.length === 2)
+      {
+        mode = 'internal';
+        internalParts = [getSoundKey(parts[0]), getSoundKey(parts[1])];
+      }
+    }
+
+    items.push({
+      type: 'word',
+      raw: token,
+      clean: clean,
+      key: key,
+      protheticKey: protheticKey,
+      qKeysList: qKeysList,
+      mode: mode,
+      internalParts: internalParts
+    });
+
+    lastWasGap = false;
+  }
+
+  // Remove redundant trailing gap
+  if (items.length > 0 && items[items.length - 1].type === 'gap')
+  {
+    items.pop();
+  }
+
+  const wordItems = items.filter(it => it.type === 'word');
+  const hasWildcard = items.some(it =>
+    it.type === 'gap' ||
+    it.mode === 'suffix' ||
+    it.mode === 'contains' ||
+    it.mode === 'internal' ||
+    (it.raw && it.raw.includes('*'))
+  );
+
+  return {
+    isPattern: true,
+    items: items,
+    wordItems: wordItems,
+    hasWildcard: hasWildcard,
+    qKeys: wordItems.map(w => w.key),
+    length: wordItems.length
+  };
+}
+
+/**
+ * Checks if target token T satisfies query word item qItem
+ */
+function matchesToken(T, qItem)
+{
+  if (!T) return false;
+  const tKeys = T.validKeys || [T.fullKey, T.strippedKey, T.protheticKey, T.altKey].filter(Boolean);
+  const qKeys = qItem.qKeysList || [qItem.key];
+
+  for (const qKey of qKeys)
+  {
+    for (const tKey of tKeys)
+    {
+      if (!tKey || !qKey) continue;
+      let ok = false;
+      switch (qItem.mode)
+      {
         case 'prefix':
-          return k.startsWith(qItem.key);
+          ok = tKey.startsWith(qKey);
+          break;
         case 'suffix':
-          return k.endsWith(qItem.key);
+          ok = tKey.endsWith(qKey);
+          break;
         case 'contains':
-          return k.includes(qItem.key);
+          ok = tKey.includes(qKey);
+          break;
         case 'internal':
-          return qItem.internalParts && k.startsWith(qItem.internalParts[0]) && k.endsWith(qItem.internalParts[1]);
+          ok = qItem.internalParts && tKey.startsWith(qItem.internalParts[0]) && tKey.endsWith(qItem.internalParts[1]);
+          break;
         case 'exact':
         default:
-          return k === qItem.key;
+          ok = (tKey === qKey);
+          break;
       }
-    };
-
-    return check(T.fullKey) || (T.strippedKey !== null && check(T.strippedKey));
+      if (ok) return true;
+    }
   }
+  return false;
+}
 
-  function matchTokenInfosWithKeys(tInfos, tTokens, textLower, qKeys, rawQueryLower) {
-    let pattern = null;
-    if (qKeys && qKeys.isPattern) {
-      pattern = qKeys;
-    } else if (rawQueryLower && rawQueryLower.includes('*')) {
-      pattern = compileQueryPattern(rawQueryLower);
-    } else if (Array.isArray(qKeys)) {
-      const wordItems = qKeys.map((k, idx) => ({
+/**
+ * Evaluates target token infos against pre-compiled query pattern or raw keys
+ */
+function matchTokenInfosWithKeys(tInfos, tTokens, textLower, qKeys, rawQueryLower)
+{
+  let pattern = null;
+  if (qKeys && qKeys.isPattern)
+  {
+    pattern = qKeys;
+  }
+  else if (rawQueryLower && rawQueryLower.includes('*'))
+  {
+    pattern = compileQueryPattern(rawQueryLower);
+  }
+  else if (Array.isArray(qKeys))
+  {
+    const wordItems = qKeys.map((k, idx) => {
+      const prothetic = getProtheticAlternateKey(k, '');
+      const qList = [k];
+      if (prothetic && !qList.includes(prothetic)) qList.push(prothetic);
+      return {
         type: 'word',
         raw: k,
         clean: k,
         key: k,
+        protheticKey: prothetic,
+        qKeysList: qList,
         mode: (idx === qKeys.length - 1) ? 'prefix' : 'exact'
-      }));
-      pattern = {
-        isPattern: true,
-        items: wordItems,
-        wordItems: wordItems,
-        hasWildcard: false,
-        qKeys: qKeys,
-        length: wordItems.length
       };
+    });
+    pattern = {
+      isPattern: true,
+      items: wordItems,
+      wordItems: wordItems,
+      hasWildcard: false,
+      qKeys: qKeys,
+      length: wordItems.length
+    };
+  }
+
+  if (!pattern || pattern.items.length === 0)
+  {
+    return { matched: true, matchedTokens: [], matchedWordTokens: [], matchStartIndex: 0 };
+  }
+
+  const numWords = pattern.wordItems.length;
+  if (numWords === 0)
+  {
+    return { matched: true, matchedTokens: [], matchedWordTokens: [], matchStartIndex: 0 };
+  }
+
+  if (!tInfos || tInfos.length < numWords)
+  {
+    if (rawQueryLower && textLower && textLower.includes(rawQueryLower.replace(/\*/g, '')))
+    {
+      return { matched: true, matchedTokens: [rawQueryLower], matchedWordTokens: [rawQueryLower], matchStartIndex: 0 };
     }
+    return { matched: false, matchedTokens: [], matchedWordTokens: [], matchStartIndex: -1 };
+  }
 
-    if (!pattern || pattern.items.length === 0) {
-      return { matched: true, matchedTokens: [], matchedWordTokens: [], matchStartIndex: 0 };
-    }
+  // Fast contiguous matching when no wildcards or gaps are present
+  if (!pattern.hasWildcard)
+  {
+    const K = pattern.wordItems.length;
+    for (let i = 0; i <= tInfos.length - K; i++)
+    {
+      let allMatched = true;
+      for (let j = 0; j < K; j++)
+      {
+        const T = tInfos[i + j];
+        const qItem = pattern.wordItems[j];
+        const isLast = (j === K - 1);
+        const qKeys = qItem.qKeysList || [qItem.key];
+        const tKeys = T.validKeys || [T.fullKey, T.strippedKey, T.protheticKey, T.altKey].filter(Boolean);
 
-    const numWords = pattern.wordItems.length;
-    if (numWords === 0) {
-      return { matched: true, matchedTokens: [], matchedWordTokens: [], matchStartIndex: 0 };
-    }
-
-    if (!tInfos || tInfos.length < numWords) {
-      if (rawQueryLower && textLower && textLower.includes(rawQueryLower.replace(/\*/g, ''))) {
-        return { matched: true, matchedTokens: [rawQueryLower], matchedWordTokens: [rawQueryLower], matchStartIndex: 0 };
-      }
-      return { matched: false, matchedTokens: [], matchedWordTokens: [], matchStartIndex: -1 };
-    }
-
-    // Fast contiguous matching when no wildcards or gaps are present
-    if (!pattern.hasWildcard) {
-      const K = pattern.wordItems.length;
-      for (let i = 0; i <= tInfos.length - K; i++) {
-        let allMatched = true;
-
-        for (let j = 0; j < K; j++) {
-          const T = tInfos[i + j];
-          const Q = pattern.wordItems[j].key;
-
-          if (j < K - 1) {
-            const tokenMatched = (T.fullKey === Q) || (T.strippedKey !== null && T.strippedKey === Q);
-            if (!tokenMatched) {
-              allMatched = false;
-              break;
-            }
-          } else {
-            const tokenMatched = (T.fullKey && T.fullKey.startsWith(Q)) ||
-                                 (T.strippedKey !== null && T.strippedKey.startsWith(Q));
-            if (!tokenMatched) {
-              allMatched = false;
-              break;
-            }
-          }
+        let tokenMatched = false;
+        if (!isLast)
+        {
+          tokenMatched = tKeys.some(tk => qKeys.some(qk => tk === qk));
+        }
+        else
+        {
+          tokenMatched = tKeys.some(tk => qKeys.some(qk => tk.startsWith(qk)));
         }
 
-        if (allMatched) {
-          const slice = tTokens.slice(i, i + K);
-          return {
-            matched: true,
-            matchedTokens: slice,
-            matchedWordTokens: slice,
-            matchStartIndex: i
-          };
-        }
-      }
-
-      if (rawQueryLower && textLower && textLower.includes(rawQueryLower)) {
-        return { matched: true, matchedTokens: [rawQueryLower], matchedWordTokens: [rawQueryLower], matchStartIndex: 0 };
-      }
-
-      return { matched: false, matchedTokens: [], matchedWordTokens: [], matchStartIndex: -1 };
-    }
-
-    // Wildcard pattern matching with gap and word wildcard support
-    const items = pattern.items;
-    for (let startIdx = 0; startIdx < tInfos.length; startIdx++) {
-      let tIdx = startIdx;
-      let matched = true;
-      const wordIndices = [];
-
-      for (let pIdx = 0; pIdx < items.length; pIdx++) {
-        const item = items[pIdx];
-        if (item.type === 'gap') continue;
-
-        const prevItem = pIdx > 0 ? items[pIdx - 1] : null;
-        if (prevItem && prevItem.type === 'gap') {
-          let found = false;
-          while (tIdx < tInfos.length) {
-            if (matchesToken(tInfos[tIdx], item)) {
-              wordIndices.push(tIdx);
-              tIdx++;
-              found = true;
-              break;
-            }
-            tIdx++;
-          }
-          if (!found) {
-            matched = false;
-            break;
-          }
-        } else {
-          if (tIdx >= tInfos.length || !matchesToken(tInfos[tIdx], item)) {
-            matched = false;
-            break;
-          }
-          wordIndices.push(tIdx);
-          tIdx++;
+        if (!tokenMatched)
+        {
+          allMatched = false;
+          break;
         }
       }
 
-      if (matched && wordIndices.length === numWords) {
-        const firstIdx = wordIndices[0];
-        const lastIdx = wordIndices[wordIndices.length - 1];
+      if (allMatched)
+      {
+        const slice = tTokens.slice(i, i + K);
         return {
           matched: true,
-          matchedTokens: tTokens.slice(firstIdx, lastIdx + 1),
-          matchedWordTokens: wordIndices.map(idx => tTokens[idx]),
-          matchStartIndex: firstIdx
+          matchedTokens: slice,
+          matchedWordTokens: slice,
+          matchStartIndex: i
         };
       }
+    }
+
+    if (rawQueryLower && textLower && textLower.includes(rawQueryLower))
+    {
+      return { matched: true, matchedTokens: [rawQueryLower], matchedWordTokens: [rawQueryLower], matchStartIndex: 0 };
     }
 
     return { matched: false, matchedTokens: [], matchedWordTokens: [], matchStartIndex: -1 };
   }
 
-  function matchWithPrecomputedKeys(targetText, qKeysOrPattern, rawQuery) {
-    if (!targetText || typeof targetText !== 'string' || !targetText.trim()) {
-      return { matched: false, matchedTokens: [], matchedWordTokens: [], matchStartIndex: -1 };
-    }
-    if (!qKeysOrPattern) {
-      return { matched: true, matchedTokens: [], matchedWordTokens: [], matchStartIndex: 0 };
-    }
+  // Wildcard pattern matching with gap and word wildcard support
+  const items = pattern.items;
+  for (let startIdx = 0; startIdx < tInfos.length; startIdx++)
+  {
+    let tIdx = startIdx;
+    let matched = true;
+    const wordIndices = [];
 
-    const tTokens = tokenizeText(targetText);
-    const tInfos = buildTargetTokenInfos(tTokens);
-    const textLower = targetText.toLowerCase();
-    const qLower = rawQuery ? rawQuery.trim().toLowerCase() : '';
+    for (let pIdx = 0; pIdx < items.length; pIdx++)
+    {
+      const item = items[pIdx];
+      if (item.type === 'gap') continue;
 
-    return matchTokenInfosWithKeys(tInfos, tTokens, textLower, qKeysOrPattern, qLower);
-  }
-
-  function matchContiguousPhoneticPhrase(targetText, query) {
-    if (!query || typeof query !== 'string' || !query.trim()) {
-      return { matched: true, matchedTokens: [], matchedWordTokens: [], matchStartIndex: 0 };
-    }
-    const pattern = compileQueryPattern(query);
-    return matchWithPrecomputedKeys(targetText, pattern, query);
-  }
-
-  function matchesQueryPhonetic(targetText, query) {
-    return matchContiguousPhoneticPhrase(targetText, query).matched;
-  }
-
-  function escapeHtml(str) {
-    if (!str) return '';
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
-
-  function highlightMatchedCharacters(text, query) {
-    if (!text) return '';
-    if (!query || !query.trim()) return escapeHtml(text);
-
-    const rawString = String(text);
-    const matchRes = matchContiguousPhoneticPhrase(rawString, query);
-    if (!matchRes.matched) {
-      return escapeHtml(rawString);
-    }
-
-    const wordsToHighlight = (matchRes.matchedWordTokens && matchRes.matchedWordTokens.length > 0)
-      ? matchRes.matchedWordTokens
-      : matchRes.matchedTokens;
-
-    if (wordsToHighlight && wordsToHighlight.length > 0) {
-      const tokenRegexes = wordsToHighlight
-        .map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-        .filter(Boolean);
-
-      if (tokenRegexes.length > 0) {
-        // 1. If query does not use gap wildcards, try matching the contiguous phrase as a single highlight block
-        if (!query.includes('*') && matchRes.matchedTokens && matchRes.matchedTokens.length > 0) {
-          const phraseRegexes = matchRes.matchedTokens
-            .map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-            .filter(Boolean);
-          const phrasePattern = phraseRegexes.join('[^a-zA-Z\\u0B80-\\u0BFF0-9]+');
-          try {
-            const phraseRegex = new RegExp(phrasePattern, 'gi');
-            if (phraseRegex.test(rawString)) {
-              return rawString.replace(phraseRegex, (m) => `<mark class="search-match-hl">${escapeHtml(m)}</mark>`);
-            }
-          } catch (e) {}
+      const prevItem = pIdx > 0 ? items[pIdx - 1] : null;
+      if (prevItem && prevItem.type === 'gap')
+      {
+        let found = false;
+        while (tIdx < tInfos.length)
+        {
+          if (matchesToken(tInfos[tIdx], item))
+          {
+            wordIndices.push(tIdx);
+            tIdx++;
+            found = true;
+            break;
+          }
+          tIdx++;
         }
-
-        // 2. Highlight individual matched query words
-        try {
-          const wordRegex = new RegExp(tokenRegexes.join('|'), 'gi');
-          return rawString.replace(wordRegex, (m) => `<mark class="search-match-hl">${escapeHtml(m)}</mark>`);
-        } catch (e) {}
+        if (!found)
+        {
+          matched = false;
+          break;
+        }
+      }
+      else
+      {
+        if (tIdx >= tInfos.length || !matchesToken(tInfos[tIdx], item))
+        {
+          matched = false;
+          break;
+        }
+        wordIndices.push(tIdx);
+        tIdx++;
       }
     }
 
-    // Fallback direct query match
-    try {
-      const qClean = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(qClean, 'gi');
-      return rawString.replace(regex, (m) => `<mark class="search-match-hl">${escapeHtml(m)}</mark>`);
-    } catch (e) {}
+    if (matched && wordIndices.length === numWords)
+    {
+      const firstIdx = wordIndices[0];
+      const lastIdx = wordIndices[wordIndices.length - 1];
+      return {
+        matched: true,
+        matchedTokens: tTokens.slice(firstIdx, lastIdx + 1),
+        matchedWordTokens: wordIndices.map(idx => tTokens[idx]),
+        matchStartIndex: firstIdx
+      };
+    }
+  }
 
+  return { matched: false, matchedTokens: [], matchedWordTokens: [], matchStartIndex: -1 };
+}
+
+/**
+ * High-performance matcher with pre-computed query pattern/keys, sandhi pair validation,
+ * and wildcard support.
+ */
+function matchWithPrecomputedKeys(targetText, qKeysOrPattern, rawQuery)
+{
+  if (!targetText || typeof targetText !== 'string' || !targetText.trim())
+  {
+    return { matched: false, matchedTokens: [], matchedWordTokens: [], matchStartIndex: -1 };
+  }
+  if (!qKeysOrPattern)
+  {
+    return { matched: true, matchedTokens: [], matchedWordTokens: [], matchStartIndex: 0 };
+  }
+
+  const tTokens = tokenizeText(targetText);
+  const tInfos = buildTargetTokenInfos(tTokens);
+  const textLower = targetText.toLowerCase();
+  const qLower = rawQuery ? rawQuery.trim().toLowerCase() : '';
+
+  return matchTokenInfosWithKeys(tInfos, tTokens, textLower, qKeysOrPattern, qLower);
+}
+
+/**
+ * Tests whether a target text matches the search query using wildcard-aware phonetic matching.
+ */
+function matchContiguousPhoneticPhrase(targetText, query)
+{
+  if (!query || typeof query !== 'string' || !query.trim())
+  {
+    return { matched: true, matchedTokens: [], matchedWordTokens: [], matchStartIndex: 0 };
+  }
+  const pattern = compileQueryPattern(query);
+  return matchWithPrecomputedKeys(targetText, pattern, query);
+}
+
+/**
+ * Checks if target text matches query (convenience boolean method)
+ */
+function matchesQueryPhonetic(targetText, query)
+{
+  return matchContiguousPhoneticPhrase(targetText, query).matched;
+}
+
+/**
+ * Escapes HTML characters for safe rendering
+ */
+function escapeHtml(str)
+{
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/**
+ * Highlights the matched contiguous phrase or tokens in the given text
+ */
+function highlightMatchedCharacters(text, query)
+{
+  if (!text) return '';
+  if (!query || !query.trim()) return escapeHtml(text);
+
+  const rawString = String(text);
+  const matchRes = matchContiguousPhoneticPhrase(rawString, query);
+  if (!matchRes.matched)
+  {
     return escapeHtml(rawString);
   }
 
-  window.TamilPhonetic = {
-    tokenizeText: tokenizeText,
-    getSoundKey: getSoundKey,
-    compileQueryPattern: compileQueryPattern,
-    matchTokenInfosWithKeys: matchTokenInfosWithKeys,
-    matchWithPrecomputedKeys: matchWithPrecomputedKeys,
-    matchContiguousPhoneticPhrase: matchContiguousPhoneticPhrase,
-    matchesQueryPhonetic: matchesQueryPhonetic,
-    highlightMatchedCharacters: highlightMatchedCharacters
-  };
+  const wordsToHighlight = (matchRes.matchedWordTokens && matchRes.matchedWordTokens.length > 0)
+    ? matchRes.matchedWordTokens
+    : matchRes.matchedTokens;
 
-})(typeof window !== 'undefined' ? window : this);
+  if (wordsToHighlight && wordsToHighlight.length > 0)
+  {
+    const tokenRegexes = wordsToHighlight
+      .map(tok => {
+        const clean = tok.replace(/<[^>]*>/g, '').trim();
+        return clean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      })
+      .filter(Boolean);
+
+    if (tokenRegexes.length > 0)
+    {
+      // 1. Try to match the contiguous span from first to last matched word
+      if (matchRes.matchedTokens && matchRes.matchedTokens.length > 0)
+      {
+        const phrasePattern = matchRes.matchedTokens
+          .map(tok => tok.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+          .join('\\s+');
+        try
+        {
+          const phraseRegex = new RegExp(phrasePattern, 'gi');
+          if (phraseRegex.test(rawString))
+          {
+            return rawString.replace(phraseRegex, (m) => `<mark class="search-match-hl">${escapeHtml(m)}</mark>`);
+          }
+        }
+        catch (e) {}
+      }
+
+      // 2. Highlight individual matched query words
+      try
+      {
+        const wordRegex = new RegExp(tokenRegexes.join('|'), 'gi');
+        return rawString.replace(wordRegex, (m) => `<mark class="search-match-hl">${escapeHtml(m)}</mark>`);
+      }
+      catch (e) {}
+    }
+  }
+
+  // Fallback direct query match
+  try
+  {
+    const qClean = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(qClean, 'gi');
+    return rawString.replace(regex, (m) => `<mark class="search-match-hl">${escapeHtml(m)}</mark>`);
+  }
+  catch (e) {}
+
+  return escapeHtml(rawString);
+}
+
+// Browser global binding
+if (typeof window !== 'undefined')
+{
+  window.TamilPhonetic = {
+    tokenizeText,
+    getSoundKey,
+    compileQueryPattern,
+    buildTargetTokenInfos,
+    matchTokenInfosWithKeys,
+    matchWithPrecomputedKeys,
+    matchContiguousPhoneticPhrase,
+    matchesQueryPhonetic,
+    highlightMatchedCharacters
+  };
+}
+
+// Node.js ES Module named exports
+export {
+  tokenizeText,
+  getSoundKey,
+  compileQueryPattern,
+  buildTargetTokenInfos,
+  matchTokenInfosWithKeys,
+  matchWithPrecomputedKeys,
+  matchContiguousPhoneticPhrase,
+  matchesQueryPhonetic,
+  highlightMatchedCharacters
+};
