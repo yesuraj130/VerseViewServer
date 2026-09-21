@@ -137,6 +137,8 @@ function getTamilScriptSoundKey(word)
   // 4. Harmonize intervocalic Grantha ஹ to k (e.g. ஆஹா -> aaka -> aka, எலோஹிம் -> elokim)
   key = key.replace(/([aeiou])h([aeiou])/g, '$1k$2');
   key = key.replace(/([aeiou])h([aeiou])/g, '$1k$2');
+  // 5. Harmonize geminate alveolar stop ற் + ற (rr) -> tr (e.g. வெற்றி -> vetri, காற்று -> katru, ஆற்று -> atru, தேற்று -> tetru)
+  key = key.replace(/rr/g, 'tr');
 
   return collapseSoundKey(key);
 }
@@ -160,8 +162,8 @@ function getRomanizedSoundKey(word)
   // 2. Palatal nasal: njs, nch, nj -> nj (e.g. Manjal, Nenjam, Konjum, Thanjam)
   s = s.replace(/njs|nch/g, 'nj');
   s = s.replace(/nj|gn|ny/g, 'nj');
-  // 3. Alveolar nasal: ndr -> nr (e.g. Nandri, Ondru, Endru)
-  s = s.replace(/ndr/g, 'nr');
+  // 3. Alveolar nasal: ndr, ntr -> nr (e.g. Nandri, Nantri, Ondru, Ontru, Endru, Entru)
+  s = s.replace(/ntr|ndr/g, 'nr');
 
   s = s.replace(/[bf]/g, 'p');
   s = s.replace(/g/g, 'k');
@@ -365,6 +367,18 @@ function buildTargetTokenInfos(tokens)
     if (protheticKey && !validKeys.includes(protheticKey)) validKeys.push(protheticKey);
     if (altKey && !validKeys.includes(altKey)) validKeys.push(altKey);
 
+    // Backward-compatibility: if sound key contains 'tr' (from ற்+ற), also accept 'r'
+    if (fullKey.includes('tr'))
+    {
+      const rKey = fullKey.replace(/tr/g, 'r');
+      if (!validKeys.includes(rKey)) validKeys.push(rKey);
+    }
+    if (strippedKey && strippedKey.includes('tr'))
+    {
+      const rKey = strippedKey.replace(/tr/g, 'r');
+      if (!validKeys.includes(rKey)) validKeys.push(rKey);
+    }
+
     // Add colloquial alternates (e.g. ennai <-> enna, unnai <-> unna)
     for (const k of [fullKey, strippedKey, protheticKey].filter(Boolean))
     {
@@ -545,7 +559,7 @@ function matchesToken(T, qItem)
           break;
         case 'exact':
         default:
-          ok = (tKey === qKey);
+          ok = (tKey === qKey) || (qKey.length >= 4 && tKey.startsWith(qKey));
           break;
       }
       if (ok) return true;
@@ -637,7 +651,7 @@ function matchTokenInfosWithKeys(tInfos, tTokens, textLower, qKeys, rawQueryLowe
         let tokenMatched = false;
         if (!isLast)
         {
-          tokenMatched = tKeys.some(tk => qKeys.some(qk => tk === qk));
+          tokenMatched = tKeys.some(tk => qKeys.some(qk => (tk === qk) || (qk.length >= 4 && tk.startsWith(qk))));
         }
         else
         {
