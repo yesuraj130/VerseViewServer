@@ -18,6 +18,7 @@ let currentSearchQuery = '';
 let isContentSearchMode = false;
 let virtualScrollAnimationId = null;
 let virtualLastRenderRange = { start: -1, end: -1 };
+let songSearchDebounceTimer = null;
 
 // Song DOM References
 let songListContainer = null;
@@ -40,6 +41,59 @@ function loadSongLocalStorage()
     selectedSongId = Number(localStorage.getItem('selectedSongId')) || 0;
   }
   catch (e) {}
+}
+
+function prepareSongsIndex(songs)
+{
+  if (!Array.isArray(songs)) return;
+  const hasTP = !!window.TamilPhonetic;
+  for (let i = 0; i < songs.length; i++)
+  {
+    const song = songs[i];
+    if (song._indexed) continue;
+
+    const rawName = song.name || '';
+    const rawTitle2 = (song.title2 || '').trim();
+    const title2 = (rawTitle2 && rawTitle2.toLowerCase() !== 'null') ? rawTitle2 : '';
+    const rawFirstLine = song.firstLine || '';
+
+    song._nameLower = rawName.toLowerCase();
+    song._title2Lower = title2 ? title2.toLowerCase() : '';
+    song._firstLineLower = rawFirstLine.toLowerCase();
+
+    if (hasTP)
+    {
+      const nameTokens = window.TamilPhonetic.tokenizeText(rawName);
+      song._nameTokenInfos = window.TamilPhonetic.buildTargetTokenInfos(nameTokens);
+      song._nameTokens = nameTokens;
+
+      if (title2)
+      {
+        const title2Tokens = window.TamilPhonetic.tokenizeText(title2);
+        song._title2TokenInfos = window.TamilPhonetic.buildTargetTokenInfos(title2Tokens);
+        song._title2Tokens = title2Tokens;
+      }
+      else
+      {
+        song._title2TokenInfos = null;
+        song._title2Tokens = null;
+      }
+
+      if (rawFirstLine)
+      {
+        const firstLineTokens = window.TamilPhonetic.tokenizeText(rawFirstLine);
+        song._firstLineTokenInfos = window.TamilPhonetic.buildTargetTokenInfos(firstLineTokens);
+        song._firstLineTokens = firstLineTokens;
+      }
+      else
+      {
+        song._firstLineTokenInfos = null;
+        song._firstLineTokens = null;
+      }
+    }
+
+    song._indexed = true;
+  }
 }
 
 async function initSongs()
@@ -78,6 +132,7 @@ async function initSongs()
 
     if (songsFetchResultJson && songsFetchResultJson.length > 0)
     {
+      prepareSongsIndex(songsFetchResultJson);
       songsCache = songsFetchResultJson;
       if (selectedSongId === 0) selectedSongId = songsFetchResultJson[0].id;
     }
@@ -115,6 +170,7 @@ async function reloadSongsCache()
 
     if (songsFetchResultJson && songsFetchResultJson.length > 0)
     {
+      prepareSongsIndex(songsFetchResultJson);
       songsCache = songsFetchResultJson;
       if (!isContentSearchMode)
       {
@@ -153,35 +209,71 @@ function loadSongsList(songSearchQuery, resetScroll = false)
   if (rawQuery.length > 0)
   {
     const queryLower = rawQuery.toLowerCase();
+    const hasWildcard = rawQuery.includes('*');
+    const queryNoWildcard = hasWildcard ? queryLower.replace(/\*/g, '') : queryLower;
     const qPattern = window.TamilPhonetic ? window.TamilPhonetic.compileQueryPattern(rawQuery) : null;
+    const hasPattern = !!(window.TamilPhonetic && qPattern && qPattern.wordItems.length > 0);
 
     currentFilteredSongs = songsCache.filter(song =>
     {
-      const name = song.name || '';
-      const rawTitle2 = (song.title2 || '').trim();
-      // title2 is optional and can be empty or literal "null"
-      const title2 = (rawTitle2 && rawTitle2.toLowerCase() !== 'null') ? rawTitle2 : '';
-      const firstLine = song.firstLine || '';
+      const nameLower = song._nameLower !== undefined ? song._nameLower : (song.name || '').toLowerCase();
+      const title2Lower = song._title2Lower !== undefined ? song._title2Lower : ((song.title2 && song.title2.toLowerCase() !== 'null') ? song.title2.toLowerCase() : '');
+      const firstLineLower = song._firstLineLower !== undefined ? song._firstLineLower : (song.firstLine || '').toLowerCase();
 
-      // Direct substring match first across title 1, title 2 (if present), and first line
-      if (!rawQuery.includes('*'))
+      // 1. Direct fast substring match across title 1, title 2, and first line
+      if (!hasWildcard)
       {
-        if (name.toLowerCase().includes(queryLower) ||
-            (title2 && title2.toLowerCase().includes(queryLower)) ||
-            (firstLine && firstLine.toLowerCase().includes(queryLower)))
+        if (nameLower.includes(queryLower) ||
+            (title2Lower && title2Lower.includes(queryLower)) ||
+            (firstLineLower && firstLineLower.includes(queryLower)))
         {
           return true;
         }
       }
 
-      // Phonetic pattern and wildcard match on song title 1, title 2, and first line
-      if (window.TamilPhonetic && qPattern && qPattern.wordItems.length > 0)
+      // 2. High-performance phonetic match using precomputed token infos
+      if (hasPattern)
       {
-        if (window.TamilPhonetic.matchWithPrecomputedKeys(name, qPattern, rawQuery).matched ||
-            (title2 && window.TamilPhonetic.matchWithPrecomputedKeys(title2, qPattern, rawQuery).matched) ||
-            (firstLine && window.TamilPhonetic.matchWithPrecomputedKeys(firstLine, qPattern, rawQuery).matched))
+        if (song._nameTokenInfos)
+        {
+          if (window.TamilPhonetic.matchTokenInfosWithKeys(song._nameTokenInfos, song._nameTokens, nameLower, qPattern, queryLower).matched)
+          {
+            return true;
+          }
+        }
+        else if (window.TamilPhonetic.matchWithPrecomputedKeys(song.name, qPattern, rawQuery).matched)
         {
           return true;
+        }
+
+        if (title2Lower)
+        {
+          if (song._title2TokenInfos)
+          {
+            if (window.TamilPhonetic.matchTokenInfosWithKeys(song._title2TokenInfos, song._title2Tokens, title2Lower, qPattern, queryLower).matched)
+            {
+              return true;
+            }
+          }
+          else if (window.TamilPhonetic.matchWithPrecomputedKeys(song.title2, qPattern, rawQuery).matched)
+          {
+            return true;
+          }
+        }
+
+        if (firstLineLower)
+        {
+          if (song._firstLineTokenInfos)
+          {
+            if (window.TamilPhonetic.matchTokenInfosWithKeys(song._firstLineTokenInfos, song._firstLineTokens, firstLineLower, qPattern, queryLower).matched)
+            {
+              return true;
+            }
+          }
+          else if (window.TamilPhonetic.matchWithPrecomputedKeys(song.firstLine, qPattern, rawQuery).matched)
+          {
+            return true;
+          }
         }
       }
 
@@ -767,7 +859,24 @@ function initSongSearchEvents()
   {
     const query = songSearchInput.value;
     updateClearButtonVisibility();
-    loadSongsList(query, true);
+
+    if (songSearchDebounceTimer)
+    {
+      clearTimeout(songSearchDebounceTimer);
+    }
+
+    // Debounce rapid typing by 120ms to eliminate UI jitter while remaining instant
+    if (!query)
+    {
+      loadSongsList('', true);
+    }
+    else
+    {
+      songSearchDebounceTimer = setTimeout(() =>
+      {
+        loadSongsList(query, true);
+      }, 120);
+    }
   });
 
   // 2. Keyboard shortcuts (Enter triggers server lyrics search, Escape clears)
@@ -776,11 +885,13 @@ function initSongSearchEvents()
     if (e.key === 'Enter')
     {
       e.preventDefault();
+      if (songSearchDebounceTimer) clearTimeout(songSearchDebounceTimer);
       executeContentSearch();
     }
     else if (e.key === 'Escape' && songSearchInput.value)
     {
       e.preventDefault();
+      if (songSearchDebounceTimer) clearTimeout(songSearchDebounceTimer);
       songSearchInput.value = '';
       updateClearButtonVisibility();
       loadSongsList('', true);
@@ -792,6 +903,7 @@ function initSongSearchEvents()
   {
     buttonClearSongSearch.addEventListener('click', () =>
     {
+      if (songSearchDebounceTimer) clearTimeout(songSearchDebounceTimer);
       songSearchInput.value = '';
       songSearchInput.focus();
       updateClearButtonVisibility();
