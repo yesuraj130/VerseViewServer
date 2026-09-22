@@ -158,22 +158,28 @@ function loadSongsList(songSearchQuery, resetScroll = false)
     currentFilteredSongs = songsCache.filter(song =>
     {
       const name = song.name || '';
-      const title2 = song.title2 || '';
+      const rawTitle2 = (song.title2 || '').trim();
+      // title2 is optional and can be empty or literal "null"
+      const title2 = (rawTitle2 && rawTitle2.toLowerCase() !== 'null') ? rawTitle2 : '';
+      const firstLine = song.firstLine || '';
 
-      // Direct substring match first (fastest check when not using wildcard query)
+      // Direct substring match first across title 1, title 2 (if present), and first line
       if (!rawQuery.includes('*'))
       {
-        if (name.toLowerCase().includes(queryLower) || (title2 && title2.toLowerCase().includes(queryLower)))
+        if (name.toLowerCase().includes(queryLower) ||
+            (title2 && title2.toLowerCase().includes(queryLower)) ||
+            (firstLine && firstLine.toLowerCase().includes(queryLower)))
         {
           return true;
         }
       }
 
-      // Phonetic pattern and wildcard match on song titles
+      // Phonetic pattern and wildcard match on song title 1, title 2, and first line
       if (window.TamilPhonetic && qPattern && qPattern.wordItems.length > 0)
       {
         if (window.TamilPhonetic.matchWithPrecomputedKeys(name, qPattern, rawQuery).matched ||
-            (title2 && window.TamilPhonetic.matchWithPrecomputedKeys(title2, qPattern, rawQuery).matched))
+            (title2 && window.TamilPhonetic.matchWithPrecomputedKeys(title2, qPattern, rawQuery).matched) ||
+            (firstLine && window.TamilPhonetic.matchWithPrecomputedKeys(firstLine, qPattern, rawQuery).matched))
         {
           return true;
         }
@@ -182,14 +188,11 @@ function loadSongsList(songSearchQuery, resetScroll = false)
       return false;
     });
 
-    // Score & sort results so exact/closer matches appear at the top
+    // Standard alphabetical sorting by song title (Name)
     currentFilteredSongs.sort((a, b) =>
     {
       const aName = (a.name || '').toLowerCase();
       const bName = (b.name || '').toLowerCase();
-      const aExact = aName.startsWith(queryLower) ? 1 : (aName.includes(queryLower) ? 2 : 3);
-      const bExact = bName.startsWith(queryLower) ? 1 : (bName.includes(queryLower) ? 2 : 3);
-      if (aExact !== bExact) return aExact - bExact;
       return aName.localeCompare(bName);
     });
   }
@@ -272,7 +275,7 @@ function updateVirtualSongList(force = false)
       ? window.TamilPhonetic.highlightMatchedCharacters(displayName, currentSearchQuery)
       : escapeHtml(displayName);
 
-    // In content search mode, show matched line with highlights; in title search mode, show clean first line
+    // In content search mode, show matched line with highlights; in title/firstLine search mode, show clean first line with highlights if matched
     let previewLineHtml = '&nbsp;';
     if (isContentSearchMode && song.matchedLine)
     {
@@ -284,17 +287,19 @@ function updateVirtualSongList(force = false)
     }
     else if (song.firstLine)
     {
-      previewLineHtml = escapeHtml(song.firstLine);
+      previewLineHtml = (currentSearchQuery && window.TamilPhonetic)
+        ? window.TamilPhonetic.highlightMatchedCharacters(song.firstLine, currentSearchQuery)
+        : escapeHtml(song.firstLine);
     }
 
     const titleAttr = escapeHtml(song.matchedLine || song.firstLine || song.name || '');
 
     html += `
       <div class="${classes.join(' ')}" data-id="${song.id}" data-matched-slide="${song.matchedSlideIndex || 1}">
-        <div class="song-searchresult-name" style="font-family: ${itemFontFamily};">
+        <div class="song-searchresult-name" style="font-family: ${songFontFamily};">
           ${highlightedName}
         </div>
-        <div class="song-searchresult-previewfirstline" style="font-family: ${itemFontFamily};" title="${titleAttr}">
+        <div class="song-searchresult-previewfirstline" style="font-family: ${songFontFamily};" title="${titleAttr}">
           ${previewLineHtml}
         </div>
       </div>
@@ -468,9 +473,10 @@ function renderSongSlides(song)
     ? window.getEffectiveSongFont(rawFont)
     : (rawFont || 'Baloo Thambi 2');
   const songFontFamily = `"${effectiveFont}", 'Baloo Thambi 2', 'Baloo Thambi', 'Mukta Malar', 'Noto Sans Tamil', var(--font-display)`;
+  const standardTitleFontFamily = `'Baloo Thambi 2', 'Baloo Thambi', 'Mukta Malar', 'Noto Sans Tamil', var(--font-display)`;
 
   activeSongTitle.textContent = song.name;
-  activeSongTitle.style.fontFamily = songFontFamily;
+  activeSongTitle.style.fontFamily = standardTitleFontFamily;
   
   if (buttonDeckEditSong) buttonDeckEditSong.style.display = 'inline-flex';
 

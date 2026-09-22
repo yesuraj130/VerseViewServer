@@ -80,10 +80,13 @@ async function openEditSongDialog(songId)
       songSlidesTextCache.set(Number(songId), song);
     }
 
+    const rawTitle2 = (song.title2 || '').trim();
+    const cleanTitle2 = (rawTitle2 && rawTitle2.toLowerCase() !== 'null') ? rawTitle2 : '';
+
     editSongIdHiddenInput.value = song.id;
     editSongDialogHeading.textContent = 'Edit Song';
     editSongTitleTextbox.value = song.name || '';
-    editSongSecondaryTitleTextbox.value = song.title2 || '';
+    editSongSecondaryTitleTextbox.value = cleanTitle2;
     editSongFontTextbox.value = song.font || '';
     editSongLyricsTextarea.value = lyricsToTextareaValue(song.lyrics || '');
     updateEditSongSlideCount();
