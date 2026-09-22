@@ -297,7 +297,60 @@ if (socket)
   {
     handleStatsUpdate(stats);
   });
+
+  socket.on('boundary:reached', (data) =>
+  {
+    const msg = (data && data.message) || (data && data.boundary === 'end' ? 'End reached' : 'Start reached');
+    showBoundaryToast(msg);
+  });
 }
+
+let boundaryToastEl = null;
+let boundaryToastTimer = null;
+
+function showBoundaryToast(message)
+{
+  if (!boundaryToastEl)
+  {
+    boundaryToastEl = document.createElement('div');
+    boundaryToastEl.id = 'boundary-toast-notification';
+    boundaryToastEl.style.cssText = `
+      position: fixed;
+      top: 54px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      background: rgba(15, 23, 42, 0.94);
+      color: #f8fafc;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 20px;
+      padding: 7px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4);
+      z-index: 99999;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      opacity: 0;
+    `;
+    document.body.appendChild(boundaryToastEl);
+  }
+
+  boundaryToastEl.textContent = message;
+  boundaryToastEl.style.opacity = '1';
+  boundaryToastEl.style.transform = 'translateX(-50%) translateY(0)';
+
+  if (boundaryToastTimer) clearTimeout(boundaryToastTimer);
+  boundaryToastTimer = setTimeout(() =>
+  {
+    if (boundaryToastEl)
+    {
+      boundaryToastEl.style.opacity = '0';
+      boundaryToastEl.style.transform = 'translateX(-50%) translateY(-8px)';
+    }
+  }, 1600);
+}
+window.showBoundaryToast = showBoundaryToast;
 
 function handleStatsUpdate(stats)
 {

@@ -33,10 +33,7 @@ const io = new Server(server, {
   perMessageDeflate: false // Disable per-message zlib compression to save CPU and eliminate buffering delays on small JSON payloads
 });
 
-// In the AI Studio development sandbox, NGINX runs on 8080 and reverse-proxies to 3000.
-// In deployed Cloud Run / production environments, Cloud Run routes traffic directly to process.env.PORT (typically 8080).
-const isDevSandbox = Boolean(process.env.CONTROL_PLANE_PORT || process.env.DEFAULT_APP_PORT);
-const PORT = isDevSandbox ? 3000 : (Number(process.env.PORT) || 8080);
+const PORT = 3000;
 const APP_TITLE = process.env.APP_TITLE || 'Verse View Server';
 const APP_CONFIG = {
   appName: APP_TITLE,
@@ -60,6 +57,7 @@ const smDb = new DatabaseSync(smDbPath);
 
 try
 {
+  smDb.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;');
   smDb.exec(`
     CREATE TABLE IF NOT EXISTS sm (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -89,7 +87,7 @@ const recentsDb = new DatabaseSync(recentsDbPath);
 
 try
 {
-  recentsDb.exec('PRAGMA journal_mode = DELETE;');
+  recentsDb.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;');
   recentsDb.exec(`
     CREATE TABLE IF NOT EXISTS recents (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -303,36 +301,47 @@ function getVersionMetadata(forceReload = false)
 // ---------------------------------------------------------------------------
 // Pre-Computed In-Memory Bible Search Engine (Zero-Disk Low-Latency Querying)
 // ---------------------------------------------------------------------------
-const bookLookupCache = new Map();
-function getBookLookup(versionId = 'tamil')
+const bibleCoordLookup = new Map(); // versionId -> Map of `${bookNum}:${chNum}:${verseNum}` -> verse
+const bibleChapterMaxVerse = new Map(); // versionId -> Map of `${bookNum}:${chNum}` -> maxVerse
+
+function getVerseFromMemory(versionId = 'tamil', bookNum, chNum, verseNum)
 {
-  const targetId = versionId.replace(/\.db$/i, '');
-  if (bookLookupCache.has(targetId))
-  {
-    return bookLookupCache.get(targetId);
-  }
+  const targetId = (versionId || 'tamil').replace(/\.db$/i, '').trim();
   const versions = getVersionMetadata();
   const matchedVer = versions.find(v => v.id === targetId || v.file === targetId || v.file === `${targetId}.db`);
-  const bookNames = (matchedVer && (matchedVer.booknames || matchedVer.books)) || [];
-  const kjvVer = versions.find(v => v.id === 'kjv' || v.file === 'kjv.db');
-  const englishBookNames = (kjvVer && (kjvVer.booknames || kjvVer.books)) || [];
+  const actualVersionId = matchedVer ? matchedVer.id : targetId;
 
-  const list = [];
-  const maxBooks = Math.max(bookNames.length, englishBookNames.length, 66);
-  for (let i = 0; i < maxBooks; i++)
+  let coordMap = bibleCoordLookup.get(actualVersionId);
+  if (!coordMap && actualVersionId === 'tamil')
   {
-    const bName = bookNames[i] || `Book ${i + 1}`;
-    const eName = englishBookNames[i] || `Book ${i + 1}`;
-    list.push({
-      bookNum: i + 1,
-      bookName: bName,
-      bookNameLower: bName.toLowerCase(),
-      engName: eName,
-      engNameLower: eName.toLowerCase()
-    });
+    getOrBuildBibleSearchIndex(actualVersionId);
+    coordMap = bibleCoordLookup.get(actualVersionId);
   }
-  bookLookupCache.set(targetId, list);
-  return list;
+  if (coordMap)
+  {
+    return coordMap.get(`${bookNum}:${chNum}:${verseNum}`) || null;
+  }
+  return null;
+}
+
+function getChapterMaxVerseFromMemory(versionId = 'tamil', bookNum, chNum)
+{
+  const targetId = (versionId || 'tamil').replace(/\.db$/i, '').trim();
+  const versions = getVersionMetadata();
+  const matchedVer = versions.find(v => v.id === targetId || v.file === targetId || v.file === `${targetId}.db`);
+  const actualVersionId = matchedVer ? matchedVer.id : targetId;
+
+  let chMap = bibleChapterMaxVerse.get(actualVersionId);
+  if (!chMap && actualVersionId === 'tamil')
+  {
+    getOrBuildBibleSearchIndex(actualVersionId);
+    chMap = bibleChapterMaxVerse.get(actualVersionId);
+  }
+  if (chMap)
+  {
+    return chMap.get(`${bookNum}:${chNum}`) || null;
+  }
+  return null;
 }
 
 function getOrBuildBibleSearchIndex(versionId = 'tamil')
@@ -362,6 +371,9 @@ function getOrBuildBibleSearchIndex(versionId = 'tamil')
     
     const bookNames = (matchedVer && (matchedVer.booknames || matchedVer.books)) || [];
 
+    const coordMap = new Map();
+    const chMaxMap = new Map();
+
     const indexedVerses = rows.map(r => {
       const bNum = Number(r.bookNum);
       const chNum = Number(r.chNum);
@@ -370,7 +382,7 @@ function getOrBuildBibleSearchIndex(versionId = 'tamil')
       const tokens = tokenizeText(r.word);
       const tokenInfos = buildTargetTokenInfos(tokens);
 
-      return {
+      const verseObj = {
         wordId: r.wordId,
         bookNum: bNum,
         chNum: chNum,
@@ -382,6 +394,13 @@ function getOrBuildBibleSearchIndex(versionId = 'tamil')
         tokenInfos,
         versionId: actualVersionId
       };
+
+      coordMap.set(`${bNum}:${chNum}:${vNum}`, verseObj);
+      const chKey = `${bNum}:${chNum}`;
+      const currMax = chMaxMap.get(chKey) || 0;
+      if (vNum > currMax) chMaxMap.set(chKey, vNum);
+
+      return verseObj;
     });
 
     // LRU cache limit: keep at most 2 Bible version indexes in memory, always retaining 'tamil'
@@ -392,6 +411,8 @@ function getOrBuildBibleSearchIndex(versionId = 'tamil')
         if (key !== 'tamil' && key !== actualVersionId)
         {
           bibleSearchIndex.delete(key);
+          bibleCoordLookup.delete(key);
+          bibleChapterMaxVerse.delete(key);
           console.log(`Evicted in-memory Bible search index for '${key}' to conserve RAM`);
           break;
         }
@@ -399,6 +420,8 @@ function getOrBuildBibleSearchIndex(versionId = 'tamil')
     }
 
     bibleSearchIndex.set(actualVersionId, indexedVerses);
+    bibleCoordLookup.set(actualVersionId, coordMap);
+    bibleChapterMaxVerse.set(actualVersionId, chMaxMap);
     console.log(`In-memory Bible search index built for '${actualVersionId}': ${indexedVerses.length} verses in ${Date.now() - t0}ms`);
     return indexedVerses;
   }
@@ -448,6 +471,11 @@ function getBibleDb(versionIdOrFile)
     {
       // Strictly read-only connection without modifying the database or creating sidecar files
       const db = new DatabaseSync(dbPath, { readOnly: true });
+      try
+      {
+        db.exec('PRAGMA query_only = ON;');
+      }
+      catch (pErr) {}
       bibleDbCache.set(targetFile, db);
     }
     catch (err)
@@ -694,18 +722,26 @@ function resolveLiveState(payload)
     }
 
     let lineText = '';
-    const db = getBibleDb(versionId);
-    if (db)
+    const memVerse = getVerseFromMemory(versionId, bookNum, chNum, verseNum);
+    if (memVerse && memVerse.word)
     {
-      try
+      lineText = memVerse.word;
+    }
+    else
+    {
+      const db = getBibleDb(versionId);
+      if (db)
       {
-        const stmt = getBibleVerseStmt(db);
-        const row = stmt.get(bookNum, chNum, verseNum);
-        if (row && row.word) lineText = row.word;
-      }
-      catch (e)
-      {
-        console.error('Error fetching verse text from db in resolveLiveState:', e);
+        try
+        {
+          const stmt = getBibleVerseStmt(db);
+          const row = stmt.get(bookNum, chNum, verseNum);
+          if (row && row.word) lineText = row.word;
+        }
+        catch (e)
+        {
+          console.error('Error fetching verse text from db in resolveLiveState:', e);
+        }
       }
     }
 
@@ -738,6 +774,33 @@ function resolveLiveState(payload)
     const songId = Number(payload.songId);
     const slideIndex = Math.max(1, Number(payload.slideIndex) || 1);
 
+    // Fast in-memory path: serve directly from pre-parsed songSearchIndex
+    const indexedSong = songSearchIndex.get(songId);
+    if (indexedSong)
+    {
+      const totalSlides = indexedSong.slideCount || 1;
+      const validSlideIndex = Math.min(slideIndex, totalSlides);
+      const targetSlide = indexedSong.slides ? indexedSong.slides[validSlideIndex - 1] : null;
+      const lines = targetSlide ? targetSlide.lines : (indexedSong.firstLine ? [indexedSong.firstLine] : []);
+      const targetRawSlide = targetSlide ? targetSlide.cleanSlide : lines.join('<BR>');
+
+      return {
+        type: 'song',
+        status: 'live',
+        title: indexedSong.name,
+        reference: `${indexedSong.cat || 'Song'} • Slide ${validSlideIndex} of ${totalSlides}`,
+        lines: lines,
+        rawSlide: targetRawSlide,
+        slideIndex: validSlideIndex,
+        totalSlides: totalSlides,
+        songId: indexedSong.id,
+        font: indexedSong.font || 'Baloo Thambi',
+        font2: '',
+        verseInfo: null,
+        updatedAt: Date.now()
+      };
+    }
+
     try
     {
       const row = getSongById(songId);
@@ -765,7 +828,7 @@ function resolveLiveState(payload)
           slideIndex: validSlideIndex,
           totalSlides: totalSlides,
           songId: row.id,
-          font: row.font || 'Baloo Thambi 2',
+          font: row.font || 'Baloo Thambi',
           font2: row.font2 || '',
           verseInfo: null,
           updatedAt: Date.now()
@@ -878,33 +941,45 @@ io.on('connection', (socket) =>
     if (currentState.type === 'song' && currentState.songId)
     {
       const currentIdx = Number(currentState.slideIndex) || 1;
-      const prevIdx = Math.max(1, currentIdx - 1);
-      if (prevIdx !== currentIdx)
+      if (currentIdx <= 1)
       {
-        currentState = resolveLiveState({
+        socket.emit('boundary:reached', {
           type: 'song',
-          songId: currentState.songId,
-          slideIndex: prevIdx
+          boundary: 'start',
+          message: 'First slide reached'
         });
-        broadcastState();
+        return;
       }
+      const prevIdx = Math.max(1, currentIdx - 1);
+      currentState = resolveLiveState({
+        type: 'song',
+        songId: currentState.songId,
+        slideIndex: prevIdx
+      });
+      broadcastState();
     }
     else if (currentState.type === 'bible' && currentState.verseInfo)
     {
       const vInfo = currentState.verseInfo;
       const currentVerse = Number(vInfo.verseNum) || 1;
-      const prevVerse = Math.max(1, currentVerse - 1);
-      if (prevVerse !== currentVerse)
+      if (currentVerse <= 1)
       {
-        currentState = resolveLiveState({
+        socket.emit('boundary:reached', {
           type: 'bible',
-          verseInfo: {
-            ...vInfo,
-            verseNum: prevVerse
-          }
+          boundary: 'start',
+          message: 'Start of chapter reached (Verse 1)'
         });
-        broadcastState();
+        return;
       }
+      const prevVerse = Math.max(1, currentVerse - 1);
+      currentState = resolveLiveState({
+        type: 'bible',
+        verseInfo: {
+          ...vInfo,
+          verseNum: prevVerse
+        }
+      });
+      broadcastState();
     }
   });
 
@@ -917,47 +992,65 @@ io.on('connection', (socket) =>
     {
       const currentIdx = Number(currentState.slideIndex) || 1;
       const totalSlides = Number(currentState.totalSlides) || 1;
-      const nextIdx = Math.min(totalSlides, currentIdx + 1);
-      if (nextIdx !== currentIdx)
+      if (currentIdx >= totalSlides)
       {
-        currentState = resolveLiveState({
+        socket.emit('boundary:reached', {
           type: 'song',
-          songId: currentState.songId,
-          slideIndex: nextIdx
+          boundary: 'end',
+          message: `Last slide reached (${currentIdx} of ${totalSlides})`
         });
-        broadcastState();
+        return;
       }
+      const nextIdx = Math.min(totalSlides, currentIdx + 1);
+      currentState = resolveLiveState({
+        type: 'song',
+        songId: currentState.songId,
+        slideIndex: nextIdx
+      });
+      broadcastState();
     }
     else if (currentState.type === 'bible' && currentState.verseInfo)
     {
       const vInfo = currentState.verseInfo;
       const currentVerse = Number(vInfo.verseNum) || 1;
-      let maxVerse = 150;
-      const db = getBibleDb(vInfo.version);
-      if (db)
+      let maxVerse = getChapterMaxVerseFromMemory(vInfo.version, vInfo.bookNum, vInfo.chNum);
+      if (!maxVerse)
       {
-        try
+        const db = getBibleDb(vInfo.version);
+        if (db)
         {
-          const row = db.prepare('SELECT MAX(verseNum) as maxVerse FROM words WHERE bookNum = ? AND chNum = ?').get(vInfo.bookNum, vInfo.chNum);
-          if (row && row.maxVerse) maxVerse = Number(row.maxVerse);
-        }
-        catch (e)
-        {
-          console.error('Error fetching max verse in action:next:', e);
-        }
-      }
-      const nextVerse = Math.min(maxVerse, currentVerse + 1);
-      if (nextVerse !== currentVerse)
-      {
-        currentState = resolveLiveState({
-          type: 'bible',
-          verseInfo: {
-            ...vInfo,
-            verseNum: nextVerse
+          try
+          {
+            const row = db.prepare('SELECT MAX(verseNum) as maxVerse FROM words WHERE bookNum = ? AND chNum = ?').get(vInfo.bookNum, vInfo.chNum);
+            if (row && row.maxVerse) maxVerse = Number(row.maxVerse);
           }
-        });
-        broadcastState();
+          catch (e)
+          {
+            console.error('Error fetching max verse in action:next:', e);
+          }
+        }
       }
+      if (!maxVerse) maxVerse = 150;
+
+      if (currentVerse >= maxVerse)
+      {
+        socket.emit('boundary:reached', {
+          type: 'bible',
+          boundary: 'end',
+          message: `End of chapter reached (Verse ${currentVerse} of ${maxVerse})`
+        });
+        return;
+      }
+
+      const nextVerse = Math.min(maxVerse, currentVerse + 1);
+      currentState = resolveLiveState({
+        type: 'bible',
+        verseInfo: {
+          ...vInfo,
+          verseNum: nextVerse
+        }
+      });
+      broadcastState();
     }
   });
 
@@ -1138,12 +1231,16 @@ function indexSongRecord(r)
 
     cat: r.cat || 'General',
     font: r.font || '',
+    key: r.key || '',
+    notes: r.notes || '',
     tags: r.tags || '',
     tagsLower: (r.tags || '').toLowerCase(),
     tagsTokens,
     tagsTokenInfos: buildTargetTokenInfos(tagsTokens),
 
     lyrics: r.lyrics || '',
+    rawLyrics: r.lyrics || '',
+    convertedLyrics: convertedLyrics,
     firstLine: extractFirstLine(r.lyrics, r.font),
     slideCount: slides.length,
     slides,
@@ -1283,7 +1380,7 @@ app.get('/api/songs', (req, res) =>
 });
 
 // API: Full Song Content & Lyrics Search with Pre-Computed Phonetic In-Memory Index
-app.get('/api/songs/search', async (req, res) =>
+app.get('/api/songs/search', (req, res) =>
 {
   try
   {
@@ -1298,39 +1395,12 @@ app.get('/api/songs/search', async (req, res) =>
     }
 
     const limit = req.query.limit ? Math.min(Number(req.query.limit) || 500, 2000) : 500;
-    const isStreamRequested = req.query.stream !== 'false';
-
-    if (isStreamRequested)
-    {
-      res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
-      res.setHeader('Transfer-Encoding', 'chunked');
-      res.setHeader('Cache-Control', 'no-cache, no-transform');
-      res.setHeader('X-Accel-Buffering', 'no');
-    }
 
     // Precompute query pattern and lowercases for search query once
     const qPattern = compileQueryPattern(q);
     const qLower = q.toLowerCase();
 
     const matches = [];
-    let batch = [];
-    let lastFlushTime = Date.now();
-    let totalSent = 0;
-
-    const flushBatch = () =>
-    {
-      if (batch.length > 0)
-      {
-        if (isStreamRequested)
-        {
-          res.write(JSON.stringify({ type: 'batch', items: batch }) + '\n');
-          if (typeof res.flush === 'function') res.flush();
-        }
-        totalSent += batch.length;
-        batch = [];
-        lastFlushTime = Date.now();
-      }
-    };
 
     // Lazily build index if not yet populated
     if (songSearchIndex.size === 0)
@@ -1415,7 +1485,7 @@ app.get('/api/songs/search', async (req, res) =>
 
       if (songMatched)
       {
-        const item = {
+        matches.push({
           id: song.id,
           name: song.name,
           title2: song.title2,
@@ -1428,59 +1498,18 @@ app.get('/api/songs/search', async (req, res) =>
           totalMatches: totalMatchesInSong,
           firstLine: song.firstLine,
           isConverted: song.isConverted
-        };
+        });
 
-        if (isStreamRequested)
-        {
-          batch.push(item);
-
-          if (totalSent + batch.length >= limit)
-          {
-            flushBatch();
-            break;
-          }
-
-          // Immediate first batch delivery, then batch every 50ms or 25 items
-          const shouldFlush = (totalSent === 0 && batch.length >= 10) ||
-                              (Date.now() - lastFlushTime >= 50) ||
-                              (batch.length >= 25);
-          if (shouldFlush)
-          {
-            flushBatch();
-            await new Promise(resolve => setTimeout(resolve, 2));
-          }
-        }
-        else
-        {
-          matches.push(item);
-          if (matches.length >= limit) break;
-        }
+        if (matches.length >= limit) break;
       }
     }
 
-    if (isStreamRequested)
-    {
-      flushBatch();
-      res.write(JSON.stringify({ type: 'done', total: totalSent }) + '\n');
-      res.end();
-    }
-    else
-    {
-      res.json(matches);
-    }
+    res.json(matches);
   }
   catch (err)
   {
     console.error('Error during song content search:', err);
-    if (!res.headersSent)
-    {
-      res.status(500).json({ error: err.message });
-    }
-    else
-    {
-      res.write(JSON.stringify({ type: 'error', message: err.message }) + '\n');
-      res.end();
-    }
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -1490,6 +1519,37 @@ app.get('/api/songs/:id', (req, res) =>
   try
   {
     const songId = Number(req.params.id);
+    const indexed = songSearchIndex.get(songId);
+    if (indexed)
+    {
+      const formattedSlides = (indexed.slides || []).map(s => ({
+        slideIndex: s.slideIndex,
+        songId: indexed.id,
+        songid: indexed.id,
+        rawSlide: s.cleanSlide,
+        lines: s.lines
+      }));
+
+      return res.json({
+        id: indexed.id,
+        name: indexed.name,
+        title2: indexed.title2 || '',
+        cat: indexed.cat || 'General',
+        font: indexed.font || '',
+        font2: '',
+        key: indexed.key || '',
+        notes: indexed.notes || '',
+        tags: indexed.tags || '',
+        lyrics: indexed.convertedLyrics || indexed.lyrics,
+        rawLyrics: indexed.rawLyrics || indexed.lyrics,
+        lyrics2: '',
+        firstLine: indexed.firstLine || '',
+        slides: formattedSlides,
+        slideCount: indexed.slideCount || formattedSlides.length,
+        isConverted: Boolean(indexed.isConverted)
+      });
+    }
+
     if (!stmtGetSongFullById)
     {
       stmtGetSongFullById = smDb.prepare('SELECT id, name, title2, cat, font, font2, key, notes, tags, lyrics, lyrics2 FROM sm WHERE id = ?');
@@ -2099,76 +2159,7 @@ app.get('/api/bible/search', (req, res) =>
     const results = [];
     const qLower = q.toLowerCase();
 
-    // 1. Scripture reference parsing (e.g. "John 3:16", "யோவான் 3:16", "1 John 1:9", "1 3 16")
-    const refMatch = q.match(/^([0-9]*\s*[a-zA-Z\u0B80-\u0BFF]+(?:\s+[a-zA-Z\u0B80-\u0BFF]+)?)\s+(\d+)(?:[:\s]+(\d+))?$/);
-    const numRefMatch = !refMatch && q.match(/^(\d+)\s*[:\s]\s*(\d+)(?:[:\s](\d+))?$/);
-
-    let targetBookNum = null;
-    let targetChNum = null;
-    let targetVerseNum = null;
-
-    if (refMatch)
-    {
-      const rawBookStr = refMatch[1].trim().toLowerCase();
-      targetChNum = Number(refMatch[2]);
-      targetVerseNum = refMatch[3] ? Number(refMatch[3]) : null;
-
-      const bookLookup = getBookLookup(versionId);
-      for (const b of bookLookup)
-      {
-        if (b.bookNameLower === rawBookStr || b.engNameLower === rawBookStr ||
-            b.bookNameLower.startsWith(rawBookStr) || b.engNameLower.startsWith(rawBookStr))
-        {
-          targetBookNum = b.bookNum;
-          break;
-        }
-      }
-    }
-    else if (numRefMatch)
-    {
-      if (numRefMatch[3])
-      {
-        targetBookNum = Number(numRefMatch[1]);
-        targetChNum = Number(numRefMatch[2]);
-        targetVerseNum = Number(numRefMatch[3]);
-      }
-      else
-      {
-        targetChNum = Number(numRefMatch[1]);
-        targetVerseNum = Number(numRefMatch[2]);
-      }
-    }
-
-    if (targetChNum)
-    {
-      for (const v of verses)
-      {
-        if (targetBookNum && v.bookNum !== targetBookNum) continue;
-        if (v.chNum !== targetChNum) continue;
-        if (targetVerseNum && v.verseNum !== targetVerseNum) continue;
-
-        results.push({
-          wordId: v.wordId,
-          bookNum: v.bookNum,
-          chNum: v.chNum,
-          verseNum: v.verseNum,
-          bookName: v.bookName,
-          word: v.word,
-          versionId: v.versionId,
-          reference: `${v.bookName} ${v.chNum}:${v.verseNum}`,
-          matchedTerm: q
-        });
-
-        if (results.length >= limit) break;
-      }
-
-      if (results.length > 0)
-      {
-        return res.json(results);
-      }
-    }
-
-    // 2. Phonetic & Substring Verse Search with wildcard and gap support
+    // Phonetic & Substring Verse Content Search with wildcard and gap support
     const qPattern = compileQueryPattern(q);
 
     for (const v of verses)
@@ -2421,6 +2412,32 @@ function enrichRecentItem(row)
   {
     const songId = Number(row.song_id);
     const slideIndex = Math.max(1, Number(row.slide_index) || 1);
+
+    const indexed = songSearchIndex.get(songId);
+    if (indexed)
+    {
+      const totalSlides = indexed.slideCount || 1;
+      const validSlideIndex = Math.min(slideIndex, totalSlides);
+      const targetSlide = (indexed.slides && indexed.slides[validSlideIndex - 1]) || null;
+      const snippet = targetSlide ? (targetSlide.lines || []).join('\n') : (indexed.firstLine || '');
+
+      return {
+        id: row.id,
+        item_type: 'song',
+        song_id: songId,
+        slide_index: validSlideIndex,
+        total_slides: totalSlides,
+        title: indexed.name || ('Song #' + songId),
+        title2: indexed.title2 || '',
+        category: indexed.cat || 'Song',
+        font: indexed.font || '',
+        font2: '',
+        snippet: snippet,
+        created_at: row.created_at,
+        time_str: row.time_str
+      };
+    }
+
     let title = 'Song #' + songId;
     let title2 = '';
     let cat = 'Song';
@@ -2490,17 +2507,25 @@ function enrichRecentItem(row)
     }
 
     let snippet = '';
-    try
+    const memVerse = getVerseFromMemory(versionId, bookNum, chNum, verseNum);
+    if (memVerse && memVerse.word)
     {
-      const db = getBibleDb(versionId);
-      if (db)
-      {
-        const stmt = getBibleVerseStmt(db);
-        const verseRow = stmt.get(bookNum, chNum, verseNum);
-        if (verseRow && verseRow.word) snippet = verseRow.word;
-      }
+      snippet = memVerse.word;
     }
-    catch (e) {}
+    else
+    {
+      try
+      {
+        const db = getBibleDb(versionId);
+        if (db)
+        {
+          const stmt = getBibleVerseStmt(db);
+          const verseRow = stmt.get(bookNum, chNum, verseNum);
+          if (verseRow && verseRow.word) snippet = verseRow.word;
+        }
+      }
+      catch (e) {}
+    }
 
     return {
       id: row.id,
@@ -2811,18 +2836,7 @@ app.get('*', (req, res) =>
 // ---------------------------------------------------------------------------
 server.on('error', (err) =>
 {
-  if (err.code === 'EADDRINUSE')
-  {
-    console.warn(`Primary port ${PORT} in use, attempting fallback to 3000...`);
-    if (PORT !== 3000)
-    {
-      server.listen(3000, '0.0.0.0');
-    }
-  }
-  else
-  {
-    console.error('Server error:', err);
-  }
+  console.error('Server error:', err);
 });
 
 server.listen(PORT, '0.0.0.0', () =>
@@ -2834,24 +2848,3 @@ server.listen(PORT, '0.0.0.0', () =>
   initSongSearchIndex();
   getOrBuildBibleSearchIndex('tamil');
 });
-
-// In production Cloud Run, additionally listen on 3000 if different from PORT for internal compatibility
-if (!isDevSandbox && PORT !== 3000)
-{
-  try
-  {
-    const secondaryServer = http.createServer(app);
-    secondaryServer.on('error', (err) =>
-    {
-      console.warn('Secondary 3000 listener note:', err.message);
-    });
-    secondaryServer.listen(3000, '0.0.0.0', () =>
-    {
-      console.log('Secondary port 3000 listener active');
-    });
-  }
-  catch (e)
-  {
-    // Harmless if 3000 is occupied
-  }
-}

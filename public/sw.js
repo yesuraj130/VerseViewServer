@@ -64,12 +64,11 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // 1. Bypass Service Worker for Socket.io, API POSTs, and live state endpoints
+  // 1. Bypass Service Worker completely for all APIs, Socket.io, and health checks
   if (
+    url.pathname.startsWith('/api/') ||
     url.pathname.startsWith('/socket.io/') ||
-    url.pathname.startsWith('/api/keepalive') ||
-    url.pathname.startsWith('/healthz') ||
-    (url.pathname.startsWith('/api/state') && event.request.method === 'POST')
+    url.pathname.startsWith('/healthz')
   ) {
     return;
   }

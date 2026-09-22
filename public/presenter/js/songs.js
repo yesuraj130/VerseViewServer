@@ -671,7 +671,7 @@ async function executeContentSearch()
 
   try
   {
-    const response = await fetch(`/api/songs/search?q=${encodeURIComponent(query)}&stream=true`, {
+    const response = await fetch(`/api/songs/search?q=${encodeURIComponent(query)}`, {
       signal: currentController.signal
     });
 
@@ -680,79 +680,8 @@ async function executeContentSearch()
       throw new Error(`Search failed with HTTP ${response.status}`);
     }
 
-    if (!response.body)
-    {
-      // Fallback for non-streamable environments
-      const results = await response.json();
-      currentFilteredSongs = Array.isArray(results) ? results : [];
-      updateVirtualSongList(true);
-    }
-    else
-    {
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder('utf-8');
-      let buffer = '';
-      let firstResultSelected = false;
-
-      while (true)
-      {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop(); // Retain incomplete line
-
-        let hasNewBatch = false;
-        for (const line of lines)
-        {
-          if (!line.trim()) continue;
-          try
-          {
-            const data = JSON.parse(line);
-            if (data.type === 'batch' && Array.isArray(data.items) && data.items.length > 0)
-            {
-              currentFilteredSongs.push(...data.items);
-              hasNewBatch = true;
-            }
-            else if (data.type === 'error')
-            {
-              throw new Error(data.message || 'Server search error');
-            }
-          }
-          catch (parseErr)
-          {
-            console.warn('Error reading stream batch:', parseErr);
-          }
-        }
-
-        if (hasNewBatch)
-        {
-          const count = currentFilteredSongs.length;
-          if (songSearchStatusText)
-          {
-            songSearchStatusText.textContent = `Searching lyrics for "${query}" (${count} found)...`;
-          }
-          updateVirtualSongList(false);
-
-          // Auto-select first result if available on initial batch
-          if (!firstResultSelected && currentFilteredSongs.length > 0)
-          {
-            firstResultSelected = true;
-            const first = currentFilteredSongs[0];
-            selectSong(first.id, false);
-            loadSongSlides().then(isLoaded =>
-            {
-              if (isLoaded && first.matchedSlideIndex > 1 && slideDeckSongs)
-              {
-                selectSongSlide(first.matchedSlideIndex);
-                scrollToIndexInList(slideDeckSongs, first.matchedSlideIndex - 1);
-              }
-            });
-          }
-        }
-      }
-    }
+    const results = await response.json();
+    currentFilteredSongs = Array.isArray(results) ? results : [];
 
     if (songSearchStatusSpinner)
     {
@@ -766,6 +695,21 @@ async function executeContentSearch()
     }
 
     updateVirtualSongList(false);
+
+    // Auto-select first result if available
+    if (currentFilteredSongs.length > 0)
+    {
+      const first = currentFilteredSongs[0];
+      selectSong(first.id, false);
+      loadSongSlides().then(isLoaded =>
+      {
+        if (isLoaded && first.matchedSlideIndex > 1 && slideDeckSongs)
+        {
+          selectSongSlide(first.matchedSlideIndex);
+          scrollToIndexInList(slideDeckSongs, first.matchedSlideIndex - 1);
+        }
+      });
+    }
   }
   catch (err)
   {
