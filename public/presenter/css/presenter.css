@@ -2,14 +2,53 @@
    Presenter Console Unified Minimal Stylesheet
    ========================================================================== */
 
-/* 1. App Shell & Layout */
+/* 1. App Shell & Layout — Strict Lock for Mobile Chrome Address Bar Auto-Hide */
+html
+{
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+body.presenter-body
+{
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: auto;
+  touch-action: pan-y;
+}
+
 .presenter-app
 {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
   height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
   overflow: hidden;
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
   color: var(--color-font);
   padding-bottom: var(--sab, 0px);
 }
@@ -33,6 +72,8 @@
   flex-shrink: 0;
   border-bottom: 1px solid var(--border-subtle);
   background-color: var(--color-panel);
+  touch-action: manipulation;
+  user-select: none;
 }
 
 .header-left
@@ -163,8 +204,11 @@
   min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  touch-action: pan-x;
 }
 
 .quick-action-controls::-webkit-scrollbar,
@@ -337,7 +381,10 @@
 /* 5. Workspace Layout */
 .tabs-container
 {
+  flex: 1 1 0%;
   flex-grow: 1;
+  flex-shrink: 1;
+  min-height: 0;
   display: flex;
   overflow: hidden;
   --left-panel-width: 420px;
@@ -347,8 +394,9 @@
 .tab-item
 {
   display: none;
-  flex: 1;
+  flex: 1 1 0%;
   min-width: 0;
+  min-height: 0;
   max-width: 100%;
   overflow: hidden;
 }
@@ -382,11 +430,15 @@
   flex-direction: column;
   overflow: hidden;
   flex-shrink: 0;
+  min-height: 0;
 }
 
 .slides-pane
 {
+  flex: 1 1 0%;
   flex-grow: 1;
+  flex-shrink: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -437,8 +489,13 @@
 /* 7. Slide Lists & Cards */
 .slides-list
 {
+  flex: 1 1 0%;
   flex-grow: 1;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 4px;
   display: flex;
   flex-direction: column;
@@ -860,9 +917,14 @@ mark.search-match-hl
 
 .song-searchresults-list
 {
+  flex: 1 1 0%;
   flex-grow: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: contain;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -1100,7 +1162,7 @@ mark.search-match-hl
   box-shadow: var(--shadow-lg);
   width: 100%;
   max-width: 780px;
-  max-height: 90vh;
+  max-height: min(90vh, calc(100dvh - 32px));
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1132,7 +1194,10 @@ mark.search-match-hl
 {
   padding: 16px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   flex-grow: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1253,6 +1318,7 @@ mark.search-match-hl
   .tab-item.active
   {
     flex-direction: column;
+    min-height: 0;
   }
 
   .navigation-pane
@@ -1261,9 +1327,17 @@ mark.search-match-hl
     min-width: 0;
     max-width: 100%;
     height: var(--mobile-browser-pane-height, 220px);
+    max-height: 50%;
+    flex-shrink: 0;
     border-right: none;
     border-bottom: 1px solid var(--border-subtle);
     overflow: hidden;
+  }
+
+  .slides-pane
+  {
+    flex: 1 1 0%;
+    min-height: 0;
   }
 
   .resizer-handle
@@ -1316,8 +1390,8 @@ mark.search-match-hl
 .bible-search-dialog-content
 {
   max-width: 820px;
-  height: 82vh;
-  max-height: 720px;
+  height: 82dvh;
+  max-height: min(720px, calc(100dvh - 32px));
 }
 
 .bible-search-dialog-header
@@ -1557,7 +1631,8 @@ mark.search-match-hl
    =========================================================================== */
 .recents-view-container
 {
-  flex: 1;
+  flex: 1 1 0%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1630,6 +1705,8 @@ mark.search-match-hl
   min-height: 0;
   height: 100%;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
   padding: 0;
   display: flex;
