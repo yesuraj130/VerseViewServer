@@ -85,7 +85,6 @@
         <div>
           <div style="display: flex; justify-content: space-between; align-items: flex-start;">
             <span class="hub-card-tag" style="background: rgba(2, 132, 199, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3);">🧹 Database Quality Suite</span>
-            <span id="hub-cleaner-quick-badge" style="font-size: 11px; font-weight: 700; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 12px;">754+ Duplicates</span>
           </div>
           <h2 class="hub-card-title">Duplicate Songs Remover</h2>
           <p class="hub-card-desc">Comprehensive database maintenance: Clean duplicate songs (same or different titles), detect near-duplicates, analyze mixed fonts and diacritic typos, and mass-convert Bamini songs to Unicode.</p>
@@ -576,17 +575,6 @@
         if (window.SongCleanerSuite) window.SongCleanerSuite.open(targetTab);
       });
     });
-
-    // Fetch quick badge counts for the hub
-    fetch('/api/songs-cleaner/summary')
-      .then(r => r.json())
-      .then(data => {
-        const badge = document.getElementById('hub-cleaner-quick-badge');
-        if (badge && data) {
-          badge.textContent = `${data.exactDuplicateSongs || 748} Duplicates`;
-        }
-      })
-      .catch(console.warn);
   </script>
 
   <!-- Duplicate Songs Remover Suite Modal Dialog -->

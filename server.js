@@ -1753,6 +1753,7 @@ app.delete('/api/songs/:id', (req, res) =>
     const songId = Number(req.params.id);
     const stmt = smDb.prepare('DELETE FROM sm WHERE id = ?');
     stmt.run(songId);
+    songsCleaner.checkpointAndVacuum(smDb);
     songSearchIndex.delete(songId);
     refreshSongsListCache();
     res.json({ success: true, deletedId: songId });
@@ -2079,6 +2080,7 @@ app.post('/api/songs-cleaner/update-song', (req, res) =>
     {
       params.push(songId);
       smDb.prepare(`UPDATE sm SET ${updateFields.join(', ')} WHERE id = ?`).run(...params);
+      songsCleaner.checkpointAndVacuum(smDb);
     }
 
     const updated = smDb.prepare('SELECT id, name, title2, cat, font, font2, key, notes, tags, lyrics, lyrics2 FROM sm WHERE id = ?').get(songId);
