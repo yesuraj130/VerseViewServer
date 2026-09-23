@@ -195,6 +195,10 @@
       if (elements.badgeBamini) {
         elements.badgeBamini.textContent = `${summaryData.baminiClean || 0} ready / ${summaryData.baminiSuspicious || 0} review`;
       }
+      const subtitleEl = document.querySelector('.cleaner-subtitle');
+      if (subtitleEl && summaryData.totalSongs) {
+        subtitleEl.textContent = `VerseView Database Maintenance • ${Number(summaryData.totalSongs).toLocaleString()} Songs in Database`;
+      }
     } catch (err) {
       console.warn('Could not load summary:', err);
     }
@@ -641,9 +645,314 @@
   // ---------------------------------------------------------------------------
   // 3. Similar / Near-Duplicate Songs (Content more or less same)
   // ---------------------------------------------------------------------------
+
+  // Helper: Compute word-level LCS diff between two text strings
+  function computeWordLcsDiff(strA, strB) {
+    if (!strA && !strB) return { resultA: [], resultB: [] };
+    strA = strA || '';
+    strB = strB || '';
+
+    // Split into tokens preserving whitespace and punctuation
+    const tokensA = strA.split(/(\s+|[.,;!?–—\-])/).filter(Boolean);
+    const tokensB = strB.split(/(\s+|[.,;!?–—\-])/).filter(Boolean);
+
+    // Support up to 2500 tokens so full verses and songs diff without clipping
+    const m = Math.min(tokensA.length, 2500);
+    const n = Math.min(tokensB.length, 2500);
+
+    const dp = Array.from({ length: m + 1 }, () => new Uint16Array(n + 1));
+    for (let i = 0; i < m; i++) {
+      const aLower = tokensA[i].trim().toLowerCase();
+      for (let j = 0; j < n; j++) {
+        const bLower = tokensB[j].trim().toLowerCase();
+        if (aLower === bLower) {
+          dp[i + 1][j + 1] = dp[i][j] + 1;
+        } else {
+          dp[i + 1][j + 1] = Math.max(dp[i + 1][j], dp[i][j + 1]);
+        }
+      }
+    }
+
+    let i = m, j = n;
+    const resultA = [];
+    const resultB = [];
+
+    while (i > 0 || j > 0) {
+      if (i > 0 && j > 0 && tokensA[i - 1].trim().toLowerCase() === tokensB[j - 1].trim().toLowerCase()) {
+        resultA.unshift({ text: tokensA[i - 1], diff: false });
+        resultB.unshift({ text: tokensB[j - 1], diff: false });
+        i--; j--;
+      } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+        resultB.unshift({ text: tokensB[j - 1], diff: true, type: 'b' });
+        j--;
+      } else if (i > 0 && (j === 0 || dp[i][j - 1] < dp[i - 1][j])) {
+        resultA.unshift({ text: tokensA[i - 1], diff: true, type: 'a' });
+        i--;
+      }
+    }
+
+    for (let k = m; k < tokensA.length; k++) {
+      resultA.push({ text: tokensA[k], diff: true, type: 'a' });
+    }
+    for (let k = n; k < tokensB.length; k++) {
+      resultB.push({ text: tokensB[k], diff: true, type: 'b' });
+    }
+
+    return { resultA, resultB };
+  }
+
+  function formatDiffTokensToHtml(tokens, type) {
+    if (!tokens || tokens.length === 0) return '';
+    return tokens.map(t => {
+      const escaped = escapeHtml(t.text);
+      if (!t.diff || !t.text.trim()) return escaped;
+      const cssClass = type === 'a' ? 'diff-token-a' : 'diff-token-b';
+      const label = type === 'a' ? 'Unique to Song A (will be lost if deleted)' : 'Unique to Song B (will be lost if deleted)';
+      return `<mark class="${cssClass}" title="${label}">${escaped}</mark>`;
+    }).join('');
+  }
+
+  function getCleanSlideList(rawLyrics, font) {
+    if (!rawLyrics) return [];
+    let text = String(rawLyrics);
+    if (typeof isTamilBibleFont === 'function' && isTamilBibleFont(font)) {
+      try {
+        if (typeof baminiToUnicode === 'function') text = baminiToUnicode(text);
+      } catch (e) {}
+    }
+    return text.split(/<slide>/gi).map(s => {
+      return s.replace(/<br\s*\/?>/gi, '\n')
+              .replace(/<[^>]+>/gi, '')
+              .replace(/&nbsp;/gi, ' ')
+              .trim();
+    }).filter(s => s.length > 0);
+  }
+
+  function getPairRecommendation(songA, songB) {
+    const slidesA = songA.slideCount || 0;
+    const slidesB = songB.slideCount || 0;
+    const lenA = (songA.rawLyrics || '').length;
+    const lenB = (songB.rawLyrics || '').length;
+    const isBaminiA = (songA.font || '').toLowerCase().includes('tamil bible');
+    const isBaminiB = (songB.font || '').toLowerCase().includes('tamil bible');
+
+    if (slidesA > slidesB) {
+      return { keep: 'A', text: `💡 Keep Song A: Has +${slidesA - slidesB} more slide(s) / verses.` };
+    }
+    if (slidesB > slidesA) {
+      return { keep: 'B', text: `💡 Keep Song B: Has +${slidesB - slidesA} more slide(s) / verses.` };
+    }
+    if (isBaminiB && !isBaminiA) {
+      return { keep: 'A', text: `💡 Keep Song A: Already standard Unicode Tamil.` };
+    }
+    if (isBaminiA && !isBaminiB) {
+      return { keep: 'B', text: `💡 Keep Song B: Already standard Unicode Tamil.` };
+    }
+    if (lenA > lenB + 30) {
+      return { keep: 'A', text: `💡 Keep Song A: Longer lyrics (+${lenA - lenB} characters).` };
+    }
+    if (lenB > lenA + 30) {
+      return { keep: 'B', text: `💡 Keep Song B: Longer lyrics (+${lenB - lenA} characters).` };
+    }
+    return { keep: null, text: `💡 Minor variations: Inspect highlighted differences to choose which to delete.` };
+  }
+
+  // Side-by-Side Verse-by-Verse and Full Lyrics Diff Modal
+  function openSimilarDiffModal(pair, pIdx) {
+    const sA = pair.songA;
+    const sB = pair.songB;
+    const slidesA = getCleanSlideList(sA.rawLyrics, sA.font);
+    const slidesB = getCleanSlideList(sB.rawLyrics, sB.font);
+    const maxSlides = Math.max(slidesA.length, slidesB.length, 1);
+    const rec = getPairRecommendation(sA, sB);
+
+    const modal = document.createElement('div');
+    modal.className = 'cleaner-overlay';
+    modal.style.zIndex = '2100';
+
+    function updateModalButtons() {
+      const isDelA = selectedIdsForDelete.has(sA.id);
+      const isDelB = selectedIdsForDelete.has(sB.id);
+
+      const btnA = modal.querySelector('.btn-diff-keep-a');
+      const btnB = modal.querySelector('.btn-diff-keep-b');
+      const btnBoth = modal.querySelector('.btn-diff-keep-both');
+
+      if (btnA) {
+        if (!isDelA && isDelB) {
+          btnA.style.background = '#059669';
+          btnA.style.borderColor = '#10b981';
+          btnA.innerHTML = '✓ Song A Kept (B Deleted)';
+        } else {
+          btnA.style.background = '#1e293b';
+          btnA.style.borderColor = '#334155';
+          btnA.innerHTML = 'Keep Song A (Delete B)';
+        }
+      }
+
+      if (btnB) {
+        if (!isDelB && isDelA) {
+          btnB.style.background = '#059669';
+          btnB.style.borderColor = '#10b981';
+          btnB.innerHTML = '✓ Song B Kept (A Deleted)';
+        } else {
+          btnB.style.background = '#1e293b';
+          btnB.style.borderColor = '#334155';
+          btnB.innerHTML = 'Keep Song B (Delete A)';
+        }
+      }
+
+      if (btnBoth) {
+        if (!isDelA && !isDelB) {
+          btnBoth.style.background = '#0284c7';
+          btnBoth.style.color = '#fff';
+          btnBoth.innerHTML = '✓ Both Kept';
+        } else {
+          btnBoth.style.background = '#1e293b';
+          btnBoth.style.color = '#cbd5e1';
+          btnBoth.innerHTML = 'Keep Both';
+        }
+      }
+    }
+
+    // Full clean lyrics for Song A and Song B
+    const fullTextA = slidesA.join('\n\n');
+    const fullTextB = slidesB.join('\n\n');
+
+    const diff = computeWordLcsDiff(fullTextA, fullTextB);
+    const htmlA = formatDiffTokensToHtml(diff.resultA, 'a').replace(/\n/g, '<br>');
+    const htmlB = formatDiffTokensToHtml(diff.resultB, 'b').replace(/\n/g, '<br>');
+
+    modal.innerHTML = `
+      <div class="diff-modal-window">
+        <div class="diff-modal-header">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <h2 style="margin: 0; font-size: 16px; color: #fff;">Full Song Lyrics Diff: Pair #${pIdx + 1}</h2>
+            <span class="group-pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid #10b981;">
+              ${pair.similarity}% Similar
+            </span>
+          </div>
+          <div class="diff-modal-actions">
+            <button type="button" class="btn-primary btn-diff-keep-a" style="font-size: 12px; padding: 6px 12px; border: 1px solid;">Keep Song A (Delete B)</button>
+            <button type="button" class="btn-primary btn-diff-keep-b" style="font-size: 12px; padding: 6px 12px; border: 1px solid;">Keep Song B (Delete A)</button>
+            <button type="button" class="btn-secondary btn-diff-keep-both" style="font-size: 12px; padding: 6px 12px;">Keep Both</button>
+            <button type="button" class="cleaner-close-btn">&times;</button>
+          </div>
+        </div>
+
+        <div class="diff-modal-subbar">
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div class="diff-recommendation" style="font-size: 12px;">${rec.text}</div>
+            <div class="diff-pill-group">
+              <span class="diff-pill">Length: A (${(sA.rawLyrics || '').length} chars) vs B (${(sB.rawLyrics || '').length} chars)</span>
+              <span class="diff-pill">Slides: A (${slidesA.length}) vs B (${slidesB.length})</span>
+              <span class="diff-pill">Font: A (${escapeHtml(sA.font || 'None')}) vs B (${escapeHtml(sB.font || 'None')})</span>
+            </div>
+          </div>
+          <div class="diff-legend-strip">
+            <div class="diff-legend-item">
+              <div class="diff-legend-dot" style="background: #f59e0b;"></div>
+              <span>Unique to Song A (amber)</span>
+            </div>
+            <div class="diff-legend-item">
+              <div class="diff-legend-dot" style="background: #10b981;"></div>
+              <span>Unique to Song B (green)</span>
+            </div>
+            <div class="diff-legend-item">
+              <div class="diff-legend-dot" style="background: #64748b;"></div>
+              <span>Identical</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Full Lyrics Side-by-Side (Auto-Fit Height) -->
+        <div class="diff-full-compare-grid">
+          <div class="diff-full-pane">
+            <div class="diff-full-pane-header">
+              <span style="font-size: 13px; font-weight: 700; color: #f59e0b;">
+                Song A: ${escapeHtml(sA.name)} [ID: ${sA.id}]
+              </span>
+              <span style="font-size: 11px; color: #94a3b8;">
+                ${slidesA.length} Slides • Font: ${escapeHtml(sA.font || 'Baloo Thambi')}
+              </span>
+            </div>
+            <div class="diff-full-pane-content" id="diff-scroll-a">
+              ${htmlA || '<span style="color: #64748b; font-style: italic;">(No lyrics)</span>'}
+            </div>
+          </div>
+
+          <div class="diff-full-pane">
+            <div class="diff-full-pane-header">
+              <span style="font-size: 13px; font-weight: 700; color: #10b981;">
+                Song B: ${escapeHtml(sB.name)} [ID: ${sB.id}]
+              </span>
+              <span style="font-size: 11px; color: #94a3b8;">
+                ${slidesB.length} Slides • Font: ${escapeHtml(sB.font || 'Baloo Thambi')}
+              </span>
+            </div>
+            <div class="diff-full-pane-content" id="diff-scroll-b">
+              ${htmlB || '<span style="color: #64748b; font-style: italic;">(No lyrics)</span>'}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    updateModalButtons();
+
+    // Synchronize scrolling between Song A and Song B panes
+    const paneA = modal.querySelector('#diff-scroll-a');
+    const paneB = modal.querySelector('#diff-scroll-b');
+    let isSyncing = false;
+    if (paneA && paneB) {
+      paneA.onscroll = () => {
+        if (isSyncing) return;
+        isSyncing = true;
+        paneB.scrollTop = paneA.scrollTop;
+        setTimeout(() => isSyncing = false, 30);
+      };
+      paneB.onscroll = () => {
+        if (isSyncing) return;
+        isSyncing = true;
+        paneA.scrollTop = paneB.scrollTop;
+        setTimeout(() => isSyncing = false, 30);
+      };
+    }
+
+    modal.querySelector('.btn-diff-keep-a').onclick = () => {
+      selectedIdsForDelete.delete(sA.id);
+      selectedIdsForDelete.add(sB.id);
+      updateModalButtons();
+      renderSimilarList();
+      showToast(`Song A kept • Song B (ID: ${sB.id}) marked for deletion`);
+    };
+
+    modal.querySelector('.btn-diff-keep-b').onclick = () => {
+      selectedIdsForDelete.delete(sB.id);
+      selectedIdsForDelete.add(sA.id);
+      updateModalButtons();
+      renderSimilarList();
+      showToast(`Song B kept • Song A (ID: ${sA.id}) marked for deletion`);
+    };
+
+    modal.querySelector('.btn-diff-keep-both').onclick = () => {
+      selectedIdsForDelete.delete(sA.id);
+      selectedIdsForDelete.delete(sB.id);
+      updateModalButtons();
+      renderSimilarList();
+      showToast('Both songs kept in database');
+    };
+
+    modal.querySelector('.cleaner-close-btn').onclick = () => modal.remove();
+    modal.onclick = (e) => {
+      if (e.target === modal) modal.remove();
+    };
+  }
+
   async function renderSimilarDuplicates(forceRefresh = false) {
     elements.workspaceTitle.textContent = 'Similar / Near-Duplicate Songs';
-    elements.workspaceSubtitle.textContent = 'Songs with high lyrics similarity (minor variations in formatting, spelling, or verses). You can select which song to delete, or keep both.';
+    elements.workspaceSubtitle.textContent = 'Songs with high lyrics similarity (minor variations in formatting, spelling, or verses). Differences are highlighted so you can confidently choose which song to delete.';
 
     try {
       if (!similarData || forceRefresh) {
@@ -651,7 +960,6 @@
         similarData = await res.json();
       }
 
-      // Default: User can choose which one to delete or keep both. So initial selected is EMPTY!
       renderSimilarList();
     } catch (err) {
       elements.listContainer.innerHTML = `<div style="color:#ef4444; padding:30px; text-align:center;">Failed to load similar songs: ${escapeHtml(err.message)}</div>`;
@@ -717,18 +1025,79 @@
       const isDeleteB = selectedIdsForDelete.has(pair.songB.id);
       const simColor = pair.similarity >= 90 ? '#10b981' : pair.similarity >= 80 ? '#f59e0b' : '#38bdf8';
 
+      // Compute word differences for the preview snippets
+      const previewDiff = computeWordLcsDiff(pair.songA.preview || '', pair.songB.preview || '');
+      const previewHtmlA = formatDiffTokensToHtml(previewDiff.resultA, 'a');
+      const previewHtmlB = formatDiffTokensToHtml(previewDiff.resultB, 'b');
+
+      // Title difference check
+      const titleDiffers = (pair.songA.name || '').trim().toLowerCase() !== (pair.songB.name || '').trim().toLowerCase();
+      let titleDiffHtml = '';
+      if (titleDiffers) {
+        const titleDiff = computeWordLcsDiff(pair.songA.name || '', pair.songB.name || '');
+        titleDiffHtml = `
+          <div class="diff-title-row">
+            <span style="color: #94a3b8; font-weight: 600;">Different Titles:</span>
+            <span>A: "${formatDiffTokensToHtml(titleDiff.resultA, 'a')}"</span>
+            <span style="color: #64748b;">vs</span>
+            <span>B: "${formatDiffTokensToHtml(titleDiff.resultB, 'b')}"</span>
+          </div>
+        `;
+      }
+
+      // Comparison Metrics & Recommendation
+      const rec = getPairRecommendation(pair.songA, pair.songB);
+      const slideDiff = pair.songA.slideCount !== pair.songB.slideCount;
+      const lenA = (pair.songA.rawLyrics || '').length;
+      const lenB = (pair.songB.rawLyrics || '').length;
+
       html += `
-        <div class="similar-pair-card">
+        <div class="similar-pair-card" data-pair-idx="${pIdx}">
           <div class="similar-pair-header">
-            <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
               <span style="font-size: 16px;">🔍</span>
               <span style="font-size: 14px; font-weight: 700; color: #fff;">Pair #${pIdx + 1} of ${filteredPairs.length}</span>
               <span class="group-pill" style="background: rgba(16, 185, 129, 0.15); color: ${simColor}; border: 1px solid ${simColor}; font-weight: 800;">
-                ${pair.similarity}% Similar Content
+                ${pair.similarity}% Similar
               </span>
             </div>
-            <div style="display: flex; gap: 8px;">
-              <button class="btn-secondary btn-keep-both" data-a="${pair.songA.id}" data-b="${pair.songB.id}" style="font-size: 11px; padding: 4px 10px;">Keep Both</button>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button class="btn-primary btn-open-diff" data-idx="${pIdx}" style="font-size: 11px; padding: 5px 12px; background: linear-gradient(135deg, #0284c7, #6366f1); font-weight: 700;">
+                🔍 Side-by-Side Full Diff
+              </button>
+              <button class="btn-secondary btn-keep-both" data-a="${pair.songA.id}" data-b="${pair.songB.id}" style="font-size: 11px; padding: 5px 10px;">
+                Keep Both
+              </button>
+            </div>
+          </div>
+
+          <!-- Comparison Metrics & Highlights Banner -->
+          <div class="pair-diff-banner">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+              <div class="diff-recommendation">${rec.text}</div>
+              <div class="diff-pill-group">
+                <span class="diff-pill ${slideDiff ? 'pill-alert' : 'pill-info'}">
+                  Slides: ${pair.songA.slideCount} vs ${pair.songB.slideCount} ${slideDiff ? `(${Math.abs(pair.songA.slideCount - pair.songB.slideCount)} difference)` : '(Equal)'}
+                </span>
+                <span class="diff-pill">
+                  Length: ${lenA} vs ${lenB} chars ${lenA !== lenB ? `(${lenA > lenB ? 'A' : 'B'} +${Math.abs(lenA - lenB)})` : ''}
+                </span>
+                <span class="diff-pill">
+                  Font: ${escapeHtml(pair.songA.font || 'None')} vs ${escapeHtml(pair.songB.font || 'None')}
+                </span>
+              </div>
+            </div>
+            ${titleDiffHtml}
+            <div class="diff-legend-strip">
+              <span style="font-weight: 600; color: #cbd5e1;">Highlight key:</span>
+              <div class="diff-legend-item">
+                <div class="diff-legend-dot" style="background: #f59e0b;"></div>
+                <span>Unique to Song A (amber)</span>
+              </div>
+              <div class="diff-legend-item">
+                <div class="diff-legend-dot" style="background: #10b981;"></div>
+                <span>Unique to Song B (green)</span>
+              </div>
             </div>
           </div>
 
@@ -739,18 +1108,25 @@
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
                   <div>
                     <div style="font-size: 14px; font-weight: 700; color: #ffffff;">${escapeHtml(pair.songA.name)}</div>
-                    <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">ID: ${pair.songA.id} • ${escapeHtml(pair.songA.cat)} • Font: ${escapeHtml(pair.songA.font || 'None')} • ${pair.songA.slideCount} Slides</div>
+                    <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">
+                      ID: ${pair.songA.id} • ${escapeHtml(pair.songA.cat)} • Font: ${escapeHtml(pair.songA.font || 'None')} • ${pair.songA.slideCount} Slides
+                    </div>
                   </div>
                   <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: ${isDeleteA ? '#ef4444' : '#94a3b8'}; cursor: pointer;">
                     <input type="checkbox" data-id="${pair.songA.id}" ${isDeleteA ? 'checked' : ''}> Delete
                   </label>
                 </div>
-                <div class="song-preview-text" style="background: #070d18; padding: 8px; border-radius: 4px; max-height: 100px; overflow-y: auto;">
-                  "${escapeHtml(pair.songA.preview)}"
+                <div class="song-preview-text" style="background: #070d18; padding: 10px; border-radius: 6px; max-height: 110px; overflow-y: auto; font-family: 'Baloo Thambi', sans-serif; font-size: 13px; line-height: 1.5;">
+                  "${previewHtmlA}"
                 </div>
               </div>
-              <div style="margin-top: 10px; display: flex; justify-content: flex-end;">
-                <button class="btn-secondary btn-preview-song" data-id="${pair.songA.id}" style="font-size: 11px; padding: 3px 8px;">Full Lyrics</button>
+              <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                <button type="button" class="btn-primary btn-keep-a" data-a="${pair.songA.id}" data-b="${pair.songB.id}" style="font-size: 11px; padding: 4px 10px; background: #059669;">
+                  ✓ Keep Song A (Delete B)
+                </button>
+                <button class="btn-secondary btn-preview-song" data-id="${pair.songA.id}" style="font-size: 11px; padding: 4px 8px;">
+                  Full Slides
+                </button>
               </div>
             </div>
 
@@ -760,18 +1136,25 @@
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
                   <div>
                     <div style="font-size: 14px; font-weight: 700; color: #ffffff;">${escapeHtml(pair.songB.name)}</div>
-                    <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">ID: ${pair.songB.id} • ${escapeHtml(pair.songB.cat)} • Font: ${escapeHtml(pair.songB.font || 'None')} • ${pair.songB.slideCount} Slides</div>
+                    <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">
+                      ID: ${pair.songB.id} • ${escapeHtml(pair.songB.cat)} • Font: ${escapeHtml(pair.songB.font || 'None')} • ${pair.songB.slideCount} Slides
+                    </div>
                   </div>
                   <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: ${isDeleteB ? '#ef4444' : '#94a3b8'}; cursor: pointer;">
                     <input type="checkbox" data-id="${pair.songB.id}" ${isDeleteB ? 'checked' : ''}> Delete
                   </label>
                 </div>
-                <div class="song-preview-text" style="background: #070d18; padding: 8px; border-radius: 4px; max-height: 100px; overflow-y: auto;">
-                  "${escapeHtml(pair.songB.preview)}"
+                <div class="song-preview-text" style="background: #070d18; padding: 10px; border-radius: 6px; max-height: 110px; overflow-y: auto; font-family: 'Baloo Thambi', sans-serif; font-size: 13px; line-height: 1.5;">
+                  "${previewHtmlB}"
                 </div>
               </div>
-              <div style="margin-top: 10px; display: flex; justify-content: flex-end;">
-                <button class="btn-secondary btn-preview-song" data-id="${pair.songB.id}" style="font-size: 11px; padding: 3px 8px;">Full Lyrics</button>
+              <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                <button type="button" class="btn-primary btn-keep-b" data-a="${pair.songA.id}" data-b="${pair.songB.id}" style="font-size: 11px; padding: 4px 10px; background: #059669;">
+                  ✓ Keep Song B (Delete A)
+                </button>
+                <button class="btn-secondary btn-preview-song" data-id="${pair.songB.id}" style="font-size: 11px; padding: 4px 8px;">
+                  Full Slides
+                </button>
               </div>
             </div>
           </div>
@@ -802,21 +1185,55 @@
       });
     });
 
-    // Attach "Keep Both" buttons
-    elements.listContainer.querySelectorAll('.btn-keep-both').forEach(btn => {
+    // Attach 1-click "Keep Song A (Delete B)" buttons
+    elements.listContainer.querySelectorAll('.btn-keep-a').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        const aId = Number(e.target.dataset.a);
-        const bId = Number(e.target.dataset.b);
+        const aId = Number(e.currentTarget.dataset.a);
+        const bId = Number(e.currentTarget.dataset.b);
         selectedIdsForDelete.delete(aId);
-        selectedIdsForDelete.delete(bId);
+        selectedIdsForDelete.add(bId);
         renderSimilarList();
+        showToast(`Song A kept • Song B marked for deletion`);
       });
     });
 
-    // Attach preview
+    // Attach 1-click "Keep Song B (Delete A)" buttons
+    elements.listContainer.querySelectorAll('.btn-keep-b').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const aId = Number(e.currentTarget.dataset.a);
+        const bId = Number(e.currentTarget.dataset.b);
+        selectedIdsForDelete.delete(bId);
+        selectedIdsForDelete.add(aId);
+        renderSimilarList();
+        showToast(`Song B kept • Song A marked for deletion`);
+      });
+    });
+
+    // Attach "Keep Both" buttons
+    elements.listContainer.querySelectorAll('.btn-keep-both').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const aId = Number(e.currentTarget.dataset.a);
+        const bId = Number(e.currentTarget.dataset.b);
+        selectedIdsForDelete.delete(aId);
+        selectedIdsForDelete.delete(bId);
+        renderSimilarList();
+        showToast('Both songs kept');
+      });
+    });
+
+    // Attach "Side-by-Side Full Diff" modal buttons
+    elements.listContainer.querySelectorAll('.btn-open-diff').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const idx = Number(e.currentTarget.dataset.idx);
+        const pair = filteredPairs[idx];
+        if (pair) openSimilarDiffModal(pair, idx);
+      });
+    });
+
+    // Attach individual slide preview
     elements.listContainer.querySelectorAll('.btn-preview-song').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        const id = Number(e.target.dataset.id);
+        const id = Number(e.currentTarget.dataset.id);
         openPreviewSlideModal(id);
       });
     });
@@ -862,24 +1279,31 @@
     // Category Tabs Toolbar
     const counts = errorsData.counts;
     const baminiNeedsTbSongs = (errorsData.songs || []).filter(s => s.issues.some(i => i.code === 'BAMINI_NEEDS_TAMIL_BIBLE'));
+    const baminiInUnicodeSongs = (errorsData.songs || []).filter(s => s.issues.some(i => i.category === 'baminiInUnicode'));
 
     elements.toolbarActions.innerHTML = `
       <div style="display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; width: 100%;">
         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
           <button class="chip ${errorCategoryFilter === 'all' ? 'active' : ''}" data-cat="all">All (${errorsData.totalSongsWithErrors})</button>
-          <button class="chip ${errorCategoryFilter === 'fontMismatch' ? 'active' : ''}" data-cat="fontMismatch">Font Mismatch & Assign (${counts.fontMismatch || 0})</button>
+          <button class="chip ${errorCategoryFilter === 'baminiInUnicode' ? 'active' : ''}" data-cat="baminiInUnicode" style="${counts.baminiInUnicode > 0 ? 'border-color: #a78bfa; color: #c4b5fd;' : ''}">✨ Bamini in Unicode Font (${counts.baminiInUnicode || 0})</button>
+          <button class="chip ${errorCategoryFilter === 'fontMismatch' ? 'active' : ''}" data-cat="fontMismatch">Font Mismatch (${counts.fontMismatch || 0})</button>
           <button class="chip ${errorCategoryFilter === 'fontNameIssue' ? 'active' : ''}" data-cat="fontNameIssue">Font Name (${counts.fontNameIssue || 0})</button>
           <button class="chip ${errorCategoryFilter === 'typographyTypo' ? 'active' : ''}" data-cat="typographyTypo">Diacritics & Typos (${counts.typographyTypo || 0})</button>
           <button class="chip ${errorCategoryFilter === 'slideStructure' ? 'active' : ''}" data-cat="slideStructure">Slide Format (${counts.slideStructure || 0})</button>
           ${counts.mixedLanguage > 0 ? `<button class="chip ${errorCategoryFilter === 'mixedLanguage' ? 'active' : ''}" data-cat="mixedLanguage">Language Misuse (${counts.mixedLanguage})</button>` : ''}
         </div>
-        ${baminiNeedsTbSongs.length > 0 ? `
-          <div>
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+          ${baminiInUnicodeSongs.length > 0 ? `
+            <button id="btn-batch-fix-mixed-bamini" class="btn-primary" style="font-size: 12px; padding: 6px 14px; background: #8b5cf6; border: 1px solid #a78bfa; display: inline-flex; align-items: center; gap: 6px;">
+              ✨ Convert All Bamini in Unicode Font (${baminiInUnicodeSongs.length})
+            </button>
+          ` : ''}
+          ${baminiNeedsTbSongs.length > 0 ? `
             <button id="btn-batch-fix-bamini-font" class="btn-primary" style="font-size: 12px; padding: 6px 14px; background: #0284c7; border: 1px solid #38bdf8; display: inline-flex; align-items: center; gap: 6px;">
               🏷️ Set All Bamini to "Tamil Bible" (${baminiNeedsTbSongs.length})
             </button>
-          </div>
-        ` : ''}
+          ` : ''}
+        </div>
       </div>
     `;
 
@@ -890,6 +1314,34 @@
         renderErrorsList();
       };
     });
+
+    const batchMixedBaminiBtn = elements.toolbarActions.querySelector('#btn-batch-fix-mixed-bamini');
+    if (batchMixedBaminiBtn) {
+      batchMixedBaminiBtn.onclick = async () => {
+        const count = baminiInUnicodeSongs.length;
+        if (!confirm(`Are you sure you want to convert the Bamini keystrokes in all ${count} Unicode font songs into clean Tamil Unicode with Baloo Thambi font?\n\nA silent database backup will be created automatically before conversion.`)) {
+          return;
+        }
+        batchMixedBaminiBtn.disabled = true;
+        batchMixedBaminiBtn.textContent = 'Converting slides...';
+        try {
+          const res = await fetch('/api/songs-cleaner/mass-convert-mixed-bamini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ targetFont: 'Baloo Thambi' })
+          });
+          const data = await res.json();
+          if (!res.ok || data.error) throw new Error(data.error || 'Failed to convert mixed Bamini songs');
+          showToast(`Successfully converted ${data.count} songs with Bamini slides to clean Unicode!`, 'success');
+          await loadSummary(true);
+          await renderSongErrors(true);
+        } catch (err) {
+          showToast(err.message, 'error');
+          batchMixedBaminiBtn.disabled = false;
+          batchMixedBaminiBtn.textContent = `✨ Convert All Bamini in Unicode Font (${count})`;
+        }
+      };
+    }
 
     const batchBaminiBtn = elements.toolbarActions.querySelector('#btn-batch-fix-bamini-font');
     if (batchBaminiBtn) {
@@ -935,8 +1387,10 @@
     let html = '';
     pageSongs.forEach((song) => {
       const hasBaminiFontAssignError = song.issues.some(i => i.code === 'BAMINI_NEEDS_TAMIL_BIBLE');
+      const hasMixedBaminiError = song.issues.some(i => i.category === 'baminiInUnicode');
+
       html += `
-        <div class="error-song-card">
+        <div class="error-song-card" style="${hasMixedBaminiError ? 'border-color: rgba(139, 92, 246, 0.4);' : ''}">
           <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
             <div>
               <div style="font-size: 15px; font-weight: 700; color: #ffffff;">${escapeHtml(song.name)}</div>
@@ -945,6 +1399,9 @@
               </div>
             </div>
             <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              ${hasMixedBaminiError ? `
+                <button class="btn-primary btn-convert-mixed-single" data-id="${song.id}" style="font-size: 12px; padding: 6px 12px; background: #8b5cf6; border: 1px solid #a78bfa;">✨ Convert to Unicode</button>
+              ` : ''}
               ${hasBaminiFontAssignError ? `
                 <button class="btn-secondary btn-assign-tb-single" data-id="${song.id}" style="font-size: 12px; padding: 6px 12px; border-color: #38bdf8; color: #38bdf8;">🏷️ Set Font to "Tamil Bible"</button>
               ` : ''}
@@ -956,17 +1413,40 @@
       `;
 
       song.issues.forEach(issue => {
+        const isMixedBamini = issue.category === 'baminiInUnicode';
         const isErr = issue.severity === 'error';
-        html += `
-          <div class="issue-item ${isErr ? 'issue-error' : ''}">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-weight: 700; color: ${isErr ? '#f87171' : '#fbbf24'};">${isErr ? '❌' : '⚠️'} ${escapeHtml(issue.title)}</span>
-              <span style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b;">${issue.category}</span>
+
+        if (isMixedBamini) {
+          html += `
+            <div class="issue-item issue-error" style="border-left: 3px solid #8b5cf6; background: rgba(139, 92, 246, 0.08);">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                <span style="font-weight: 700; color: #c4b5fd;">✨ ${escapeHtml(issue.title)}</span>
+                <span class="group-pill" style="background: rgba(139, 92, 246, 0.2); color: #c4b5fd; border: 1px solid #8b5cf6; font-size: 10px;">
+                  Slide(s): [${(issue.baminiSlides || []).join(', ')}]
+                </span>
+              </div>
+              <div style="color: #cbd5e1; margin-top: 4px;">${escapeHtml(issue.description)}</div>
+              ${issue.snippet ? `
+                <div style="margin-top: 6px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 12px;">
+                  <span style="color: #f87171; font-family: monospace; background: #070d18; padding: 2px 6px; border-radius: 4px;">Bamini Keystroke: "${escapeHtml(issue.snippet)}"</span>
+                  <span style="color: #94a3b8;">➔</span>
+                  <span style="color: #4ade80; font-family: monospace; background: #070d18; padding: 2px 6px; border-radius: 4px;">Tamil Unicode: "${escapeHtml(issue.convertedSnippet || '')}"</span>
+                </div>
+              ` : ''}
             </div>
-            <div style="color: #cbd5e1; margin-top: 4px;">${escapeHtml(issue.description)}</div>
-            ${issue.snippet ? `<div style="margin-top: 4px; font-family: monospace; font-size: 11px; background: #070d18; padding: 2px 6px; border-radius: 4px; display: inline-block; color: #38bdf8;">Snippet: ${escapeHtml(issue.snippet)}</div>` : ''}
-          </div>
-        `;
+          `;
+        } else {
+          html += `
+            <div class="issue-item ${isErr ? 'issue-error' : ''}">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: 700; color: ${isErr ? '#f87171' : '#fbbf24'};">${isErr ? '❌' : '⚠️'} ${escapeHtml(issue.title)}</span>
+                <span style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b;">${issue.category}</span>
+              </div>
+              <div style="color: #cbd5e1; margin-top: 4px;">${escapeHtml(issue.description)}</div>
+              ${issue.snippet ? `<div style="margin-top: 4px; font-family: monospace; font-size: 11px; background: #070d18; padding: 2px 6px; border-radius: 4px; display: inline-block; color: #38bdf8;">Snippet: ${escapeHtml(issue.snippet)}</div>` : ''}
+            </div>
+          `;
+        }
       });
 
       html += `
@@ -991,6 +1471,31 @@
       btn.addEventListener('click', (e) => {
         const id = Number(e.currentTarget.dataset.id);
         openEditSongModal(id);
+      });
+    });
+
+    // Attach single song convert mixed Bamini to clean Unicode events
+    elements.listContainer.querySelectorAll('.btn-convert-mixed-single').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = Number(e.currentTarget.dataset.id);
+        btn.disabled = true;
+        btn.textContent = 'Converting...';
+        try {
+          const res = await fetch(`/api/songs-cleaner/convert-mixed-bamini/${id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ targetFont: 'Baloo Thambi' })
+          });
+          const data = await res.json();
+          if (!res.ok || data.error) throw new Error(data.error || 'Failed to convert song');
+          showToast(`Song #${id} Bamini slides successfully converted to Unicode!`, 'success');
+          await loadSummary(true);
+          await renderSongErrors(true);
+        } catch (err) {
+          showToast(err.message, 'error');
+          btn.disabled = false;
+          btn.textContent = '✨ Convert to Unicode';
+        }
       });
     });
 

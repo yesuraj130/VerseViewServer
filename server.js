@@ -2143,6 +2143,67 @@ app.post('/api/songs-cleaner/convert-single-bamini', (req, res) =>
   }
 });
 
+// Convert single song with mixed Bamini slides to clean Unicode
+app.post("/api/songs-cleaner/convert-mixed-bamini-song/:id", (req, res) =>
+{
+  try
+  {
+    const songId = Number(req.params.id);
+    const targetFont = req.body?.targetFont || "Baloo Thambi";
+    const result = songsCleaner.convertSingleMixedBamini(smDb, dataDir, songsDbFileName, songId, targetFont);
+
+    // Re-index
+    const updated = smDb.prepare("SELECT id, name, title2, cat, font, font2, key, notes, tags, lyrics, lyrics2 FROM sm WHERE id = ?").get(songId);
+    if (updated)
+    {
+      const indexed = indexSongRecord(updated);
+      if (indexed) songSearchIndex.set(indexed.id, indexed);
+    }
+    refreshSongsListCache();
+    clearCleanerCache();
+
+    res.json(result);
+  }
+  catch (err)
+  {
+    console.error("Error converting mixed Bamini song:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Mass convert all songs having mixed Bamini keystrokes in Unicode content to clean Unicode
+app.post("/api/songs-cleaner/mass-convert-mixed-bamini", (req, res) =>
+{
+  try
+  {
+    const targetFont = req.body?.targetFont || "Baloo Thambi";
+    const result = songsCleaner.massConvertMixedBamini(smDb, dataDir, songsDbFileName, targetFont);
+
+    // Re-index updated songs
+    if (result.convertedIds && result.convertedIds.length > 0)
+    {
+      for (const id of result.convertedIds)
+      {
+        const updated = smDb.prepare("SELECT id, name, title2, cat, font, font2, key, notes, tags, lyrics, lyrics2 FROM sm WHERE id = ?").get(id);
+        if (updated)
+        {
+          const indexed = indexSongRecord(updated);
+          if (indexed) songSearchIndex.set(indexed.id, indexed);
+        }
+      }
+      refreshSongsListCache();
+    }
+    clearCleanerCache();
+
+    res.json(result);
+  }
+  catch (err)
+  {
+    console.error("Error mass converting mixed Bamini songs:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Delete batch of songs (Features 1, 2, 3)
 app.post('/api/songs-cleaner/delete', (req, res) =>
 {
