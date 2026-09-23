@@ -4,6 +4,9 @@
 
 // Latency and Status Management
 let currentSocketLatency = null;
+if (typeof window !== 'undefined') {
+  window.currentSocketLatency = null;
+}
 let latencyPingTimer = null;
 
 function getConnectedStatusText()
@@ -24,17 +27,37 @@ function getConnectedTooltipText()
   return '● Connected to Server';
 }
 
+function getLatencyClass(latency, isOnline)
+{
+  if (!isOnline) return 'disconnected';
+  if (typeof latency !== 'number' || latency < 0) return 'latency-good';
+  if (latency >= 700) return 'latency-critical'; // Deep Coral Red-Orange >= 700ms
+  if (latency >= 200) return 'latency-high';     // Vibrant Pure Orange >= 200ms
+  if (latency >= 100) return 'latency-warn';     // Golden Amber >= 100ms
+  if (latency >= 50) return 'latency-fair';      // Light Green >= 50ms
+  return 'latency-good';                         // Emerald Green < 50ms
+}
+
+function applyLatencyClassToDot(dotElement, latency, isOnline)
+{
+  if (!dotElement) return;
+  dotElement.classList.remove('latency-good', 'latency-fair', 'latency-warn', 'latency-high', 'latency-critical', 'disconnected');
+  const cls = getLatencyClass(latency, isOnline);
+  dotElement.classList.add(cls);
+}
+
 function updateStatusDotAndTooltip()
 {
   const isOnline = socket && socket.connected && (!serverStatusDot || !serverStatusDot.classList.contains('disconnected'));
   if (serverStatusDot)
   {
     serverStatusDot.title = isOnline ? getConnectedStatusText() : 'Disconnected from server';
+    applyLatencyClassToDot(serverStatusDot, currentSocketLatency, isOnline);
   }
   const tooltip = document.getElementById('server-status-tooltip');
-  if (tooltip && tooltip.classList.contains('visible') && isOnline)
+  if (tooltip && tooltip.classList.contains('visible'))
   {
-    tooltip.textContent = getConnectedTooltipText();
+    showStatusTooltip(getConnectedTooltipText(), isOnline);
   }
 }
 
@@ -46,6 +69,7 @@ function measureSocketLatency(callback)
   {
     const latency = Math.max(0, Date.now() - startTime);
     currentSocketLatency = latency;
+    if (typeof window !== 'undefined') window.currentSocketLatency = latency;
     updateStatusDotAndTooltip();
     if (typeof callback === 'function') callback(latency);
   });
@@ -74,80 +98,50 @@ function stopLatencyPings()
 }
 
 // Status Tooltip Popup Manager
-let statusTooltipTimeout = null;
 function showStatusTooltip(message, isOnline)
 {
-  let tooltip = document.getElementById('server-status-tooltip');
-  if (!tooltip)
+  if (typeof window.showServerStatusTooltip === 'function')
   {
-    tooltip = document.createElement('div');
-    tooltip.id = 'server-status-tooltip';
-    tooltip.className = 'server-status-tooltip';
-    document.body.appendChild(tooltip);
+    window.showServerStatusTooltip(serverStatusDot, message, isOnline, currentSocketLatency);
+    return;
   }
+}
 
-  const displayText = message || (isOnline ? getConnectedTooltipText() : '● Reconnecting to Server...');
-  tooltip.textContent = displayText;
-  tooltip.className = `server-status-tooltip visible ${isOnline ? 'online' : 'offline'}`;
-
-  // Anchor tooltip directly below the server status dot with viewport boundary awareness
-  if (serverStatusDot)
+function handleDotUserInteraction(e)
+{
+  const isOnline = socket && socket.connected && (!serverStatusDot || !serverStatusDot.classList.contains('disconnected'));
+  if (typeof window.showServerStatusTooltip === 'function')
   {
-    const rect = serverStatusDot.getBoundingClientRect();
-    const dotCenterX = rect.left + (rect.width / 2);
-    const tooltipWidth = tooltip.offsetWidth || 150;
-    const padding = 10;
-
-    // Center tooltip under dot, clamped within window bounds
-    const desiredLeft = dotCenterX - (tooltipWidth / 2);
-    const maxLeft = Math.max(padding, window.innerWidth - tooltipWidth - padding);
-    const clampedLeft = Math.max(padding, Math.min(maxLeft, desiredLeft));
-
-    // Calculate the caret arrow's horizontal position relative to tooltip box
-    const arrowOffset = Math.max(12, Math.min(tooltipWidth - 12, dotCenterX - clampedLeft));
-
-    tooltip.style.left = `${Math.round(clampedLeft)}px`;
-    tooltip.style.top = `${Math.round(rect.bottom + 8)}px`;
-    tooltip.style.setProperty('--arrow-x', `${Math.round(arrowOffset)}px`);
+    window.showServerStatusTooltip(serverStatusDot, null, isOnline, currentSocketLatency);
   }
-
-  clearTimeout(statusTooltipTimeout);
-  statusTooltipTimeout = setTimeout(() =>
+  if (isOnline)
   {
-    tooltip.classList.remove('visible');
-  }, 2800);
+    measureSocketLatency((lat) =>
+    {
+      if (typeof window.showServerStatusTooltip === 'function')
+      {
+        window.showServerStatusTooltip(serverStatusDot, null, true, lat);
+      }
+    });
+  }
 }
 
 if (serverStatusDot)
 {
-  serverStatusDot.addEventListener('mouseenter', () =>
-  {
-    const isOnline = socket && socket.connected && !serverStatusDot.classList.contains('disconnected');
-    if (isOnline)
-    {
-      showStatusTooltip(getConnectedTooltipText(), true);
-      measureSocketLatency((lat) =>
-      {
-        const tip = document.getElementById('server-status-tooltip');
-        if (tip && tip.classList.contains('visible'))
-        {
-          tip.textContent = getConnectedTooltipText();
-        }
-      });
-    }
-    else
-    {
-      showStatusTooltip('● Reconnecting to Server...', false);
-    }
-  });
+  serverStatusDot.addEventListener('mouseenter', handleDotUserInteraction);
+  serverStatusDot.addEventListener('click', handleDotUserInteraction);
+  serverStatusDot.addEventListener('touchstart', handleDotUserInteraction, { passive: true });
 
   serverStatusDot.addEventListener('mouseleave', () =>
   {
-    const tooltip = document.getElementById('server-status-tooltip');
-    if (tooltip)
+    if (typeof window.hideServerStatusTooltip === 'function')
     {
-      tooltip.classList.remove('visible');
-      clearTimeout(statusTooltipTimeout);
+      window.hideServerStatusTooltip();
+    }
+    else
+    {
+      const tooltip = document.getElementById('server-status-tooltip');
+      if (tooltip) tooltip.classList.remove('visible');
     }
   });
 }
@@ -244,6 +238,7 @@ if (socket)
       serverStatusDot.classList.remove('disconnected');
       serverStatusDot.title = getConnectedStatusText();
     }
+    updateStatusDotAndTooltip();
     showStatusTooltip(getConnectedTooltipText(), true);
     startLatencyPings();
     socket.emit('role:register', {
@@ -261,6 +256,7 @@ if (socket)
     {
       serverStatusDot.classList.add('disconnected');
       serverStatusDot.title = 'Disconnected from server';
+      applyLatencyClassToDot(serverStatusDot, null, false);
     }
     showStatusTooltip('● Reconnecting to Server...', false);
   });
@@ -302,6 +298,14 @@ if (socket)
   {
     const msg = (data && data.message) || (data && data.boundary === 'end' ? 'End reached' : 'Start reached');
     showBoundaryToast(msg);
+  });
+
+  socket.on('songs:changed', () =>
+  {
+    if (typeof reloadSongsCache === 'function')
+    {
+      reloadSongsCache();
+    }
   });
 }
 

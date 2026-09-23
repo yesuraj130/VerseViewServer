@@ -17,6 +17,8 @@ const socket = (typeof io !== 'undefined') ? io({
   reconnectionDelayMax: 2000,
   timeout: 10000
 }) : null;
+window.socket = socket;
+window.displaySocket = socket;
 
 function renderDisplayState(state)
 {
@@ -159,6 +161,45 @@ async function fetchCurrentState()
 let displaySocketLatency = null;
 let displayPingInterval = null;
 
+function applyLatencyClassToDot(dotElement, latency, isOnline)
+{
+  if (!dotElement) return;
+  dotElement.classList.remove('latency-good', 'latency-fair', 'latency-warn', 'latency-high', 'latency-critical', 'disconnected');
+  if (!isOnline)
+  {
+    dotElement.classList.add('disconnected');
+    return;
+  }
+  dotElement.classList.remove('disconnected');
+  if (typeof latency !== 'number' || latency < 0)
+  {
+    dotElement.classList.add('latency-good');
+    return;
+  }
+
+  // < 50ms: green, 50-100ms: light green, 100-200ms: orange, 200-700ms: vibrant orange, >= 700ms: deep coral
+  if (latency >= 700)
+  {
+    dotElement.classList.add('latency-critical');
+  }
+  else if (latency >= 200)
+  {
+    dotElement.classList.add('latency-high');
+  }
+  else if (latency >= 100)
+  {
+    dotElement.classList.add('latency-warn');
+  }
+  else if (latency >= 50)
+  {
+    dotElement.classList.add('latency-fair');
+  }
+  else
+  {
+    dotElement.classList.add('latency-good');
+  }
+}
+
 function measureDisplayLatency()
 {
   if (!socket || !socket.connected) return;
@@ -166,6 +207,8 @@ function measureDisplayLatency()
   socket.emit('client:ping', start, () =>
   {
     displaySocketLatency = Math.max(0, Date.now() - start);
+    window.displaySocketLatency = displaySocketLatency;
+    applyLatencyClassToDot(socketDot, displaySocketLatency, true);
     if (socketDot) socketDot.title = `Connected to Server (${displaySocketLatency} ms)`;
     if (statusWidget) statusWidget.title = `Connected to Server (${displaySocketLatency} ms)`;
   });
@@ -178,6 +221,7 @@ if (socket)
     socketDot.classList.remove('disconnected');
     socketDot.title = 'Connected to Server';
     statusText.textContent = 'Live Connected';
+    applyLatencyClassToDot(socketDot, displaySocketLatency, true);
     measureDisplayLatency();
     if (displayPingInterval) clearInterval(displayPingInterval);
     displayPingInterval = setInterval(measureDisplayLatency, 4000);
@@ -193,6 +237,7 @@ if (socket)
     if (displayPingInterval) clearInterval(displayPingInterval);
     displaySocketLatency = null;
     socketDot.classList.add('disconnected');
+    applyLatencyClassToDot(socketDot, null, false);
     socketDot.title = 'Disconnected from server';
     statusText.textContent = 'Reconnecting...';
   });

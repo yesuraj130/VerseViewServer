@@ -4,6 +4,8 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
+import { Worker } from 'node:worker_threads';
+import compression from 'compression';
 import { Server } from 'socket.io';
 import { isTamilBibleFont, isKnownBaminiFont, baminiToUnicode } from './lib/bamini.js';
 import * as songsCleaner from './lib/songsCleaner.js';
@@ -15,9 +17,109 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+// High-Performance Compression for non-live HTTP responses (bypasses live state & small pings)
+app.use(compression({
+  filter: (req, res) =>
+  {
+    if (req.path === '/api/state' || req.path === '/healthz' || req.path === '/api/keepalive')
+    {
+      return false; // Never delay or buffer live projection state or pings
+    }
+    if (req.headers['x-no-compression'])
+    {
+      return false;
+    }
+    return compression.filter(req, res);
+  },
+  threshold: 1024 // Only compress text payloads >= 1 KB
+}));
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 const server = http.createServer(app);
+
+// Dedicated Background Worker Thread for Offloading CPU-Heavy Search Operations
+let searchWorker = null;
+let searchRequestId = 0;
+const pendingSearchRequests = new Map();
+
+function initSearchWorker()
+{
+  try
+  {
+    const workerPath = path.join(__dirname, 'lib', 'searchWorker.js');
+    if (!fs.existsSync(workerPath)) return;
+    searchWorker = new Worker(workerPath);
+    searchWorker.on('message', (msg) =>
+    {
+      if (!msg || typeof msg !== 'object') return;
+      const handler = pendingSearchRequests.get(msg.id);
+      if (handler)
+      {
+        pendingSearchRequests.delete(msg.id);
+        clearTimeout(handler.timer);
+        handler.resolve(msg);
+      }
+    });
+    searchWorker.on('error', (err) =>
+    {
+      console.error('[Worker] Background search worker error:', err);
+      try { searchWorker.terminate(); } catch (_) {}
+      searchWorker = null;
+      setTimeout(initSearchWorker, 1000);
+    });
+    searchWorker.on('exit', (code) =>
+    {
+      if (code !== 0)
+      {
+        console.warn(`[Worker] Search worker exited with code ${code}. Re-spawning worker...`);
+        searchWorker = null;
+        setTimeout(initSearchWorker, 1000);
+      }
+    });
+    console.log('[Worker] Dedicated search worker thread active and ready');
+  }
+  catch (err)
+  {
+    console.warn('[Worker] Worker threads initialization skipped, using in-process search:', err);
+    searchWorker = null;
+  }
+}
+
+function executeWorkerBibleSearch({ query, versionId, fromBook, toBook, limit })
+{
+  if (!searchWorker) return null;
+  const id = ++searchRequestId;
+  return new Promise((resolve) =>
+  {
+    const timer = setTimeout(() =>
+    {
+      pendingSearchRequests.delete(id);
+      resolve(null); // Worker timed out, seamlessly fall back to in-process
+    }, 4000);
+
+    pendingSearchRequests.set(id, { resolve, timer });
+    try
+    {
+      searchWorker.postMessage({
+        id,
+        type: 'bible_search',
+        query,
+        versionId,
+        fromBook,
+        toBook,
+        limit
+      });
+    }
+    catch (postErr)
+    {
+      clearTimeout(timer);
+      pendingSearchRequests.delete(id);
+      resolve(null);
+    }
+  });
+}
 
 // Disable Nagle's algorithm for immediate low-latency packet delivery
 server.on('connection', (sock) =>
@@ -1200,13 +1302,15 @@ function indexSongRecord(r)
     if (!clean) continue;
     currentIdx++;
 
-    const tokens = tokenizeText(clean);
+    // Replace HTML tags with space before tokenizing so tags like <br> don't become tokens
+    const textWithoutHtml = clean.replace(/<[^>]*>/g, ' ');
+    const tokens = tokenizeText(textWithoutHtml);
     const rawLines = clean.split(/<BR>|\r?\n/i).map(l => l.replace(/<[^>]*>/g, '').trim()).filter(Boolean);
 
     slides.push({
       slideIndex: currentIdx,
       cleanSlide: clean,
-      cleanSlideLower: clean.toLowerCase(),
+      cleanSlideLower: textWithoutHtml.toLowerCase(),
       tokens,
       tokenInfos: buildTargetTokenInfos(tokens),
       lines: rawLines
@@ -1249,6 +1353,7 @@ function indexSongRecord(r)
 }
 
 let cachedSongsListJson = null;
+let songsLibraryVersion = Date.now();
 
 function refreshSongsListCache()
 {
@@ -1269,6 +1374,11 @@ function refreshSongsListCache()
   }
   list.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
   cachedSongsListJson = list;
+  songsLibraryVersion = Date.now();
+  if (io)
+  {
+    io.emit('songs:changed', { version: songsLibraryVersion });
+  }
 }
 
 function initSongSearchIndex()
@@ -1304,9 +1414,16 @@ app.get('/api/songs', (req, res) =>
     const cat = req.query.cat ? String(req.query.cat).trim() : '';
     const limit = req.query.limit ? Math.min(Number(req.query.limit) || 5000, 10000) : 5000;
 
-    // Instant in-memory delivery if unfiltered
+    // Instant in-memory delivery if unfiltered with smart ETag validation
     if (!q && (!cat || cat === 'All') && cachedSongsListJson)
     {
+      const etagVal = `"songs-${songsLibraryVersion}"`;
+      if (req.headers['if-none-match'] === etagVal)
+      {
+        return res.status(304).end();
+      }
+      res.setHeader('ETag', etagVal);
+      res.setHeader('Cache-Control', 'no-cache');
       if (limit < cachedSongsListJson.length)
       {
         return res.json(cachedSongsListJson.slice(0, limit));
@@ -2134,15 +2251,15 @@ app.post('/api/songs-cleaner/batch-assign-tamil-bible', (req, res) =>
   }
 });
 
-// API: In-Memory Bible Scripture Search (Tamil Phonetic, Unicode & Reference Search)
-app.get('/api/bible/search', (req, res) =>
+// API: In-Memory Bible Scripture Search (Offloaded to Worker Thread with In-Process Fallback)
+app.get('/api/bible/search', async (req, res) =>
 {
   try
   {
     const q = req.query.q ? String(req.query.q).trim() : '';
     if (!q)
     {
-      return res.json([]);
+      return res.json(req.query.format === 'v2' ? { totalMatches: 0, results: [], hasMore: false } : []);
     }
     if (q.length > 200)
     {
@@ -2150,41 +2267,98 @@ app.get('/api/bible/search', (req, res) =>
     }
 
     const versionId = req.query.versionId || req.query.version || 'tamil';
-    const limit = req.query.limit ? Math.min(Number(req.query.limit) || 100, 500) : 100;
+    const fromBook = req.query.fromBook ? parseInt(req.query.fromBook, 10) : 1;
+    const toBook = req.query.toBook ? parseInt(req.query.toBook, 10) : 66;
+    const limitParam = req.query.limit;
+    const isFetchAll = limitParam === 'all' || limitParam === '0' || Number(limitParam) >= 3000;
+    const limit = isFetchAll ? 3000 : Math.min(Number(limitParam) || 100, 3000);
 
+    // 1. Offload search to background worker thread (zero main-thread event loop blocking)
+    const workerResult = await executeWorkerBibleSearch({
+      query: q,
+      versionId,
+      fromBook,
+      toBook,
+      limit: isFetchAll ? 'all' : limit
+    });
+
+    if (workerResult && workerResult.success)
+    {
+      res.setHeader('X-Total-Matches', String(workerResult.totalMatches || workerResult.results.length));
+      res.setHeader('X-Has-More', workerResult.hasMore ? '1' : '0');
+
+      if (req.query.format === 'v2')
+      {
+        return res.json({
+          totalMatches: workerResult.totalMatches,
+          results: workerResult.results,
+          hasMore: workerResult.hasMore
+        });
+      }
+      return res.json(workerResult.results);
+    }
+
+    // 2. In-process fallback if worker thread is restarting or unavailable
     const verses = getOrBuildBibleSearchIndex(versionId);
     if (!verses || verses.length === 0)
     {
-      return res.json([]);
+      return res.json(req.query.format === 'v2' ? { totalMatches: 0, results: [], hasMore: false } : []);
     }
 
     const results = [];
     const qLower = q.toLowerCase();
-
-    // Phonetic & Substring Verse Content Search with wildcard and gap support
     const qPattern = compileQueryPattern(q);
+    const minBook = Math.min(fromBook, toBook);
+    const maxBook = Math.max(fromBook, toBook);
+
+    let totalMatches = 0;
+    let hasMore = false;
 
     for (const v of verses)
     {
+      if (v.bookNum < minBook || v.bookNum > maxBook)
+      {
+        continue;
+      }
+
       const match = matchTokenInfosWithKeys(v.tokenInfos, v.tokens, v.wordLower, qPattern, qLower);
       if (match.matched)
       {
-        results.push({
-          wordId: v.wordId,
-          bookNum: v.bookNum,
-          chNum: v.chNum,
-          verseNum: v.verseNum,
-          bookName: v.bookName,
-          word: v.word,
-          versionId: v.versionId,
-          reference: `${v.bookName} ${v.chNum}:${v.verseNum}`,
-          matchedTokens: match.matchedTokens,
-          matchedWordTokens: match.matchedWordTokens,
-          matchedTerm: (match.matchedWordTokens || match.matchedTokens).join(' ') || q
-        });
-
-        if (results.length >= limit) break;
+        totalMatches++;
+        if (results.length < limit)
+        {
+          results.push({
+            wordId: v.wordId,
+            bookNum: v.bookNum,
+            chNum: v.chNum,
+            verseNum: v.verseNum,
+            bookName: v.bookName,
+            word: v.word,
+            versionId: v.versionId,
+            reference: `${v.bookName} ${v.chNum}:${v.verseNum}`,
+            matchedTokens: match.matchedTokens,
+            matchedWordTokens: match.matchedWordTokens,
+            matchedTerm: (match.matchedWordTokens || match.matchedTokens).join(' ') || q
+          });
+        }
+        else
+        {
+          hasMore = true;
+          if (!isFetchAll) break;
+        }
       }
+    }
+
+    res.setHeader('X-Total-Matches', String(totalMatches));
+    res.setHeader('X-Has-More', hasMore ? '1' : '0');
+
+    if (req.query.format === 'v2')
+    {
+      return res.json({
+        totalMatches,
+        results,
+        hasMore
+      });
     }
 
     res.json(results);
@@ -2849,4 +3023,8 @@ server.listen(PORT, '0.0.0.0', () =>
   console.log(`Display Output available at:    http://0.0.0.0:${PORT}/display/`);
   initSongSearchIndex();
   getOrBuildBibleSearchIndex('tamil');
+  initSearchWorker();
+  setTimeout(() => {
+    try { getOrBuildBibleSearchIndex('kjv'); } catch (_) {}
+  }, 1500);
 });

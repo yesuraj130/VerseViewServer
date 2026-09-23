@@ -219,10 +219,34 @@
           </button>
         </div>
 
+        <!-- Custom Range Book Filter (From Book - To Book) -->
+        <div class="bible-search-filter-row" id="bible-search-filter-row">
+          <div class="bible-filter-group">
+            <label for="bible-filter-from-book" class="bible-filter-label">From:</label>
+            <select id="bible-filter-from-book" class="bible-filter-select" aria-label="From book">
+              <option value="1">1. Genesis</option>
+            </select>
+          </div>
+          <div class="bible-filter-group">
+            <label for="bible-filter-to-book" class="bible-filter-label">To:</label>
+            <select id="bible-filter-to-book" class="bible-filter-select" aria-label="To book">
+              <option value="66">66. Revelation</option>
+            </select>
+          </div>
+          <button type="button" id="btn-reset-bible-filter" class="bible-filter-reset-btn" title="Reset range to whole Bible">
+            Reset
+          </button>
+        </div>
+
         <!-- Status badge for scripture search results -->
         <div id="bible-search-tab-status-bar" class="song-search-status-bar" style="display: none;">
           <div class="song-search-status-left">
             <span id="bible-search-tab-count-text">0 verses found</span>
+          </div>
+          <div class="song-search-status-right" id="bible-search-show-all-wrap" style="display: none;">
+            <button type="button" id="btn-bible-search-show-all" class="bible-search-show-all-btn">
+              Show All Results
+            </button>
           </div>
         </div>
 
@@ -316,14 +340,15 @@
   </div>
 
   <!-- Modular Presenter JavaScript -->
-  <script src="/presenter/js/state.js?v=9"></script>
+  <script src="/js/status-tooltip.js?v=1"></script>
+  <script src="/presenter/js/state.js?v=10"></script>
   <script type="module" src="/presenter/js/tamilPhonetic.js?v=9"></script>
   <script src="/presenter/js/songs.js?v=10"></script>
   <script src="/presenter/js/editSong.js?v=9"></script>
   <script src="/presenter/js/bible.js?v=9"></script>
   <script src="/presenter/js/recents.js?v=9"></script>
   <script src="/presenter/js/controls.js?v=9"></script>
-  <script src="/presenter/js/socket.js?v=8"></script>
+  <script src="/presenter/js/socket.js?v=11"></script>
   <script src="/presenter/js/main.js?v=8"></script>
 </body>
 </html>

@@ -130,25 +130,205 @@ body { font-family: var(--font-family); background-color: var(--bg-primary); col
 
 /* Server Connection Indicator Dot & Tooltip */
 .server-dot {
-  width: 10px; height: 10px; border-radius: 50%;
+  width: 12px; height: 12px; border-radius: 50%;
   background-color: var(--accent-live);
   box-shadow: 0 0 8px var(--accent-live);
   display: inline-block; flex-shrink: 0; cursor: pointer; position: relative;
-  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+  /* Margin & hit area enhancement for mobile finger touch accessibility */
+  margin: 0 10px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
 }
-.server-dot.disconnected { background-color: var(--accent-danger); box-shadow: 0 0 8px var(--accent-danger); }
+.server-dot::after {
+  /* Invisible enlarged touch target (32x32px hit area for mobile) */
+  content: '';
+  position: absolute;
+  top: -10px;
+  bottom: -10px;
+  left: -10px;
+  right: -10px;
+  border-radius: 50%;
+}
+.server-dot:hover, .server-dot:active {
+  transform: scale(1.15);
+}
 
-.server-status-tooltip {
-  position: fixed; background-color: #0b1329; border: 1px solid #1e293b; color: #f8fafc;
-  padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;
-  display: flex; align-items: center; gap: 6px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6); z-index: 99999;
-  opacity: 0; transform: translateY(-4px); pointer-events: none;
-  transition: opacity 0.18s ease, transform 0.18s ease; white-space: nowrap;
+/* Latency stages:
+   < 50ms: Emerald / Green
+   >= 50ms: Lime / Light Green
+   >= 100ms: Amber / Golden Orange
+   >= 200ms: Pure Vibrant Orange
+   >= 700ms: Deep Coral / Red-Orange (high latency warning, distinct from pure red)
+   disconnected: Crimson Red
+*/
+.server-dot.latency-good {
+  background-color: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.7);
 }
-.server-status-tooltip.visible { opacity: 1; transform: translateY(0); }
-.server-status-tooltip.online { border-color: #059669; color: #34d399; }
-.server-status-tooltip.offline { border-color: #dc2626; color: #f87171; }
+.server-dot.latency-fair {
+  background-color: #86efac;
+  box-shadow: 0 0 8px rgba(134, 239, 172, 0.7);
+}
+.server-dot.latency-warn {
+  /* 100ms: Warm golden amber */
+  background-color: #fbbf24;
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.7);
+}
+.server-dot.latency-high {
+  /* 200ms: Vibrant pure orange */
+  background-color: #f97316;
+  box-shadow: 0 0 8px rgba(249, 115, 22, 0.7);
+}
+.server-dot.latency-critical {
+  /* 700ms: Deep Coral / Vermilion Red-Orange */
+  background-color: #f43f5e;
+  box-shadow: 0 0 8px rgba(244, 63, 94, 0.75);
+}
+.server-dot.disconnected {
+  background-color: var(--accent-danger);
+  box-shadow: 0 0 8px var(--accent-danger);
+}
+
+/* Tooltip Popup with Matching Latency Color & Pointing Arrow */
+.server-status-tooltip {
+  position: fixed;
+  background-color: #0b1329;
+  border: 1px solid #1e293b;
+  color: #f8fafc;
+  padding: 6px 12px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 600;
+  display: none;
+  align-items: center;
+  gap: 7px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.75);
+  z-index: 999999;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  white-space: nowrap;
+  max-width: calc(100vw - 20px);
+  box-sizing: border-box;
+}
+.server-status-tooltip.visible {
+  display: flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: translateY(0) !important;
+}
+
+/* Upward pointing arrow towards the dot */
+.server-status-tooltip::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: var(--arrow-x, 50%);
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid #1e293b;
+}
+.server-status-tooltip::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: var(--arrow-x, 50%);
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 5px solid #0b1329;
+}
+
+/* Downward arrow if tooltip is positioned above the dot */
+.server-status-tooltip.arrow-down::before {
+  top: auto;
+  bottom: -6px;
+  border-bottom: none;
+  border-top: 6px solid #1e293b;
+}
+.server-status-tooltip.arrow-down::after {
+  top: auto;
+  bottom: -4px;
+  border-bottom: none;
+  border-top: 5px solid #0b1329;
+}
+
+/* Tooltip border, glow & text matching dot latency colors */
+.server-status-tooltip.latency-good {
+  border-color: #22c55e;
+  color: #86efac;
+}
+.server-status-tooltip.latency-good::before {
+  border-bottom-color: #22c55e;
+}
+.server-status-tooltip.latency-good.arrow-down::before {
+  border-top-color: #22c55e;
+}
+
+.server-status-tooltip.latency-fair {
+  border-color: #4ade80;
+  color: #bbf7d0;
+}
+.server-status-tooltip.latency-fair::before {
+  border-bottom-color: #4ade80;
+}
+.server-status-tooltip.latency-fair.arrow-down::before {
+  border-top-color: #4ade80;
+}
+
+.server-status-tooltip.latency-warn {
+  border-color: #fbbf24;
+  color: #fef08a;
+}
+.server-status-tooltip.latency-warn::before {
+  border-bottom-color: #fbbf24;
+}
+.server-status-tooltip.latency-warn.arrow-down::before {
+  border-top-color: #fbbf24;
+}
+
+.server-status-tooltip.latency-high {
+  border-color: #f97316;
+  color: #fed7aa;
+}
+.server-status-tooltip.latency-high::before {
+  border-bottom-color: #f97316;
+}
+.server-status-tooltip.latency-high.arrow-down::before {
+  border-top-color: #f97316;
+}
+
+.server-status-tooltip.latency-critical {
+  border-color: #f43f5e;
+  color: #fecdd3;
+}
+.server-status-tooltip.latency-critical::before {
+  border-bottom-color: #f43f5e;
+}
+.server-status-tooltip.latency-critical.arrow-down::before {
+  border-top-color: #f43f5e;
+}
+
+.server-status-tooltip.offline,
+.server-status-tooltip.disconnected {
+  border-color: #ef4444;
+  color: #fca5a5;
+}
+.server-status-tooltip.offline::before,
+.server-status-tooltip.disconnected::before {
+  border-bottom-color: #ef4444;
+}
+.server-status-tooltip.offline.arrow-down::before,
+.server-status-tooltip.disconnected.arrow-down::before {
+  border-top-color: #ef4444;
+}
 
 /* Common UI Buttons */
 .btn-primary {

@@ -848,9 +848,34 @@ body.bg-transparent {
   height: 7px;
   border-radius: 50%;
   background: #94a3b8;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.anim-live-badge.connected .anim-live-dot {
+.anim-live-badge.connected .anim-live-dot,
+.anim-live-badge .anim-live-dot.latency-good {
   background: #22c55e;
-  box-shadow: 0 0 8px #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+}
+
+.anim-live-badge .anim-live-dot.latency-fair {
+  background: #86efac;
+  box-shadow: 0 0 8px rgba(134, 239, 172, 0.6);
+}
+
+.anim-live-badge .anim-live-dot.latency-warn {
+  /* 100ms: Warm amber orange */
+  background: #fbbf24;
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.65);
+}
+
+.anim-live-badge .anim-live-dot.latency-high {
+  /* 200ms: Pure vibrant orange, not red */
+  background: #f97316;
+  box-shadow: 0 0 8px rgba(249, 115, 22, 0.65);
+}
+
+.anim-live-badge .anim-live-dot.latency-critical {
+  /* 700ms: Deep coral red-orange */
+  background: #f43f5e;
+  box-shadow: 0 0 8px rgba(244, 63, 94, 0.75);
 }

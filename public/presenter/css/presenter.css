@@ -708,6 +708,117 @@
   vertical-align: middle;
 }
 
+/* Bible Search Custom Range Filter Row & Show All Button */
+.bible-search-filter-row
+{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background-color: var(--bg-card);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  box-sizing: border-box;
+  flex-wrap: wrap;
+}
+
+.bible-filter-group
+{
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 1;
+  min-width: 120px;
+}
+
+.bible-filter-label
+{
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-font-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.bible-filter-select
+{
+  flex: 1;
+  min-width: 80px;
+  height: 26px;
+  line-height: 26px;
+  padding: 0 6px;
+  background-color: var(--bg-surface, #1e293b);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--color-font);
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.bible-filter-select:focus
+{
+  border-color: var(--color-blue-light);
+}
+
+.bible-filter-reset-btn
+{
+  height: 26px;
+  padding: 0 8px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--color-font-muted);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.bible-filter-reset-btn:hover
+{
+  color: var(--color-font);
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: var(--color-blue-light);
+}
+
+.bible-search-show-all-btn
+{
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 9px;
+  background-color: var(--color-blue);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.bible-search-show-all-btn:hover
+{
+  background-color: var(--color-blue-light);
+}
+
+.bible-search-show-all-btn:active
+{
+  transform: scale(0.97);
+}
+
+.bible-search-show-all-btn.loading
+{
+  opacity: 0.65;
+  pointer-events: none;
+}
+
 @keyframes vv-spin
 {
   0% { transform: rotate(0deg); }

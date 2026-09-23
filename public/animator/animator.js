@@ -1033,6 +1033,8 @@
     reconnectionDelayMax: 1500,
     timeout: 8000
   }) : null;
+  window.socket = socket;
+  window.animSocket = socket;
 
   async function fetchState() {
     try {
@@ -1044,10 +1046,50 @@
     } catch (e) {}
   }
 
+  const liveDot = liveBadge ? liveBadge.querySelector('.anim-live-dot') : null;
+  let animLatency = null;
+  let animPingInterval = null;
+
+  function applyAnimLatencyClass(latency, isOnline) {
+    if (!liveDot) return;
+    liveDot.classList.remove('latency-good', 'latency-fair', 'latency-warn', 'latency-high', 'latency-critical');
+    if (!isOnline) return;
+    if (typeof latency !== 'number' || latency < 0) {
+      liveDot.classList.add('latency-good');
+      return;
+    }
+    if (latency >= 700) {
+      liveDot.classList.add('latency-critical');
+    } else if (latency >= 200) {
+      liveDot.classList.add('latency-high');
+    } else if (latency >= 100) {
+      liveDot.classList.add('latency-warn');
+    } else if (latency >= 50) {
+      liveDot.classList.add('latency-fair');
+    } else {
+      liveDot.classList.add('latency-good');
+    }
+  }
+
+  function measureAnimLatency() {
+    if (!socket || !socket.connected) return;
+    const start = Date.now();
+    socket.emit('client:ping', start, () => {
+      animLatency = Math.max(0, Date.now() - start);
+      window.animLatency = animLatency;
+      applyAnimLatencyClass(animLatency, true);
+      if (liveBadge) liveBadge.title = `Connected to Server (${animLatency} ms)`;
+    });
+  }
+
   if (socket) {
     socket.on('connect', () => {
-      liveBadge.classList.add('connected');
-      liveStatusText.textContent = 'Live Connected';
+      if (liveBadge) liveBadge.classList.add('connected');
+      if (liveStatusText) liveStatusText.textContent = 'Live Connected';
+      applyAnimLatencyClass(animLatency, true);
+      measureAnimLatency();
+      if (animPingInterval) clearInterval(animPingInterval);
+      animPingInterval = setInterval(measureAnimLatency, 4000);
       socket.emit('role:register', {
         role: 'display',
         screen: `${window.innerWidth}x${window.innerHeight} (Animator 3D)`
@@ -1056,8 +1098,11 @@
     });
 
     socket.on('disconnect', () => {
-      liveBadge.classList.remove('connected');
-      liveStatusText.textContent = 'Reconnecting...';
+      if (animPingInterval) clearInterval(animPingInterval);
+      animLatency = null;
+      if (liveBadge) liveBadge.classList.remove('connected');
+      applyAnimLatencyClass(null, false);
+      if (liveStatusText) liveStatusText.textContent = 'Reconnecting...';
     });
 
     socket.on('display:update', (state) => {
