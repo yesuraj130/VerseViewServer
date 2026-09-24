@@ -21,3 +21,10 @@ data/recents.db
 *.db-shm
 data/backups/
 data/backups/*
+
+# Temporary files & verification scripts
+scripts/
+temp/
+tmp/
+*.tmp
+
