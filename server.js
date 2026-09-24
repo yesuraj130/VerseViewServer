@@ -135,7 +135,7 @@ const io = new Server(server, {
   perMessageDeflate: false // Disable per-message zlib compression to save CPU and eliminate buffering delays on small JSON payloads
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 const APP_TITLE = process.env.APP_TITLE || 'Verse View Server';
 const APP_CONFIG = {
   appName: APP_TITLE,
@@ -2989,6 +2989,14 @@ app.use(express.static(path.join(__dirname, 'public'), {
   }
 }));
 
+// Read-only static data access for client-side comparison & offline inspection
+app.use('/data', express.static(path.join(__dirname, 'data'), {
+  setHeaders: (res, filePath) =>
+  {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  }
+}));
+
 // Explicit redirects for clean paths
 app.get('/presenter', (req, res) =>
 {
@@ -3021,6 +3029,13 @@ app.get(['/cleaner', '/cleaner/'], (req, res) =>
 {
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.sendFile(path.join(__dirname, 'public', 'cleaner', 'index.html'));
+});
+
+// Song Database Comparer & Diff Inspector (100% Client-Side)
+app.get(['/comparer', '/comparer/'], (req, res) =>
+{
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.sendFile(path.join(__dirname, 'public', 'comparer', 'index.html'));
 });
 
 // Application Settings & Font Mapper

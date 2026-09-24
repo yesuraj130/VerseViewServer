@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+  <title>Song Database Comparer — VerseView</title>
+  <meta name="description" content="Client-Side SQLite Song Database Comparer & Diff Inspector for VerseView songs.db">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/hub.css">
+  <link rel="stylesheet" href="/css/cleaner.css">
+  <link rel="stylesheet" href="/comparer/comparer.css">
+  <!-- SQLite WebAssembly Engine -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/sql-wasm.js"></script>
+</head>
+<body>
+  <div class="comparer-container">
+    <!-- Top Header -->
+    <header class="comparer-header">
+      <div class="comparer-header-brand">
+        <div class="comparer-icon-box">⚖️</div>
+        <div>
+          <h1 class="comparer-title">Song Database Comparer &amp; Diff Inspector</h1>
+          <p class="comparer-subtitle">100% Client-Side SQLite Comparison • Zero Server Edits • Comprehensive Field &amp; Lyrics Analysis</p>
+        </div>
+      </div>
+      <div class="comparer-header-nav">
+        <a href="/" class="btn-secondary" style="font-size: 13px; text-decoration: none; padding: 6px 12px;">&larr; Back to Hub</a>
+        <a href="/cleaner/" class="btn-secondary" style="font-size: 13px; text-decoration: none; padding: 6px 12px;">🧹 Duplicate Cleaner</a>
+        <button id="btn-export-report" class="btn-secondary" style="font-size: 13px; padding: 6px 12px;">📄 Export HTML</button>
+        <button id="btn-export-json" class="btn-secondary" style="font-size: 13px; padding: 6px 12px;">💾 Export JSON</button>
+      </div>
+    </header>
+
+    <!-- Upload / Database Selector Strip -->
+    <section class="db-upload-strip">
+      <!-- Database A (Reference) -->
+      <div class="db-dropzone-card" id="dropzone-a">
+        <input type="file" id="file-input-a" accept=".db,.sqlite,.sqlite3" style="display: none;">
+        <div class="db-card-info" id="card-info-a">
+          <div class="db-badge-icon db-badge-a">A</div>
+          <div>
+            <div class="db-meta-title" id="title-db-a">Database A (Original / Reference)</div>
+            <div class="db-meta-sub" id="sub-db-a">
+              <span>Drop .db file or click to browse</span>
+            </div>
+          </div>
+        </div>
+        <div class="db-actions-quick">
+          <button type="button" class="btn-db-quick" id="btn-load-server-a" title="Fetch current server songs.db into Database A">⚡ Load Server DB</button>
+        </div>
+      </div>
+
+      <!-- Swap Button -->
+      <div class="swap-btn-container">
+        <button type="button" class="btn-swap-dbs" id="btn-swap-dbs" title="Swap Database A &amp; B to invert comparison direction">⇄</button>
+      </div>
+
+      <!-- Database B (Target / New) -->
+      <div class="db-dropzone-card" id="dropzone-b">
+        <input type="file" id="file-input-b" accept=".db,.sqlite,.sqlite3" style="display: none;">
+        <div class="db-card-info" id="card-info-b">
+          <div class="db-badge-icon db-badge-b">B</div>
+          <div>
+            <div class="db-meta-title" id="title-db-b">Database B (Modified / Target)</div>
+            <div class="db-meta-sub" id="sub-db-b">
+              <span>Drop .db file or click to browse</span>
+            </div>
+          </div>
+        </div>
+        <div class="db-actions-quick">
+          <button type="button" class="btn-db-quick" id="btn-load-server-b" title="Fetch current server songs.db into Database B">⚡ Load Server DB</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Metrics Summary Navigation Grid -->
+    <section class="comparer-summary-grid" id="comparer-summary-grid">
+      <!-- 1. All Differences -->
+      <button type="button" class="summary-tab-card active" id="tab-summary-all">
+        <div>
+          <div class="summary-tab-label">Total Differences</div>
+          <div class="summary-tab-count" id="count-summary-all">0</div>
+        </div>
+        <div class="summary-tab-icon">📊</div>
+      </button>
+
+      <!-- 2. Added Songs -->
+      <button type="button" class="summary-tab-card tab-added" id="tab-summary-added">
+        <div>
+          <div class="summary-tab-label" style="color: #34d399;">Songs Added (+B)</div>
+          <div class="summary-tab-count" style="color: #34d399;" id="count-summary-added">0</div>
+        </div>
+        <div class="summary-tab-icon">➕</div>
+      </button>
+
+      <!-- 3. Removed Songs -->
+      <button type="button" class="summary-tab-card tab-removed" id="tab-summary-removed">
+        <div>
+          <div class="summary-tab-label" style="color: #f87171;">Songs Removed (-A)</div>
+          <div class="summary-tab-count" style="color: #f87171;" id="count-summary-removed">0</div>
+        </div>
+        <div class="summary-tab-icon">➖</div>
+      </button>
+
+      <!-- 4. Modified Songs -->
+      <button type="button" class="summary-tab-card tab-modified" id="tab-summary-modified">
+        <div>
+          <div class="summary-tab-label" style="color: #fbbf24;">Songs Modified (&Delta;)</div>
+          <div class="summary-tab-count" style="color: #fbbf24;" id="count-summary-modified">0</div>
+        </div>
+        <div class="summary-tab-icon">📝</div>
+      </button>
+
+      <!-- 5. Unchanged Songs -->
+      <button type="button" class="summary-tab-card" id="tab-summary-unchanged">
+        <div>
+          <div class="summary-tab-label">Unchanged Songs (=)</div>
+          <div class="summary-tab-count" style="color: #94a3b8;" id="count-summary-unchanged">0</div>
+        </div>
+        <div class="summary-tab-icon">🔒</div>
+      </button>
+    </section>
+
+    <!-- Workspace -->
+    <main class="comparer-workspace">
+      <!-- Toolbar -->
+      <div class="comparer-toolbar">
+        <div>
+          <h2 id="comparer-workspace-title" style="margin: 0; font-size: 15px; font-weight: 700; color: #fff;">Comparison Results</h2>
+          <div id="comparer-workspace-subtitle" style="font-size: 11px; color: #94a3b8; margin-top: 2px;">Upload both databases to inspect differences.</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <input type="text" id="comparer-search-input" class="comparer-search-input" placeholder="🔍 Search by title, lyrics, ID...">
+          <div class="filter-chips-row" id="comparer-filter-chips">
+            <!-- Injected dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Results List Container -->
+      <div class="comparer-list-container" id="comparer-list-container">
+        <!-- Rendered dynamically by comparer.js -->
+      </div>
+
+      <!-- Action & Pagination Footer -->
+      <footer class="comparer-footer">
+        <div id="comparer-footer-info" style="font-size: 12px; color: #94a3b8;">Ready</div>
+        <div id="comparer-footer-pagination"></div>
+      </footer>
+    </main>
+  </div>
+
+  <!-- Side-by-Side Diff Popup Modal -->
+  <div class="comparer-modal-overlay" id="diff-modal-overlay" style="display: none;">
+    <div class="comparer-modal-window">
+      <!-- Modal Header -->
+      <div class="modal-header-bar">
+        <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+          <h3 id="diff-modal-title" style="margin: 0; font-size: 16px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Song Diff Inspector</h3>
+          <div id="diff-modal-badges"></div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button id="btn-diff-modal-prev" class="btn-secondary" style="font-size: 12px; padding: 4px 10px;" title="Previous Changed Song (Arrow Left)">&larr; Prev</button>
+          <button id="btn-diff-modal-next" class="btn-secondary" style="font-size: 12px; padding: 4px 10px;" title="Next Changed Song (Arrow Right)">Next &rarr;</button>
+          <button id="btn-close-diff-modal" class="cleaner-close-btn" style="margin-left: 8px;">&times;</button>
+        </div>
+      </div>
+
+      <!-- Metadata Differences Strip -->
+      <div class="modal-metadata-strip" id="diff-modal-metastrip">
+        <!-- Injected dynamically -->
+      </div>
+
+      <!-- Side-by-Side Slides Diff Body -->
+      <div class="modal-diff-body" id="diff-modal-body">
+        <!-- Injected dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <script src="/comparer/comparer.js"></script>
+</body>
+</html>

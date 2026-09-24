@@ -32,6 +32,7 @@
         </div>
       </div>
       <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <a href="/comparer/" class="btn-secondary" style="font-size: 12px; padding: 5px 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; font-weight: 600; border-color: rgba(139, 92, 246, 0.4); color: #c084fc;" title="Compare two song databases client-side">⚖️ DB Comparer</a>
         <a href="/settings/" class="btn-secondary" style="font-size: 12px; padding: 5px 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; font-weight: 600;" title="Open Application Settings & Font Mapper">⚙️ Settings</a>
         <button type="button" class="btn-secondary" data-fullscreen-btn style="font-size: 12px; padding: 5px 10px;" title="Toggle Fullscreen Edge-to-Edge">⛶ Fullscreen</button>
         <button type="button" class="btn-secondary" data-pwa-install-btn style="display: none; font-size: 12px; padding: 5px 10px;">📲 Install App</button>
@@ -78,6 +79,28 @@
         </div>
         <div style="display: flex; gap: 12px; align-items: center;">
           <a href="/animator/" target="_blank" class="btn-primary" style="background: linear-gradient(135deg, #8b5cf6, #ec4899); flex-grow: 1;">Open 3D Animator &nearr;</a>
+        </div>
+      </div>
+
+      <!-- Song Database Comparer Card -->
+      <div class="hub-card" style="border-color: rgba(139, 92, 246, 0.4); background: linear-gradient(180deg, #18152e 0%, #0f172a 100%);">
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <span class="hub-card-tag" style="background: rgba(139, 92, 246, 0.15); color: #c084fc; border: 1px solid rgba(139, 92, 246, 0.3);">⚖️ SQLite Diff Engine</span>
+          </div>
+          <h2 class="hub-card-title">Song Database Comparer</h2>
+          <p class="hub-card-desc">Compare two SQLite <code>songs.db</code> files uploaded from your device or server. Detect added songs, removed songs (with automated duplicate removal reason tags), and inspect side-by-side highlighted lyrics diffs with zero server calls.</p>
+          <div style="display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap;">
+            <span style="font-size: 11px; padding: 3px 8px; border-radius: 4px; background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">➕ Added</span>
+            <span style="font-size: 11px; padding: 3px 8px; border-radius: 4px; background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);">➖ Removed (Duplicates Tagged)</span>
+            <span style="font-size: 11px; padding: 3px 8px; border-radius: 4px; background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3);">Δ Modified</span>
+            <span style="font-size: 11px; padding: 3px 8px; border-radius: 4px; background: rgba(148, 163, 184, 0.15); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.3);">👁️ Side-by-Side Diff</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center; margin-top: 6px;">
+          <a href="/comparer/" class="btn-primary" style="background: linear-gradient(135deg, #7c3aed, #2563eb); flex-grow: 1; text-decoration: none; text-align: center;">
+            Open Database Comparer &rarr;
+          </a>
         </div>
       </div>
 
