@@ -9,7 +9,7 @@ import compression from 'compression';
 import { Server } from 'socket.io';
 import { isTamilBibleFont, isKnownBaminiFont, baminiToUnicode } from './lib/bamini.js';
 import * as songsCleaner from './lib/songsCleaner.js';
-import { matchContiguousPhoneticPhrase, matchesQueryPhonetic, tokenizeText, getSoundKey, matchWithPrecomputedKeys, matchTokenInfosWithKeys, buildTargetTokenInfos, compileQueryPattern } from './public/presenter/js/tamilPhonetic.js';
+import { matchContiguousPhoneticPhrase, matchesQueryPhonetic, tokenizeText, getSoundKey, matchWithPrecomputedKeys, matchTokenInfosWithKeys, matchFlatTokenRange, buildTargetTokenInfos, compileQueryPattern } from './public/presenter/js/tamilPhonetic.js';
 
 const isBamini = (f) => isTamilBibleFont(f) || isKnownBaminiFont(f);
 
@@ -401,140 +401,8 @@ function getVersionMetadata(forceReload = false)
 }
 
 // ---------------------------------------------------------------------------
-// Pre-Computed In-Memory Bible Search Engine (Zero-Disk Low-Latency Querying)
+// High-Speed Direct Verse Lookup & Prepared Statement Engine
 // ---------------------------------------------------------------------------
-const bibleCoordLookup = new Map(); // versionId -> Map of `${bookNum}:${chNum}:${verseNum}` -> verse
-const bibleChapterMaxVerse = new Map(); // versionId -> Map of `${bookNum}:${chNum}` -> maxVerse
-
-function getVerseFromMemory(versionId = 'tamil', bookNum, chNum, verseNum)
-{
-  const targetId = (versionId || 'tamil').replace(/\.db$/i, '').trim();
-  const versions = getVersionMetadata();
-  const matchedVer = versions.find(v => v.id === targetId || v.file === targetId || v.file === `${targetId}.db`);
-  const actualVersionId = matchedVer ? matchedVer.id : targetId;
-
-  let coordMap = bibleCoordLookup.get(actualVersionId);
-  if (!coordMap && actualVersionId === 'tamil')
-  {
-    getOrBuildBibleSearchIndex(actualVersionId);
-    coordMap = bibleCoordLookup.get(actualVersionId);
-  }
-  if (coordMap)
-  {
-    return coordMap.get(`${bookNum}:${chNum}:${verseNum}`) || null;
-  }
-  return null;
-}
-
-function getChapterMaxVerseFromMemory(versionId = 'tamil', bookNum, chNum)
-{
-  const targetId = (versionId || 'tamil').replace(/\.db$/i, '').trim();
-  const versions = getVersionMetadata();
-  const matchedVer = versions.find(v => v.id === targetId || v.file === targetId || v.file === `${targetId}.db`);
-  const actualVersionId = matchedVer ? matchedVer.id : targetId;
-
-  let chMap = bibleChapterMaxVerse.get(actualVersionId);
-  if (!chMap && actualVersionId === 'tamil')
-  {
-    getOrBuildBibleSearchIndex(actualVersionId);
-    chMap = bibleChapterMaxVerse.get(actualVersionId);
-  }
-  if (chMap)
-  {
-    return chMap.get(`${bookNum}:${chNum}`) || null;
-  }
-  return null;
-}
-
-function getOrBuildBibleSearchIndex(versionId = 'tamil')
-{
-  const targetId = versionId.replace(/\.db$/i, '');
-  if (bibleSearchIndex.has(targetId))
-  {
-    return bibleSearchIndex.get(targetId);
-  }
-
-  const versions = getVersionMetadata();
-  const matchedVer = versions.find(v => v.id === targetId || v.file === targetId || v.file === `${targetId}.db`);
-  const actualVersionId = matchedVer ? matchedVer.id : targetId;
-
-  if (bibleSearchIndex.has(actualVersionId))
-  {
-    return bibleSearchIndex.get(actualVersionId);
-  }
-
-  const db = getBibleDb(actualVersionId);
-  if (!db) return [];
-
-  try
-  {
-    const t0 = Date.now();
-    const rows = db.prepare('SELECT wordId, bookNum, chNum, verseNum, word FROM words ORDER BY bookNum, chNum, verseNum').all();
-    
-    const bookNames = (matchedVer && (matchedVer.booknames || matchedVer.books)) || [];
-
-    const coordMap = new Map();
-    const chMaxMap = new Map();
-
-    const indexedVerses = rows.map(r => {
-      const bNum = Number(r.bookNum);
-      const chNum = Number(r.chNum);
-      const vNum = Number(r.verseNum);
-      const bookName = (bookNames && bookNames[bNum - 1]) ? bookNames[bNum - 1] : `Book ${bNum}`;
-      const tokens = tokenizeText(r.word);
-      const tokenInfos = buildTargetTokenInfos(tokens);
-
-      const verseObj = {
-        wordId: r.wordId,
-        bookNum: bNum,
-        chNum: chNum,
-        verseNum: vNum,
-        bookName,
-        word: r.word,
-        wordLower: (r.word || '').toLowerCase(),
-        tokens,
-        tokenInfos,
-        versionId: actualVersionId
-      };
-
-      coordMap.set(`${bNum}:${chNum}:${vNum}`, verseObj);
-      const chKey = `${bNum}:${chNum}`;
-      const currMax = chMaxMap.get(chKey) || 0;
-      if (vNum > currMax) chMaxMap.set(chKey, vNum);
-
-      return verseObj;
-    });
-
-    // LRU cache limit: keep at most 2 Bible version indexes in memory, always retaining 'tamil'
-    if (bibleSearchIndex.size >= 2)
-    {
-      for (const key of bibleSearchIndex.keys())
-      {
-        if (key !== 'tamil' && key !== actualVersionId)
-        {
-          bibleSearchIndex.delete(key);
-          bibleCoordLookup.delete(key);
-          bibleChapterMaxVerse.delete(key);
-          console.log(`Evicted in-memory Bible search index for '${key}' to conserve RAM`);
-          break;
-        }
-      }
-    }
-
-    bibleSearchIndex.set(actualVersionId, indexedVerses);
-    bibleCoordLookup.set(actualVersionId, coordMap);
-    bibleChapterMaxVerse.set(actualVersionId, chMaxMap);
-    console.log(`In-memory Bible search index built for '${actualVersionId}': ${indexedVerses.length} verses in ${Date.now() - t0}ms`);
-    return indexedVerses;
-  }
-  catch (err)
-  {
-    console.error(`Failed to build Bible search index for ${versionId}:`, err);
-    return [];
-  }
-}
-
-// Pre-compiled prepared statement cache for high-speed verse queries
 const bibleVerseStmtCache = new Map();
 function getBibleVerseStmt(db)
 {
@@ -545,6 +413,42 @@ function getBibleVerseStmt(db)
     bibleVerseStmtCache.set(db, stmt);
   }
   return stmt;
+}
+
+function getVerseFromMemory(versionId = 'tamil', bookNum, chNum, verseNum)
+{
+  const targetId = (versionId || 'tamil').replace(/\.db$/i, '').trim();
+  const db = getBibleDb(targetId);
+  if (!db) return null;
+  try
+  {
+    const stmt = getBibleVerseStmt(db);
+    const row = stmt.get(Number(bookNum) || 1, Number(chNum) || 1, Number(verseNum) || 1);
+    if (row && row.word)
+    {
+      return { word: row.word };
+    }
+  }
+  catch (e)
+  {
+    console.error(`Error querying verse coordinate (${bookNum}:${chNum}:${verseNum}) from ${targetId}:`, e);
+  }
+  return null;
+}
+
+function getChapterMaxVerseFromMemory(versionId = 'tamil', bookNum, chNum)
+{
+  const targetId = (versionId || 'tamil').replace(/\.db$/i, '').trim();
+  const struct = getBibleStructure(targetId);
+  if (struct)
+  {
+    const bInfo = struct.get(Number(bookNum) || 1);
+    if (bInfo && Array.isArray(bInfo.verseCounts))
+    {
+      return bInfo.verseCounts[(Number(chNum) || 1) - 1] || null;
+    }
+  }
+  return null;
 }
 
 function getBibleDb(versionIdOrFile)
@@ -1294,6 +1198,8 @@ function indexSongRecord(r)
   const convertedLyrics = needsConversion ? baminiToUnicode(r.lyrics) : (r.lyrics || '');
   const rawSlides = convertedLyrics.split('<slide>');
   const slides = [];
+  const slideKeysList = [];
+  const slideStripKeysList = [];
   let currentIdx = 0;
 
   for (const s of rawSlides)
@@ -1302,53 +1208,63 @@ function indexSongRecord(r)
     if (!clean) continue;
     currentIdx++;
 
-    // Replace HTML tags with space before tokenizing so tags like <br> don't become tokens
     const textWithoutHtml = clean.replace(/<[^>]*>/g, ' ');
-    const tokens = tokenizeText(textWithoutHtml);
     const rawLines = clean.split(/<BR>|\r?\n/i).map(l => l.replace(/<[^>]*>/g, '').trim()).filter(Boolean);
 
     slides.push({
       slideIndex: currentIdx,
       cleanSlide: clean,
-      cleanSlideLower: textWithoutHtml.toLowerCase(),
-      tokens,
-      tokenInfos: buildTargetTokenInfos(tokens),
       lines: rawLines
     });
+
+    const sTokens = tokenizeText(textWithoutHtml);
+    const sInfos = buildTargetTokenInfos(sTokens);
+    const sFull = new Array(sInfos.length);
+    const sStrip = new Array(sInfos.length);
+    for (let j = 0; j < sInfos.length; j++)
+    {
+      sFull[j] = sInfos[j].fullKey || '';
+      sStrip[j] = sInfos[j].strippedKey || null;
+    }
+    slideKeysList.push(sFull);
+    slideStripKeysList.push(sStrip);
   }
 
   const nameTokens = tokenizeText(r.name || '');
+  const nameInfos = buildTargetTokenInfos(nameTokens);
+  const nameKeys = nameInfos.map(i => i.fullKey || '');
+  const nameStripKeys = nameInfos.map(i => i.strippedKey || null);
+
   const title2Tokens = r.title2 ? tokenizeText(r.title2) : [];
+  const title2Infos = buildTargetTokenInfos(title2Tokens);
+  const title2Keys = title2Infos.map(i => i.fullKey || '');
+  const title2StripKeys = title2Infos.map(i => i.strippedKey || null);
+
   const tagsTokens = r.tags ? tokenizeText(r.tags) : [];
+  const tagsInfos = buildTargetTokenInfos(tagsTokens);
+  const tagsKeys = tagsInfos.map(i => i.fullKey || '');
+  const tagsStripKeys = tagsInfos.map(i => i.strippedKey || null);
 
   return {
     id: Number(r.id),
     name: r.name || '',
-    nameLower: (r.name || '').toLowerCase(),
-    nameTokens,
-    nameTokenInfos: buildTargetTokenInfos(nameTokens),
-
     title2: r.title2 || '',
-    title2Lower: (r.title2 || '').toLowerCase(),
-    title2Tokens,
-    title2TokenInfos: buildTargetTokenInfos(title2Tokens),
-
-    cat: r.cat || 'General',
     font: r.font || '',
-    key: r.key || '',
-    notes: r.notes || '',
-    tags: r.tags || '',
-    tagsLower: (r.tags || '').toLowerCase(),
-    tagsTokens,
-    tagsTokenInfos: buildTargetTokenInfos(tagsTokens),
-
-    lyrics: r.lyrics || '',
-    rawLyrics: r.lyrics || '',
-    convertedLyrics: convertedLyrics,
+    font2: r.font2 || '',
     firstLine: extractFirstLine(r.lyrics, r.font),
+    lyrics: convertedLyrics,
+    rawLyrics: r.lyrics || '',
     slideCount: slides.length,
     slides,
-    isConverted: Boolean(needsConversion)
+    isConverted: Boolean(needsConversion),
+    nameKeys,
+    nameStripKeys,
+    title2Keys,
+    title2StripKeys,
+    tagsKeys,
+    tagsStripKeys,
+    slideKeysList,
+    slideStripKeysList
   };
 }
 
@@ -1364,9 +1280,9 @@ function refreshSongsListCache()
       id: s.id,
       name: s.name,
       title2: s.title2 || '',
-      cat: s.cat || 'General',
+      cat: 'General',
       font: s.font || '',
-      tags: s.tags || '',
+      tags: '',
       firstLine: s.firstLine || '',
       slideCount: s.slideCount || 0,
       isConverted: Boolean(s.isConverted)
@@ -1386,7 +1302,7 @@ function initSongSearchIndex()
   try
   {
     const t0 = Date.now();
-    const rows = smDb.prepare('SELECT id, name, title2, cat, font, tags, lyrics FROM sm').all();
+    const rows = smDb.prepare('SELECT id, name, title2, font, font2, tags, lyrics FROM sm').all();
     songSearchIndex.clear();
     for (const r of rows)
     {
@@ -1534,44 +1450,52 @@ app.get('/api/songs/search', (req, res) =>
       let totalMatchesInSong = 0;
 
       // 1. Search slides using pre-computed token sound keys and pattern
-      for (const s of song.slides)
+      if (Array.isArray(song.slides))
       {
-        const slideMatch = matchTokenInfosWithKeys(s.tokenInfos, s.tokens, s.cleanSlideLower, qPattern, qLower);
-        if (slideMatch.matched)
+        for (let sIdx = 0; sIdx < song.slides.length; sIdx++)
         {
-          totalMatchesInSong++;
-          if (!songMatched)
-          {
-            songMatched = true;
-            matchedSlideIndex = s.slideIndex;
-            matchedTerm = (slideMatch.matchedWordTokens || slideMatch.matchedTokens).join(' ') || q;
+          const s = song.slides[sIdx];
+          const sFull = song.slideKeysList ? song.slideKeysList[sIdx] : [];
+          const sStrip = song.slideStripKeysList ? song.slideStripKeysList[sIdx] : null;
 
-            // Find specific line within this slide for preview snippet
-            if (Array.isArray(s.lines) && s.lines.length > 0)
+          const slideMatch = matchFlatTokenRange(sFull, sStrip, 0, sFull.length, qPattern, qLower, s.cleanSlide);
+          if (slideMatch.matched)
+          {
+            totalMatchesInSong++;
+            if (!songMatched)
             {
-              const qTermLower = qLower.replace(/\*/g, '').trim();
-              if (qTermLower)
+              songMatched = true;
+              matchedSlideIndex = s.slideIndex;
+
+              // Extract matched words deterministically on-the-fly
+              let matchedWords = [];
+              if (slideMatch.isTextMatch)
               {
-                matchedLine = s.lines.find(l => typeof l === 'string' && l.toLowerCase().includes(qTermLower)) || '';
+                matchedWords = [q];
               }
-              if (!matchedLine)
+              else
               {
-                // Fallback: match against line tokens on-the-fly for the matched slide only
-                for (const lineStr of s.lines)
+                const textWithoutHtml = (s.cleanSlide || '').replace(/<[^>]*>/g, ' ');
+                const sTokens = tokenizeText(textWithoutHtml);
+                const relStart = slideMatch.relativeStart || 0;
+                const mLen = slideMatch.matchLength || 1;
+                matchedWords = sTokens.slice(relStart, relStart + mLen);
+                if (matchedWords.length === 0) matchedWords = [q];
+              }
+              matchedTerm = matchedWords.join(' ') || q;
+
+              // Find specific line within this slide for preview snippet
+              if (Array.isArray(s.lines) && s.lines.length > 0)
+              {
+                const qTermLower = qLower.replace(/\*/g, '').trim();
+                if (qTermLower)
                 {
-                  const lTokens = tokenizeText(lineStr);
-                  const lInfos = buildTargetTokenInfos(lTokens);
-                  const lineMatch = matchTokenInfosWithKeys(lInfos, lTokens, lineStr.toLowerCase(), qPattern, qLower);
-                  if (lineMatch.matched)
-                  {
-                    matchedLine = lineStr;
-                    break;
-                  }
+                  matchedLine = s.lines.find(l => typeof l === 'string' && l.toLowerCase().includes(qTermLower)) || '';
                 }
-              }
-              if (!matchedLine)
-              {
-                matchedLine = s.lines[0];
+                if (!matchedLine)
+                {
+                  matchedLine = s.lines[0];
+                }
               }
             }
           }
@@ -1581,12 +1505,12 @@ app.get('/api/songs/search', (req, res) =>
       // 2. Check title / alternate title / tags if no slide matched
       if (!songMatched)
       {
-        const nameMatch = matchTokenInfosWithKeys(song.nameTokenInfos, song.nameTokens, song.nameLower, qPattern, qLower);
-        const title2Match = song.title2Tokens.length > 0
-          ? matchTokenInfosWithKeys(song.title2TokenInfos, song.title2Tokens, song.title2Lower, qPattern, qLower)
+        const nameMatch = matchFlatTokenRange(song.nameKeys, song.nameStripKeys, 0, song.nameKeys ? song.nameKeys.length : 0, qPattern, qLower, song.name);
+        const title2Match = song.title2Keys && song.title2Keys.length > 0
+          ? matchFlatTokenRange(song.title2Keys, song.title2StripKeys, 0, song.title2Keys.length, qPattern, qLower, song.title2)
           : { matched: false };
-        const tagsMatch = song.tagsTokens.length > 0
-          ? matchTokenInfosWithKeys(song.tagsTokenInfos, song.tagsTokens, song.tagsLower, qPattern, qLower)
+        const tagsMatch = song.tagsKeys && song.tagsKeys.length > 0
+          ? matchFlatTokenRange(song.tagsKeys, song.tagsStripKeys, 0, song.tagsKeys.length, qPattern, qLower, '')
           : { matched: false };
 
         if (nameMatch.matched || title2Match.matched || tagsMatch.matched)
@@ -1594,8 +1518,7 @@ app.get('/api/songs/search', (req, res) =>
           songMatched = true;
           matchedSlideIndex = 1;
           matchedLine = song.firstLine || song.name;
-          const activeMatch = nameMatch.matched ? nameMatch : (title2Match.matched ? title2Match : tagsMatch);
-          matchedTerm = (activeMatch.matchedWordTokens || activeMatch.matchedTokens || [q]).join(' ') || q;
+          matchedTerm = q;
           totalMatchesInSong = 1;
         }
       }
@@ -1606,7 +1529,7 @@ app.get('/api/songs/search', (req, res) =>
           id: song.id,
           name: song.name,
           title2: song.title2,
-          cat: song.cat,
+          cat: 'General',
           font: song.font,
           slideCount: song.slideCount,
           matchedSlideIndex,
@@ -2359,59 +2282,43 @@ app.get('/api/bible/search', async (req, res) =>
       return res.json(workerResult.results);
     }
 
-    // 2. In-process fallback if worker thread is restarting or unavailable
-    const verses = getOrBuildBibleSearchIndex(versionId);
-    if (!verses || verses.length === 0)
+    // 2. Direct database fallback if worker thread is restarting
+    const db = getBibleDb(versionId);
+    if (!db)
     {
       return res.json(req.query.format === 'v2' ? { totalMatches: 0, results: [], hasMore: false } : []);
     }
 
-    const results = [];
-    const qLower = q.toLowerCase();
-    const qPattern = compileQueryPattern(q);
     const minBook = Math.min(fromBook, toBook);
     const maxBook = Math.max(fromBook, toBook);
+    const versions = getVersionMetadata();
+    const ver = versions.find(v => v.id === versionId || v.file === versionId || v.file === `${versionId}.db`);
+    const bookNames = (ver && (ver.booknames || ver.books)) || [];
 
-    let totalMatches = 0;
-    let hasMore = false;
+    const pattern = `%${q.replace(/[%_\*]/g, '')}%`;
+    const rows = db.prepare('SELECT wordId, bookNum, chNum, verseNum, word FROM words WHERE bookNum >= ? AND bookNum <= ? AND word LIKE ? LIMIT ?')
+                   .all(minBook, maxBook, pattern, limit);
 
-    for (const v of verses)
-    {
-      if (v.bookNum < minBook || v.bookNum > maxBook)
-      {
-        continue;
-      }
+    const results = rows.map(r => {
+      const bNum = Number(r.bookNum);
+      const bName = (bookNames && bookNames[bNum - 1]) ? bookNames[bNum - 1] : `Book ${bNum}`;
+      return {
+        wordId: r.wordId,
+        bookNum: bNum,
+        chNum: Number(r.chNum),
+        verseNum: Number(r.verseNum),
+        bookName: bName,
+        word: r.word,
+        versionId: versionId,
+        reference: `${bName} ${r.chNum}:${r.verseNum}`,
+        matchedTokens: [q],
+        matchedWordTokens: [q],
+        matchedTerm: q
+      };
+    });
 
-      const match = matchTokenInfosWithKeys(v.tokenInfos, v.tokens, v.wordLower, qPattern, qLower);
-      if (match.matched)
-      {
-        totalMatches++;
-        if (results.length < limit)
-        {
-          results.push({
-            wordId: v.wordId,
-            bookNum: v.bookNum,
-            chNum: v.chNum,
-            verseNum: v.verseNum,
-            bookName: v.bookName,
-            word: v.word,
-            versionId: v.versionId,
-            reference: `${v.bookName} ${v.chNum}:${v.verseNum}`,
-            matchedTokens: match.matchedTokens,
-            matchedWordTokens: match.matchedWordTokens,
-            matchedTerm: (match.matchedWordTokens || match.matchedTokens).join(' ') || q
-          });
-        }
-        else
-        {
-          hasMore = true;
-          if (!isFetchAll) break;
-        }
-      }
-    }
-
-    res.setHeader('X-Total-Matches', String(totalMatches));
-    res.setHeader('X-Has-More', hasMore ? '1' : '0');
+    res.setHeader('X-Total-Matches', String(results.length));
+    res.setHeader('X-Has-More', '0');
 
     if (req.query.format === 'v2')
     {
@@ -3098,9 +3005,5 @@ server.listen(PORT, '0.0.0.0', () =>
   console.log(`Presenter Console available at: http://0.0.0.0:${PORT}/presenter/`);
   console.log(`Display Output available at:    http://0.0.0.0:${PORT}/display/`);
   initSongSearchIndex();
-  getOrBuildBibleSearchIndex('tamil');
   initSearchWorker();
-  setTimeout(() => {
-    try { getOrBuildBibleSearchIndex('kjv'); } catch (_) {}
-  }, 1500);
 });

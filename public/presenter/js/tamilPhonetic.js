@@ -762,6 +762,177 @@ function matchTokenInfosWithKeys(tInfos, tTokens, textLower, qKeys, rawQueryLowe
 }
 
 /**
+ * Ultra-fast matcher evaluating against flat contiguous sound key arrays (Structure-of-Arrays)
+ * with zero heap object allocations.
+ */
+function matchFlatTokenRange(fullKeys, stripKeys, start, end, pattern, rawQueryLower, originalText)
+{
+  if (!pattern || !pattern.wordItems || pattern.wordItems.length === 0)
+  {
+    return { matched: true, relativeStart: 0, matchLength: 0 };
+  }
+
+  const numWords = pattern.wordItems.length;
+  const len = end - start;
+
+  if (len < numWords)
+  {
+    if (rawQueryLower && originalText)
+    {
+      const cleanQ = rawQueryLower.replace(/\*/g, '').trim();
+      if (cleanQ && originalText.toLowerCase().includes(cleanQ))
+      {
+        return { matched: true, isTextMatch: true, relativeStart: 0, matchLength: 1 };
+      }
+    }
+    return { matched: false };
+  }
+
+  // Fast path: contiguous phrase (no wildcards or gaps)
+  if (!pattern.hasWildcard)
+  {
+    const K = numWords;
+    for (let i = start; i <= end - K; i++)
+    {
+      let allMatched = true;
+      for (let j = 0; j < K; j++)
+      {
+        const tFull = fullKeys[i + j];
+        const tStrip = stripKeys ? stripKeys[i + j] : null;
+        const qItem = pattern.wordItems[j];
+        const isLast = (j === K - 1);
+        const qKeys = qItem.qKeysList || (qItem.key ? [qItem.key] : []);
+
+        let tokenMatched = false;
+        if (!isLast)
+        {
+          for (let qkIdx = 0; qkIdx < qKeys.length; qkIdx++)
+          {
+            const qk = qKeys[qkIdx];
+            if ((tFull === qk) || (qk.length >= 4 && tFull && tFull.startsWith(qk)) ||
+                (tStrip && ((tStrip === qk) || (qk.length >= 4 && tStrip.startsWith(qk)))))
+            {
+              tokenMatched = true;
+              break;
+            }
+          }
+        }
+        else
+        {
+          for (let qkIdx = 0; qkIdx < qKeys.length; qkIdx++)
+          {
+            const qk = qKeys[qkIdx];
+            if ((tFull && tFull.startsWith(qk)) || (tStrip && tStrip.startsWith(qk)))
+            {
+              tokenMatched = true;
+              break;
+            }
+          }
+        }
+
+        if (!tokenMatched)
+        {
+          allMatched = false;
+          break;
+        }
+      }
+
+      if (allMatched)
+      {
+        return {
+          matched: true,
+          relativeStart: i - start,
+          matchLength: K
+        };
+      }
+    }
+
+    if (rawQueryLower && originalText)
+    {
+      const cleanQ = rawQueryLower.replace(/\*/g, '').trim();
+      if (cleanQ && originalText.toLowerCase().includes(cleanQ))
+      {
+        return { matched: true, isTextMatch: true, relativeStart: 0, matchLength: 1 };
+      }
+    }
+
+    return { matched: false };
+  }
+
+  // Wildcard and gap pattern matching across flat range
+  const items = pattern.items;
+  for (let startIdx = start; startIdx < end; startIdx++)
+  {
+    let tIdx = startIdx;
+    let matched = true;
+    const wordIndices = [];
+
+    for (let pIdx = 0; pIdx < items.length; pIdx++)
+    {
+      const item = items[pIdx];
+      if (item.type === 'gap') continue;
+
+      const prevItem = pIdx > 0 ? items[pIdx - 1] : null;
+      if (prevItem && prevItem.type === 'gap')
+      {
+        let found = false;
+        while (tIdx < end)
+        {
+          const tFull = fullKeys[tIdx];
+          const tStrip = stripKeys ? stripKeys[tIdx] : null;
+          const dummyT = { fullKey: tFull, strippedKey: tStrip };
+          if (matchesToken(dummyT, item))
+          {
+            wordIndices.push(tIdx);
+            tIdx++;
+            found = true;
+            break;
+          }
+          tIdx++;
+        }
+        if (!found)
+        {
+          matched = false;
+          break;
+        }
+      }
+      else
+      {
+        if (tIdx >= end)
+        {
+          matched = false;
+          break;
+        }
+        const tFull = fullKeys[tIdx];
+        const tStrip = stripKeys ? stripKeys[tIdx] : null;
+        const dummyT = { fullKey: tFull, strippedKey: tStrip };
+        if (!matchesToken(dummyT, item))
+        {
+          matched = false;
+          break;
+        }
+        wordIndices.push(tIdx);
+        tIdx++;
+      }
+    }
+
+    if (matched && wordIndices.length === numWords)
+    {
+      const firstIdx = wordIndices[0];
+      const lastIdx = wordIndices[wordIndices.length - 1];
+      return {
+        matched: true,
+        relativeStart: firstIdx - start,
+        matchLength: lastIdx - firstIdx + 1,
+        wordOffsets: wordIndices.map(idx => idx - start)
+      };
+    }
+  }
+
+  return { matched: false };
+}
+
+/**
  * High-performance matcher with pre-computed query pattern/keys, sandhi pair validation,
  * and wildcard support.
  */
@@ -897,6 +1068,7 @@ if (typeof window !== 'undefined')
     compileQueryPattern,
     buildTargetTokenInfos,
     matchTokenInfosWithKeys,
+    matchFlatTokenRange,
     matchWithPrecomputedKeys,
     matchContiguousPhoneticPhrase,
     matchesQueryPhonetic,
@@ -911,6 +1083,7 @@ export {
   compileQueryPattern,
   buildTargetTokenInfos,
   matchTokenInfosWithKeys,
+  matchFlatTokenRange,
   matchWithPrecomputedKeys,
   matchContiguousPhoneticPhrase,
   matchesQueryPhonetic,
