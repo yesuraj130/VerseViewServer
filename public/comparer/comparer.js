@@ -1441,6 +1441,11 @@
 
     // Modal Events
     el.modalCloseBtn.addEventListener('click', closeDiffModal);
+    const returnBtnTop = document.getElementById('btn-return-diff-modal');
+    if (returnBtnTop) returnBtnTop.addEventListener('click', closeDiffModal);
+    const returnBtnBottom = document.getElementById('btn-bottom-return-diff');
+    if (returnBtnBottom) returnBtnBottom.addEventListener('click', closeDiffModal);
+
     el.modalOverlay.addEventListener('click', (e) => {
       if (e.target === el.modalOverlay) closeDiffModal();
     });
@@ -1455,6 +1460,32 @@
         if (e.key === 'ArrowRight') navigateModalChange('next');
       }
     });
+
+    // Fullscreen Toggle
+    const btnFullscreen = document.getElementById('btn-fullscreen-comparer');
+    const textFullscreen = document.getElementById('fullscreen-text-comparer');
+    if (btnFullscreen) {
+      btnFullscreen.addEventListener('click', () => {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+          const docEl = document.documentElement;
+          if (docEl.requestFullscreen) docEl.requestFullscreen().catch(() => {});
+          else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen();
+        } else {
+          if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        }
+      });
+
+      const updateFsState = () => {
+        const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        btnFullscreen.title = isFs ? 'Exit Fullscreen Mode (Esc)' : 'Toggle Fullscreen Mode';
+        if (textFullscreen) textFullscreen.textContent = isFs ? 'Exit Full' : 'Fullscreen';
+        btnFullscreen.classList.toggle('active', isFs);
+      };
+
+      document.addEventListener('fullscreenchange', updateFsState);
+      document.addEventListener('webkitfullscreenchange', updateFsState);
+    }
 
     // Export Buttons
     el.btnExportReport.addEventListener('click', exportReportHtml);

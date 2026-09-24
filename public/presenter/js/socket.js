@@ -54,10 +54,9 @@ function updateStatusDotAndTooltip()
     serverStatusDot.title = isOnline ? getConnectedStatusText() : 'Disconnected from server';
     applyLatencyClassToDot(serverStatusDot, currentSocketLatency, isOnline);
   }
-  const tooltip = document.getElementById('server-status-tooltip');
-  if (tooltip && tooltip.classList.contains('visible'))
+  if (typeof window.updateServerStatusTooltipIfVisible === 'function')
   {
-    showStatusTooltip(getConnectedTooltipText(), isOnline);
+    window.updateServerStatusTooltipIfVisible(getConnectedTooltipText(), isOnline, currentSocketLatency);
   }
 }
 

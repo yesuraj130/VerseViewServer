@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
   <title>Duplicate Songs Remover & Quality Suite - VerseView</title>
   <link rel="icon" type="image/png" href="/favicon.png">
   <link rel="stylesheet" href="/css/base.css">
@@ -31,92 +31,78 @@
 <body>
   <div class="cleaner-page-window cleaner-window" style="max-width: 100%; max-height: 100%; height: 100vh; border-radius: 0;">
     <!-- Top Header -->
-    <div class="cleaner-header">
+    <header class="cleaner-header">
       <div class="cleaner-header-brand">
         <div class="cleaner-icon-box">🧹</div>
-        <div>
-          <h1 class="cleaner-title">Duplicate Songs Remover & Song Quality Suite</h1>
-          <p class="cleaner-subtitle" id="cleaner-total-subtitle">VerseView Database Maintenance • 2,727 Songs in Database</p>
+        <div class="cleaner-header-titles">
+          <h1 class="cleaner-title">Duplicate Songs &amp; Quality Suite</h1>
+          <p class="cleaner-subtitle" id="cleaner-total-subtitle">VerseView Maintenance • 2,727 Songs</p>
         </div>
       </div>
-      <div style="display: flex; align-items: center; gap: 12px;">
-        <a href="/" class="btn-secondary" style="font-size: 13px; text-decoration: none; padding: 6px 12px;">&larr; Back to Hub</a>
-        <a href="/comparer/" class="btn-secondary" style="font-size: 13px; text-decoration: none; padding: 6px 12px; color: #c084fc; border-color: rgba(139, 92, 246, 0.4);">⚖️ Compare DBs</a>
-        <button id="btn-refresh-cleaner" class="btn-secondary" style="font-size: 13px; padding: 6px 12px;">🔄 Re-analyze</button>
+      <div class="cleaner-header-actions">
+        <a href="/" class="btn-cleaner-nav" title="Back to Hub">&larr; <span class="nav-btn-text">Hub</span></a>
+        <a href="/comparer/" class="btn-cleaner-nav btn-cleaner-nav-purple" title="Compare Databases">⚖️ <span class="nav-btn-text">Compare DBs</span></a>
+        <button id="btn-fullscreen-cleaner" class="btn-cleaner-nav" title="Toggle Fullscreen Mode">⛶ <span class="nav-btn-text" id="fullscreen-text-cleaner">Fullscreen</span></button>
+        <button id="btn-refresh-cleaner" class="btn-cleaner-nav" title="Re-scan database">🔄 <span class="nav-btn-text">Re-analyze</span></button>
       </div>
-    </div>
+    </header>
 
-    <!-- 5 Options Action Navigation -->
-    <div class="cleaner-options-grid">
+    <!-- 5 Options Action Navigation (Sleek Compact Bar) -->
+    <nav class="cleaner-options-grid" aria-label="Cleaner Tabs">
       <!-- 1. Duplicate Songs (Same Title & Content) -->
-      <button class="cleaner-option-card active" id="opt-btn-exact">
-        <div class="cleaner-opt-top">
+      <button class="cleaner-option-card active" id="opt-btn-exact" title="Exact same title and lyrics: keep 1 copy, delete duplicates">
+        <div class="cleaner-opt-left">
           <span class="cleaner-opt-icon">📑</span>
-          <span class="cleaner-opt-badge badge-danger" id="badge-count-exact">Scanning...</span>
+          <span class="cleaner-opt-title">1. Exact Duplicates</span>
         </div>
-        <div>
-          <h3 class="cleaner-opt-title">1. Duplicate Songs</h3>
-          <p class="cleaner-opt-desc">Exact same title and song lyrics. Keep 1 copy and permanently delete extra duplicates.</p>
-        </div>
+        <span class="cleaner-opt-badge badge-danger" id="badge-count-exact">Scanning...</span>
       </button>
 
       <!-- 2. Duplicate Songs with Different Title -->
-      <button class="cleaner-option-card" id="opt-btn-diff-title">
-        <div class="cleaner-opt-top">
+      <button class="cleaner-option-card" id="opt-btn-diff-title" title="Identical song content with differing titles">
+        <div class="cleaner-opt-left">
           <span class="cleaner-opt-icon">🏷️</span>
-          <span class="cleaner-opt-badge badge-warn" id="badge-count-diff-title">Scanning...</span>
+          <span class="cleaner-opt-title">2. Diff Titles</span>
         </div>
-        <div>
-          <h3 class="cleaner-opt-title">2. Duplicate Songs with Different Title</h3>
-          <p class="cleaner-opt-desc">Identical song content with differing titles. Select which title to keep.</p>
-        </div>
+        <span class="cleaner-opt-badge badge-warn" id="badge-count-diff-title">Scanning...</span>
       </button>
 
       <!-- 3. Similar / Near-Duplicate Songs -->
-      <button class="cleaner-option-card" id="opt-btn-similar">
-        <div class="cleaner-opt-top">
+      <button class="cleaner-option-card" id="opt-btn-similar" title="Content 70%+ match: side-by-side compare">
+        <div class="cleaner-opt-left">
           <span class="cleaner-opt-icon">🔍</span>
-          <span class="cleaner-opt-badge" id="badge-count-similar">70%+ Match</span>
+          <span class="cleaner-opt-title">3. Near-Duplicates</span>
         </div>
-        <div>
-          <h3 class="cleaner-opt-title">3. Similar / Near-Duplicates</h3>
-          <p class="cleaner-opt-desc">Content more or less same. Side-by-side compare, delete one or keep both.</p>
-        </div>
+        <span class="cleaner-opt-badge" id="badge-count-similar">70%+ Match</span>
       </button>
 
       <!-- 4. Songs Error Analyse -->
-      <button class="cleaner-option-card" id="opt-btn-errors">
-        <div class="cleaner-opt-top">
+      <button class="cleaner-option-card" id="opt-btn-errors" title="Analyze mixed fonts, typography typos, and formatting errors">
+        <div class="cleaner-opt-left">
           <span class="cleaner-opt-icon">⚠️</span>
-          <span class="cleaner-opt-badge badge-warn" id="badge-count-errors">Diagnostics</span>
+          <span class="cleaner-opt-title">4. Error Analysis</span>
         </div>
-        <div>
-          <h3 class="cleaner-opt-title">4. Songs Error Analyse</h3>
-          <p class="cleaner-opt-desc">Analyze mixed fonts, font assignment errors, typography typos, and language misuse. Deletion not required.</p>
-        </div>
+        <span class="cleaner-opt-badge badge-warn" id="badge-count-errors">Diagnostics</span>
       </button>
 
       <!-- 5. Bamini to Unicode Converter -->
-      <button class="cleaner-option-card" id="opt-btn-bamini">
-        <div class="cleaner-opt-top">
+      <button class="cleaner-option-card" id="opt-btn-bamini" title="Mass convert clean songs & side-by-side review">
+        <div class="cleaner-opt-left">
           <span class="cleaner-opt-icon">🔄</span>
-          <span class="cleaner-opt-badge badge-success" id="badge-count-bamini">Mass &amp; Review</span>
+          <span class="cleaner-opt-title">5. Bamini Converter</span>
         </div>
-        <div>
-          <h3 class="cleaner-opt-title">5. Bamini to Unicode Converter</h3>
-          <p class="cleaner-opt-desc">Mass convert clean songs. Side-by-side preview decision for songs with typos.</p>
-        </div>
+        <span class="cleaner-opt-badge badge-success" id="badge-count-bamini">Mass &amp; Review</span>
       </button>
-    </div>
+    </nav>
 
     <!-- Active Workspace -->
-    <div class="cleaner-workspace">
+    <main class="cleaner-workspace">
       <div class="cleaner-toolbar">
-        <div>
-          <h2 id="cleaner-workspace-title" style="margin: 0; font-size: 16px; font-weight: 700; color: #fff;">Exact Duplicate Songs</h2>
-          <div id="cleaner-workspace-subtitle" style="font-size: 12px; color: #94a3b8; margin-top: 2px;">Analyzing songs...</div>
+        <div class="cleaner-toolbar-info">
+          <h2 id="cleaner-workspace-title">Exact Duplicate Songs</h2>
+          <div id="cleaner-workspace-subtitle">Analyzing songs...</div>
         </div>
-        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <div class="cleaner-toolbar-controls">
           <input type="text" id="cleaner-search-input" class="cleaner-search-input" placeholder="🔍 Filter by title or lyrics...">
           <div id="cleaner-toolbar-actions"></div>
         </div>
@@ -128,11 +114,11 @@
       </div>
 
       <!-- Action Footer -->
-      <div class="cleaner-footer">
+      <footer class="cleaner-footer">
         <div id="cleaner-footer-left"></div>
         <div id="cleaner-footer-right"></div>
-      </div>
-    </div>
+      </footer>
+    </main>
   </div>
 
   <!-- Irreversible Action Confirmation Modal -->

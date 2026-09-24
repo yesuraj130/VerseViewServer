@@ -826,17 +826,18 @@
     modal.innerHTML = `
       <div class="diff-modal-window">
         <div class="diff-modal-header">
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <h2 style="margin: 0; font-size: 16px; color: #fff;">Full Song Lyrics Diff: Pair #${pIdx + 1}</h2>
-            <span class="group-pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid #10b981;">
+          <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
+            <button type="button" class="btn-cleaner-nav btn-close-similar-diff" style="font-size: 11px; padding: 4px 10px;" title="Return to list (Esc)">&larr; <span class="nav-btn-text">Return</span></button>
+            <h2 style="margin: 0; font-size: 15px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Full Song Lyrics Diff: Pair #${pIdx + 1}</h2>
+            <span class="group-pill" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid #10b981; flex-shrink: 0;">
               ${pair.similarity}% Similar
             </span>
           </div>
           <div class="diff-modal-actions">
-            <button type="button" class="btn-primary btn-diff-keep-a" style="font-size: 12px; padding: 6px 12px; border: 1px solid;">Keep Song A (Delete B)</button>
-            <button type="button" class="btn-primary btn-diff-keep-b" style="font-size: 12px; padding: 6px 12px; border: 1px solid;">Keep Song B (Delete A)</button>
-            <button type="button" class="btn-secondary btn-diff-keep-both" style="font-size: 12px; padding: 6px 12px;">Keep Both</button>
-            <button type="button" class="cleaner-close-btn">&times;</button>
+            <button type="button" class="btn-primary btn-diff-keep-a" style="font-size: 11px; padding: 5px 10px; border: 1px solid;">Keep Song A (Delete B)</button>
+            <button type="button" class="btn-primary btn-diff-keep-b" style="font-size: 11px; padding: 5px 10px; border: 1px solid;">Keep Song B (Delete A)</button>
+            <button type="button" class="btn-secondary btn-diff-keep-both" style="font-size: 11px; padding: 5px 10px;">Keep Both</button>
+            <button type="button" class="cleaner-close-btn btn-close-diff-top" aria-label="Close" title="Close (Esc)">&times;</button>
           </div>
         </div>
 
@@ -895,6 +896,12 @@
             </div>
           </div>
         </div>
+
+        <!-- Diff Modal Mobile/Desktop Footer Bar for Easy Return -->
+        <div class="diff-modal-footer" style="padding: 6px 14px; background: #080d18; border-top: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+          <button type="button" class="btn-cleaner-nav btn-close-similar-diff" style="font-size: 12px; padding: 4px 12px;">&larr; Return to Songs List</button>
+          <span style="font-size: 11px; color: #94a3b8;">Press <kbd style="background:#1e293b; padding:2px 5px; border-radius:3px; border:1px solid #334155;">ESC</kbd> to close</span>
+        </div>
       </div>
     `;
 
@@ -944,9 +951,26 @@
       showToast('Both songs kept in database');
     };
 
-    modal.querySelector('.cleaner-close-btn').onclick = () => modal.remove();
+    const closeSimilarDiffModal = () => {
+      document.removeEventListener('keydown', handleSimilarDiffKeydown);
+      modal.remove();
+    };
+
+    const handleSimilarDiffKeydown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeSimilarDiffModal();
+      }
+    };
+
+    document.addEventListener('keydown', handleSimilarDiffKeydown);
+
+    modal.querySelectorAll('.btn-close-similar-diff, .cleaner-close-btn, .btn-close-diff-top').forEach(btn => {
+      btn.onclick = closeSimilarDiffModal;
+    });
+
     modal.onclick = (e) => {
-      if (e.target === modal) modal.remove();
+      if (e.target === modal) closeSimilarDiffModal();
     };
   }
 
@@ -1900,12 +1924,28 @@
     elements.confirmCount.textContent = count;
     elements.confirmModal.style.display = 'flex';
 
-    elements.btnConfirmCancel.onclick = () => {
+    const closeConfirm = () => {
       elements.confirmModal.style.display = 'none';
+      document.removeEventListener('keydown', handleConfirmKeydown);
+    };
+
+    const handleConfirmKeydown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeConfirm();
+      }
+    };
+
+    document.addEventListener('keydown', handleConfirmKeydown);
+
+    elements.btnConfirmCancel.onclick = closeConfirm;
+
+    elements.confirmModal.onclick = (e) => {
+      if (e.target === elements.confirmModal) closeConfirm();
     };
 
     elements.btnConfirmProceed.onclick = () => {
-      elements.confirmModal.style.display = 'none';
+      closeConfirm();
       onConfirm();
     };
   }
@@ -1919,33 +1959,58 @@
 
       const modal = document.createElement('div');
       modal.className = 'cleaner-overlay';
-      modal.style.zIndex = '2000';
+      modal.style.zIndex = '2200';
       modal.innerHTML = `
-        <div class="cleaner-window" style="max-width: 720px; max-height: 80vh;">
+        <div class="cleaner-window" style="max-width: 720px; max-height: 85vh;">
           <div class="cleaner-header">
-            <div>
-              <h3 style="margin:0; font-size:16px; color:#fff;">Slide Preview: ${escapeHtml(song.name)}</h3>
-              <div style="font-size:12px; color:#94a3b8; margin-top:2px;">[ID: ${song.id}] • Font: ${escapeHtml(song.font || 'None')} • ${song.slideCount} Slides</div>
+            <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
+              <button type="button" class="btn-cleaner-nav btn-close-preview" style="font-size: 11px; padding: 4px 10px;" title="Return (Esc)">&larr; <span class="nav-btn-text">Return</span></button>
+              <div style="min-width: 0;">
+                <h3 style="margin:0; font-size:15px; color:#fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Slide Preview: ${escapeHtml(song.name)}</h3>
+                <div style="font-size:11px; color:#94a3b8; margin-top:2px;">[ID: ${song.id}] • Font: ${escapeHtml(song.font || 'None')} • ${song.slideCount} Slides</div>
+              </div>
             </div>
-            <button class="cleaner-close-btn">&times;</button>
+            <button class="cleaner-close-btn btn-close-preview" title="Close (Esc)">&times;</button>
           </div>
-          <div style="flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:12px;">
+          <div style="flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px;">
             ${(song.slides || []).map((s, idx) => `
-              <div style="background:#131d31; border:1px solid #293952; border-radius:8px; padding:14px;">
-                <div style="font-size:11px; color:#38bdf8; font-weight:700; margin-bottom:6px;">Slide ${idx + 1}</div>
+              <div style="background:#131d31; border:1px solid #293952; border-radius:8px; padding:12px;">
+                <div style="font-size:11px; color:#38bdf8; font-weight:700; margin-bottom:4px;">Slide ${idx + 1}</div>
                 <div style="font-size:14px; line-height:1.5; color:#fff; font-family:'Baloo Thambi', sans-serif;">
                   ${(s.lines || []).map(l => escapeHtml(l)).join('<br>')}
                 </div>
               </div>
             `).join('')}
           </div>
+          <div class="cleaner-footer" style="display: flex; justify-content: space-between; align-items: center;">
+            <button type="button" class="btn-cleaner-nav btn-close-preview" style="font-size: 12px; padding: 4px 12px;">&larr; Return to Songs List</button>
+            <span style="font-size: 11px; color: #94a3b8;">Press <kbd style="background:#1e293b; padding:2px 5px; border-radius:3px;">ESC</kbd> to close</span>
+          </div>
         </div>
       `;
 
       document.body.appendChild(modal);
-      modal.querySelector('.cleaner-close-btn').onclick = () => modal.remove();
+
+      const closePreviewModal = () => {
+        document.removeEventListener('keydown', handlePreviewKeydown);
+        modal.remove();
+      };
+
+      const handlePreviewKeydown = (e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          closePreviewModal();
+        }
+      };
+
+      document.addEventListener('keydown', handlePreviewKeydown);
+
+      modal.querySelectorAll('.btn-close-preview, .cleaner-close-btn').forEach(btn => {
+        btn.onclick = closePreviewModal;
+      });
+
       modal.onclick = (e) => {
-        if (e.target === modal) modal.remove();
+        if (e.target === modal) closePreviewModal();
       };
     } catch (err) {
       showToast(err.message, 'error');
@@ -2003,6 +2068,32 @@
       };
     }
 
+    // Fullscreen Toggle
+    const btnFullscreenCleaner = document.getElementById('btn-fullscreen-cleaner');
+    const textFullscreenCleaner = document.getElementById('fullscreen-text-cleaner');
+    if (btnFullscreenCleaner) {
+      btnFullscreenCleaner.onclick = () => {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+          const docEl = document.documentElement;
+          if (docEl.requestFullscreen) docEl.requestFullscreen().catch(() => {});
+          else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen();
+        } else {
+          if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        }
+      };
+
+      const updateFsCleanerState = () => {
+        const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        btnFullscreenCleaner.title = isFs ? 'Exit Fullscreen Mode (Esc)' : 'Toggle Fullscreen Mode';
+        if (textFullscreenCleaner) textFullscreenCleaner.textContent = isFs ? 'Exit Full' : 'Fullscreen';
+        btnFullscreenCleaner.classList.toggle('active', isFs);
+      };
+
+      document.addEventListener('fullscreenchange', updateFsCleanerState);
+      document.addEventListener('webkitfullscreenchange', updateFsCleanerState);
+    }
+
     // Close Main Overlay
     if (elements.closeBtn) {
       elements.closeBtn.onclick = () => {
@@ -2052,6 +2143,23 @@
         elements.editModal.style.display = 'none';
       };
     }
+
+    if (elements.editModal) {
+      elements.editModal.onclick = (e) => {
+        if (e.target === elements.editModal) {
+          elements.editModal.style.display = 'none';
+        }
+      };
+    }
+
+    // Global keyboard Escape handler for edit modal
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (elements.editModal && elements.editModal.style.display === 'flex') {
+          elements.editModal.style.display = 'none';
+        }
+      }
+    });
   }
 
   // Public Interface

@@ -6,6 +6,7 @@
   'use strict';
 
   let statusTooltipTimeout = null;
+  let activeDotTarget = null;
 
   function getLatencyClass(latency, isOnline) {
     if (!isOnline) return 'disconnected';
@@ -24,42 +25,20 @@
     return '● Connected to Server';
   }
 
-  function showServerStatusTooltip(targetDot, message, isOnline, latency) {
-    if (!targetDot) return;
-
-    let tooltip = document.getElementById('server-status-tooltip');
-    if (!tooltip) {
-      tooltip = document.createElement('div');
-      tooltip.id = 'server-status-tooltip';
-      tooltip.className = 'server-status-tooltip';
-      document.body.appendChild(tooltip);
-    }
-
-    const lat = (typeof latency === 'number') ? latency : (window.currentSocketLatency ?? window.hubSocketLatency ?? window.displaySocketLatency ?? window.animLatency ?? null);
-    const displayText = message || (isOnline ? getConnectedStatusText(lat) : '● Reconnecting to Server...');
-    tooltip.textContent = displayText;
-
-    const latClass = getLatencyClass(lat, isOnline);
-    tooltip.className = `server-status-tooltip visible ${latClass}`;
-
-    // Anchor tooltip accurately relative to target dot with screen boundary protection
+  function positionTooltip(tooltip, targetDot) {
+    if (!tooltip || !targetDot) return;
     const rect = targetDot.getBoundingClientRect();
     const dotCenterX = rect.left + (rect.width / 2);
 
-    // Use measured or estimated bounds
     const tooltipWidth = tooltip.offsetWidth || 180;
     const tooltipHeight = tooltip.offsetHeight || 30;
     const padding = 10;
 
-    // Horizontal positioning clamped within screen edges
     const desiredLeft = dotCenterX - (tooltipWidth / 2);
     const maxLeft = Math.max(padding, window.innerWidth - tooltipWidth - padding);
     const clampedLeft = Math.max(padding, Math.min(maxLeft, desiredLeft));
-
-    // Arrow caret alignment directly pointing to center of dot
     const arrowOffset = Math.max(14, Math.min(tooltipWidth - 14, dotCenterX - clampedLeft));
 
-    // Vertical placement: default below; flip above if cramped at screen bottom
     const spaceBelow = window.innerHeight - rect.bottom;
     const placeAbove = (spaceBelow < tooltipHeight + 16) && (rect.top > tooltipHeight + 16);
 
@@ -73,19 +52,63 @@
 
     tooltip.style.left = `${Math.round(clampedLeft)}px`;
     tooltip.style.setProperty('--arrow-x', `${Math.round(arrowOffset)}px`);
+  }
+
+  function showServerStatusTooltip(targetDot, message, isOnline, latency, options = {}) {
+    if (!targetDot) return;
+    activeDotTarget = targetDot;
+
+    let tooltip = document.getElementById('server-status-tooltip');
+    if (!tooltip) {
+      tooltip = document.createElement('div');
+      tooltip.id = 'server-status-tooltip';
+      tooltip.className = 'server-status-tooltip';
+      document.body.appendChild(tooltip);
+    }
+
+    const isAlreadyVisible = tooltip.classList.contains('visible');
+    const lat = (typeof latency === 'number') ? latency : (window.currentSocketLatency ?? window.hubSocketLatency ?? window.displaySocketLatency ?? window.animLatency ?? null);
+    const displayText = message || (isOnline ? getConnectedStatusText(lat) : '● Reconnecting to Server...');
+    tooltip.textContent = displayText;
+
+    const latClass = getLatencyClass(lat, isOnline);
+    tooltip.className = `server-status-tooltip visible ${latClass}`;
+
+    positionTooltip(tooltip, targetDot);
+
+    // If already visible and this is a background text update (not user-triggered), don't extend timer
+    if (isAlreadyVisible && options.isBackgroundUpdate) {
+      return;
+    }
 
     clearTimeout(statusTooltipTimeout);
     statusTooltipTimeout = setTimeout(() => {
-      tooltip.classList.remove('visible');
-    }, 3200);
+      hideServerStatusTooltip();
+    }, 2800);
+  }
+
+  function updateServerStatusTooltipIfVisible(message, isOnline, latency) {
+    const tooltip = document.getElementById('server-status-tooltip');
+    if (tooltip && tooltip.classList.contains('visible') && activeDotTarget) {
+      const lat = (typeof latency === 'number') ? latency : (window.currentSocketLatency ?? window.hubSocketLatency ?? window.displaySocketLatency ?? window.animLatency ?? null);
+      const displayText = message || (isOnline ? getConnectedStatusText(lat) : '● Reconnecting to Server...');
+      tooltip.textContent = displayText;
+      const latClass = getLatencyClass(lat, isOnline);
+      tooltip.className = `server-status-tooltip visible ${latClass}`;
+      positionTooltip(tooltip, activeDotTarget);
+    }
   }
 
   function hideServerStatusTooltip() {
     const tooltip = document.getElementById('server-status-tooltip');
     if (tooltip) {
       tooltip.classList.remove('visible');
-      clearTimeout(statusTooltipTimeout);
     }
+    if (statusTooltipTimeout) {
+      clearTimeout(statusTooltipTimeout);
+      statusTooltipTimeout = null;
+    }
+    activeDotTarget = null;
   }
 
   function attachTooltipToDot(dotElement, getSocketFn, getLatencyFn) {
@@ -107,7 +130,6 @@
       const winLat = window.currentSocketLatency ?? window.hubSocketLatency ?? window.displaySocketLatency ?? window.animLatency;
       if (typeof winLat === 'number' && winLat >= 0) return winLat;
 
-      // Extract latency from dot title if present (e.g. "Connected to Server (28 ms)")
       const title = dotElement.getAttribute('title') || '';
       const match = title.match(/(\d+)\s*ms/i);
       if (match) return parseInt(match[1], 10);
@@ -119,7 +141,6 @@
       if (socket && typeof socket.connected === 'boolean') {
         return socket.connected && !dotElement.classList.contains('disconnected');
       }
-      // If socket object isn't directly reachable, determine from dot's css state
       return !dotElement.classList.contains('disconnected');
     }
 
@@ -136,12 +157,7 @@
           const freshLat = Math.max(0, Date.now() - pingStart);
           if (window.hubSocketLatency !== undefined) window.hubSocketLatency = freshLat;
           if (window.currentSocketLatency !== undefined) window.currentSocketLatency = freshLat;
-          const tip = document.getElementById('server-status-tooltip');
-          if (tip && tip.classList.contains('visible')) {
-            tip.textContent = getConnectedStatusText(freshLat);
-            const freshClass = getLatencyClass(freshLat, true);
-            tip.className = `server-status-tooltip visible ${freshClass}`;
-          }
+          updateServerStatusTooltipIfVisible(null, true, freshLat);
         });
       }
     }
@@ -152,8 +168,25 @@
     dotElement.addEventListener('mouseleave', hideServerStatusTooltip);
   }
 
+  // Global dismiss on click/touch outside
+  document.addEventListener('pointerdown', (e) => {
+    const tooltip = document.getElementById('server-status-tooltip');
+    if (tooltip && tooltip.classList.contains('visible')) {
+      if (e.target.closest('#server-status-tooltip') || e.target.closest('.server-dot') || e.target.closest('.anim-live-dot')) {
+        return;
+      }
+      hideServerStatusTooltip();
+    }
+  }, { passive: true });
+
+  window.addEventListener('blur', hideServerStatusTooltip);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) hideServerStatusTooltip();
+  });
+
   // Export functions to window
   window.showServerStatusTooltip = showServerStatusTooltip;
+  window.updateServerStatusTooltipIfVisible = updateServerStatusTooltipIfVisible;
   window.hideServerStatusTooltip = hideServerStatusTooltip;
   window.attachTooltipToDot = attachTooltipToDot;
   window.getLatencyClass = getLatencyClass;

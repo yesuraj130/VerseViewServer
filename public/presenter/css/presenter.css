@@ -620,7 +620,7 @@ body.presenter-body
   min-width: 0;
   display: flex;
   align-items: center;
-  height: 34px;
+  height: 38px;
 }
 
 .search-input-wrapper .input-search,
@@ -630,17 +630,29 @@ body.presenter-body
   width: 100%;
   min-width: 0;
   flex: 1;
-  height: 34px;
-  line-height: 34px;
-  padding: 0 28px 0 10px;
+  height: 38px;
+  line-height: 38px;
+  padding: 0 32px 0 12px;
   box-sizing: border-box;
-  font-size: 13px;
+  font-size: 16px;
+  font-weight: 500;
+  font-family: 'Baloo Thambi', 'Noto Sans Tamil', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   color: var(--color-font);
   outline: none;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.search-input-wrapper .input-search::placeholder,
+#song-search-input::placeholder,
+#bible-search-tab-input::placeholder
+{
+  font-size: 13.5px;
+  font-weight: 400;
+  color: var(--color-font-muted);
+  opacity: 0.85;
 }
 
 .search-input-wrapper .input-search:focus,
@@ -648,23 +660,24 @@ body.presenter-body
 #bible-search-tab-input:focus
 {
   border-color: var(--color-blue-light);
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
 }
 
 .search-clear-button
 {
   position: absolute;
-  right: 6px;
+  right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
   border: none;
   color: var(--color-font-muted);
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1;
   cursor: pointer;
   padding: 0;
@@ -684,8 +697,8 @@ body.presenter-body
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   padding: 0;
   box-sizing: border-box;
   background-color: var(--bg-card);
