@@ -18,6 +18,7 @@
   const PAGE_SIZE = 25;
   let currentModalSongId = null;
   let modalViewMode = 'side-by-side'; // 'side-by-side' | 'unified'
+  let currentModalLyricsTab = 'lyrics'; // 'lyrics' | 'lyrics2'
 
   // sql.js instance
   let SQL = null;
@@ -967,6 +968,7 @@
   // ---------------------------------------------------------------------------
   function openDiffModal(songId) {
     currentModalSongId = songId;
+    currentModalLyricsTab = 'lyrics';
     const songA = dbA.songs.get(songId) || null;
     const songB = dbB.songs.get(songId) || null;
 
@@ -990,7 +992,7 @@
     // Metadata comparison strip
     renderModalMetadataStrip(songA, songB);
 
-    // Full Lyrics side-by-side diff
+    // Full Lyrics side-by-side diff in textboxes
     renderModalLyricsDiff(songA, songB);
 
     el.modalOverlay.style.display = 'flex';
@@ -1010,7 +1012,7 @@
       { key: 'title2', label: 'Title 2' }
     ];
 
-    el.modalMetaStrip.innerHTML = fields.map(f => {
+    const fieldsHtml = fields.map(f => {
       const valA = songA ? (songA[f.key] || '—') : '—';
       const valB = songB ? (songB[f.key] || '—') : '—';
       const isDiff = valA !== valB;
@@ -1022,116 +1024,530 @@
         </div>
       `;
     }).join('');
-  }
 
-  function renderModalLyricsDiff(songA, songB) {
-    const rawLyricsA = songA ? songA.lyrics : '';
-    const rawLyricsB = songB ? songB.lyrics : '';
-
-    const slidesA = rawLyricsA ? rawLyricsA.split(/<slide>/i) : [];
-    const slidesB = rawLyricsB ? rawLyricsB.split(/<slide>/i) : [];
-    const maxSlides = Math.max(slidesA.length, slidesB.length);
-
-    let leftPaneHtml = '';
-    let rightPaneHtml = '';
-
-    for (let s = 0; s < maxSlides; s++) {
-      const slideTextA = slidesA[s] || '';
-      const slideTextB = slidesB[s] || '';
-
-      const wordDiff = computeWordDiff(slideTextA, slideTextB);
-
-      // Render Left (DB A - showing removals)
-      let slideContentA = '';
-      if (slideTextA) {
-        slideContentA = wordDiff.filter(d => d.type !== 'add').map(d => {
-          if (d.type === 'del') {
-            return `<span class="diff-del-word">${escapeHtml(d.text)}</span>`;
-          }
-          if (d.text === '<BR>' || d.text === '<br>') {
-            return '<br>';
-          }
-          return escapeHtml(d.text);
-        }).join('');
-      } else {
-        slideContentA = '<em style="color: #64748b;">(Slide does not exist in Database A)</em>';
-      }
-
-      leftPaneHtml += `
-        <div class="diff-slide-block">
-          <div class="diff-slide-header">
-            <span>SLIDE ${s + 1}</span>
-            <span style="font-size: 10px; color: #64748b;">DB A</span>
-          </div>
-          <div class="diff-line">${slideContentA}</div>
-        </div>
-      `;
-
-      // Render Right (DB B - showing additions)
-      let slideContentB = '';
-      if (slideTextB) {
-        slideContentB = wordDiff.filter(d => d.type !== 'del').map(d => {
-          if (d.type === 'add') {
-            return `<span class="diff-add-word">${escapeHtml(d.text)}</span>`;
-          }
-          if (d.text === '<BR>' || d.text === '<br>') {
-            return '<br>';
-          }
-          return escapeHtml(d.text);
-        }).join('');
-      } else {
-        slideContentB = '<em style="color: #64748b;">(Slide does not exist in Database B)</em>';
-      }
-
-      rightPaneHtml += `
-        <div class="diff-slide-block">
-          <div class="diff-slide-header">
-            <span>SLIDE ${s + 1}</span>
-            <span style="font-size: 10px; color: #64748b;">DB B</span>
-          </div>
-          <div class="diff-line">${slideContentB}</div>
+    const hasLyrics2 = (songA && songA.lyrics2 && songA.lyrics2.trim()) || (songB && songB.lyrics2 && songB.lyrics2.trim());
+    let tabsHtml = '';
+    if (hasLyrics2) {
+      tabsHtml = `
+        <div style="display: flex; gap: 6px; margin-left: auto; align-items: center;">
+          <button type="button" class="btn-cleaner-nav ${currentModalLyricsTab === 'lyrics' ? 'active' : ''}" id="btn-tab-lyrics1" style="font-size: 11px; padding: 3px 8px;">📝 Primary Lyrics</button>
+          <button type="button" class="btn-cleaner-nav ${currentModalLyricsTab === 'lyrics2' ? 'active' : ''}" id="btn-tab-lyrics2" style="font-size: 11px; padding: 3px 8px;">🔤 Secondary (Lyrics 2)</button>
         </div>
       `;
     }
 
+    el.modalMetaStrip.innerHTML = fieldsHtml + tabsHtml;
+
+    if (hasLyrics2) {
+      document.getElementById('btn-tab-lyrics1')?.addEventListener('click', () => {
+        currentModalLyricsTab = 'lyrics';
+        renderModalMetadataStrip(songA, songB);
+        renderModalLyricsDiff(songA, songB);
+      });
+      document.getElementById('btn-tab-lyrics2')?.addEventListener('click', () => {
+        currentModalLyricsTab = 'lyrics2';
+        renderModalMetadataStrip(songA, songB);
+        renderModalLyricsDiff(songA, songB);
+      });
+    }
+  }
+
+  /**
+   * Normalizes raw database lyrics into continuous song text.
+   * Removes slide tags and converts stanzas cleanly into text without artificial slide splits.
+   */
+  function formatLyricsForDiff(raw) {
+    if (!raw) return '';
+    let text = String(raw);
+    // Remove trailing slide tags
+    text = text.replace(/<slide>\s*$/gi, '');
+    // Convert slide markers to paragraph breaks
+    text = text.replace(/\s*<slide>\s*/gi, '\n\n');
+    // Convert <br> / <BR> to single newline
+    text = text.replace(/\s*<br\s*\/?>\s*/gi, '\n');
+    // Normalize Windows CRLF
+    text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    // Collapse excessive blank lines
+    text = text.replace(/\n{3,}/g, '\n\n');
+    return text.trim();
+  }
+
+  /**
+   * Unicode-aware character/grapheme cluster splitter.
+   * Accurately handles Tamil, Hindi, Telugu, English, and other scripts without breaking combining marks.
+   */
+  function splitGraphemes(str) {
+    if (!str) return [];
+    if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+      const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+      return Array.from(segmenter.segment(str), s => s.segment);
+    }
+    return Array.from(str);
+  }
+
+  /**
+   * Compares two modified words at the character level.
+   * If change is <= 50%, highlights ONLY changed characters.
+   * If change is > 50%, highlights the full word.
+   */
+  function diffTwoWords(wA, wB) {
+    const charsA = splitGraphemes(wA || '');
+    const charsB = splitGraphemes(wB || '');
+
+    const n = charsA.length;
+    const m = charsB.length;
+
+    if (n === 0 && m === 0) {
+      return { htmlA: '', htmlB: '', pct: 0 };
+    }
+    if (n === 0) {
+      return {
+        htmlA: '',
+        htmlB: `<span class="diff-add-word">${escapeHtml(wB)}</span>`,
+        pct: 1.0
+      };
+    }
+    if (m === 0) {
+      return {
+        htmlA: `<span class="diff-del-word">${escapeHtml(wA)}</span>`,
+        htmlB: '',
+        pct: 1.0
+      };
+    }
+
+    // Dynamic Programming LCS for character-level diff
+    const dp = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < m; j++) {
+        if (charsA[i] === charsB[j]) {
+          dp[i + 1][j + 1] = dp[i][j] + 1;
+        } else {
+          dp[i + 1][j + 1] = Math.max(dp[i + 1][j], dp[i][j + 1]);
+        }
+      }
+    }
+
+    const lcsLen = dp[n][m];
+    const changedA = n - lcsLen;
+    const changedB = m - lcsLen;
+    const pctA = changedA / n;
+    const pctB = changedB / m;
+    const maxPct = Math.max(pctA, pctB);
+
+    // If more than 50% changed, highlight the full word
+    if (maxPct > 0.50) {
+      return {
+        htmlA: `<span class="diff-del-word">${escapeHtml(wA)}</span>`,
+        htmlB: `<span class="diff-add-word">${escapeHtml(wB)}</span>`,
+        pct: maxPct
+      };
+    }
+
+    // <= 50% changed: Backtrack LCS to highlight ONLY changed characters!
+    let i = n;
+    let j = m;
+    const charOps = [];
+
+    while (i > 0 || j > 0) {
+      if (i > 0 && j > 0 && charsA[i - 1] === charsB[j - 1]) {
+        charOps.unshift({ type: 'same', char: charsA[i - 1] });
+        i--;
+        j--;
+      } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+        charOps.unshift({ type: 'add', char: charsB[j - 1] });
+        j--;
+      } else if (i > 0 && (j === 0 || dp[i][j - 1] < dp[i - 1][j])) {
+        charOps.unshift({ type: 'del', char: charsA[i - 1] });
+        i--;
+      }
+    }
+
+    // Build htmlA (same + del)
+    let htmlA = '';
+    let curDel = '';
+    for (const op of charOps) {
+      if (op.type === 'add') continue;
+      if (op.type === 'del') {
+        curDel += op.char;
+      } else {
+        if (curDel) {
+          htmlA += `<span class="diff-del-word">${escapeHtml(curDel)}</span>`;
+          curDel = '';
+        }
+        htmlA += escapeHtml(op.char);
+      }
+    }
+    if (curDel) {
+      htmlA += `<span class="diff-del-word">${escapeHtml(curDel)}</span>`;
+    }
+
+    // Build htmlB (same + add)
+    let htmlB = '';
+    let curAdd = '';
+    for (const op of charOps) {
+      if (op.type === 'del') continue;
+      if (op.type === 'add') {
+        curAdd += op.char;
+      } else {
+        if (curAdd) {
+          htmlB += `<span class="diff-add-word">${escapeHtml(curAdd)}</span>`;
+          curAdd = '';
+        }
+        htmlB += escapeHtml(op.char);
+      }
+    }
+    if (curAdd) {
+      htmlB += `<span class="diff-add-word">${escapeHtml(curAdd)}</span>`;
+    }
+
+    return { htmlA, htmlB, pct: maxPct };
+  }
+
+  function isWordToken(token) {
+    if (!token) return false;
+    if (/^\s+$/.test(token) || /^<[^>]+>$/.test(token)) return false;
+    if (/^[.,;:!?'"’“”\-—_()\[\]{}#$*&^%@~`+=|\\/]+$/.test(token)) return false;
+    return true;
+  }
+
+  function highlightSpaceDel(spaceStr) {
+    return `<span class="diff-del-space">${escapeHtml(spaceStr)}</span>`;
+  }
+
+  function highlightSpaceAdd(spaceStr) {
+    return `<span class="diff-add-space">${escapeHtml(spaceStr)}</span>`;
+  }
+
+  /**
+   * Aligns two text snippets that have identical non-space characters,
+   * highlighting ONLY added or removed spaces while leaving words completely unhighlighted.
+   */
+  function diffSpacesOnly(strA, strB) {
+    let htmlA = '';
+    let htmlB = '';
+    let i = 0;
+    let j = 0;
+    const lenA = strA.length;
+    const lenB = strB.length;
+
+    while (i < lenA || j < lenB) {
+      const isSpaceA = i < lenA && (strA[i] === ' ' || strA[i] === '\t');
+      const isSpaceB = j < lenB && (strB[j] === ' ' || strB[j] === '\t');
+
+      if (isSpaceA && isSpaceB) {
+        // Both have matching spaces at this position
+        htmlA += escapeHtml(strA[i]);
+        htmlB += escapeHtml(strB[j]);
+        i++;
+        j++;
+      } else if (isSpaceA) {
+        // Space only in A -> deleted space
+        let sp = '';
+        while (i < lenA && (strA[i] === ' ' || strA[i] === '\t')) {
+          sp += strA[i];
+          i++;
+        }
+        htmlA += highlightSpaceDel(sp);
+      } else if (isSpaceB) {
+        // Space only in B -> added space
+        let sp = '';
+        while (j < lenB && (strB[j] === ' ' || strB[j] === '\t')) {
+          sp += strB[j];
+          j++;
+        }
+        htmlB += highlightSpaceAdd(sp);
+      } else if (i < lenA && j < lenB && strA[i] === strB[j]) {
+        // Same non-space character
+        htmlA += escapeHtml(strA[i]);
+        htmlB += escapeHtml(strB[j]);
+        i++;
+        j++;
+      } else {
+        // Fallback for safety
+        if (i < lenA) { htmlA += escapeHtml(strA[i]); i++; }
+        if (j < lenB) { htmlB += escapeHtml(strB[j]); j++; }
+      }
+    }
+
+    return { htmlA, htmlB };
+  }
+
+  /**
+   * Processes token differences into Left and Right HTML streams.
+   * - If only spaces differ (e.g. joined/split words or added/removed spaces), highlights ONLY the space, not the words.
+   * - If words are modified: if <= 50% changed, highlights only changed characters;
+   *   if > 50% changed, highlights the full word.
+   */
+  function buildDetailedDiffHtml(wordDiff) {
+    let contentA = '';
+    let contentB = '';
+    const n = wordDiff.length;
+    let idx = 0;
+
+    while (idx < n) {
+      const item = wordDiff[idx];
+
+      if (item.type === 'same') {
+        contentA += escapeHtml(item.text);
+        contentB += escapeHtml(item.text);
+        idx++;
+        continue;
+      }
+
+      // Collect contiguous change block (dels and adds)
+      const delTokens = [];
+      const addTokens = [];
+
+      while (idx < n && wordDiff[idx].type !== 'same') {
+        if (wordDiff[idx].type === 'del') {
+          delTokens.push({ text: wordDiff[idx].text, html: '' });
+        } else if (wordDiff[idx].type === 'add') {
+          addTokens.push({ text: wordDiff[idx].text, html: '' });
+        }
+        idx++;
+      }
+
+      const strA = delTokens.map(t => t.text).join('');
+      const strB = addTokens.map(t => t.text).join('');
+
+      // Check if non-space characters are identical (only spaces were added or removed)
+      const noSpaceA = strA.replace(/[ \t]+/g, '');
+      const noSpaceB = strB.replace(/[ \t]+/g, '');
+
+      if (noSpaceA === noSpaceB) {
+        // Words are identical! Only space(s) added or removed
+        const spaceDiff = diffSpacesOnly(strA, strB);
+        contentA += spaceDiff.htmlA;
+        contentB += spaceDiff.htmlB;
+        continue;
+      }
+
+      // Count horizontal spaces to determine if any space was added or removed
+      let spaceCountA = delTokens.filter(t => /^[ \t]+$/.test(t.text)).length;
+      let spaceCountB = addTokens.filter(t => /^[ \t]+$/.test(t.text)).length;
+      let delSpacesToHighlight = Math.max(0, spaceCountA - spaceCountB);
+      let addSpacesToHighlight = Math.max(0, spaceCountB - spaceCountA);
+
+      // Identify word tokens vs whitespace/punctuation
+      const delWordIndices = [];
+      delTokens.forEach((t, i) => {
+        if (isWordToken(t.text)) {
+          delWordIndices.push(i);
+        } else if (/^[ \t]+$/.test(t.text)) {
+          if (delSpacesToHighlight > 0) {
+            t.html = highlightSpaceDel(t.text);
+            delSpacesToHighlight--;
+          } else {
+            t.html = escapeHtml(t.text);
+          }
+        } else if (/^\s+$/.test(t.text)) {
+          t.html = escapeHtml(t.text);
+        } else {
+          t.html = `<span class="diff-del-word">${escapeHtml(t.text)}</span>`;
+        }
+      });
+
+      const addWordIndices = [];
+      addTokens.forEach((t, j) => {
+        if (isWordToken(t.text)) {
+          addWordIndices.push(j);
+        } else if (/^[ \t]+$/.test(t.text)) {
+          if (addSpacesToHighlight > 0) {
+            t.html = highlightSpaceAdd(t.text);
+            addSpacesToHighlight--;
+          } else {
+            t.html = escapeHtml(t.text);
+          }
+        } else if (/^\s+$/.test(t.text)) {
+          t.html = escapeHtml(t.text);
+        } else {
+          t.html = `<span class="diff-add-word">${escapeHtml(t.text)}</span>`;
+        }
+      });
+
+      const numDels = delWordIndices.length;
+      const numAdds = addWordIndices.length;
+      const matchedAdds = new Set();
+
+      for (let k = 0; k < numDels; k++) {
+        const dIdx = delWordIndices[k];
+        const wordA = delTokens[dIdx].text;
+        let bestAddIdx = -1;
+        let bestPct = 1.0;
+        let bestDiff = null;
+
+        // Try sequential index first if available and not matched
+        if (k < numAdds && !matchedAdds.has(addWordIndices[k])) {
+          const candidateIdx = addWordIndices[k];
+          const diff = diffTwoWords(wordA, addTokens[candidateIdx].text);
+          if (diff.pct <= 0.50) {
+            bestAddIdx = candidateIdx;
+            bestPct = diff.pct;
+            bestDiff = diff;
+          }
+        }
+
+        // If not matched sequentially with <= 50%, search other available add words
+        if (bestAddIdx === -1) {
+          for (let m = 0; m < numAdds; m++) {
+            const candidateIdx = addWordIndices[m];
+            if (matchedAdds.has(candidateIdx)) continue;
+            const diff = diffTwoWords(wordA, addTokens[candidateIdx].text);
+            if (diff.pct <= 0.50 && diff.pct < bestPct) {
+              bestAddIdx = candidateIdx;
+              bestPct = diff.pct;
+              bestDiff = diff;
+            }
+          }
+        }
+
+        if (bestAddIdx !== -1 && bestDiff) {
+          matchedAdds.add(bestAddIdx);
+          delTokens[dIdx].html = bestDiff.htmlA;
+          addTokens[bestAddIdx].html = bestDiff.htmlB;
+        } else {
+          // More than 50% changed or no counterpart: highlight full word
+          delTokens[dIdx].html = `<span class="diff-del-word">${escapeHtml(wordA)}</span>`;
+        }
+      }
+
+      // Remaining unmatched add words: highlight full word
+      for (let m = 0; m < numAdds; m++) {
+        const aIdx = addWordIndices[m];
+        if (!matchedAdds.has(aIdx)) {
+          addTokens[aIdx].html = `<span class="diff-add-word">${escapeHtml(addTokens[aIdx].text)}</span>`;
+        }
+      }
+
+      contentA += delTokens.map(t => t.html).join('');
+      contentB += addTokens.map(t => t.html).join('');
+    }
+
+    return { contentA, contentB };
+  }
+
+  function renderModalLyricsDiff(songA, songB) {
+    const rawLyricsA = songA ? (currentModalLyricsTab === 'lyrics2' ? (songA.lyrics2 || '') : (songA.lyrics || '')) : '';
+    const rawLyricsB = songB ? (currentModalLyricsTab === 'lyrics2' ? (songB.lyrics2 || '') : (songB.lyrics || '')) : '';
+
+    const textA = formatLyricsForDiff(rawLyricsA);
+    const textB = formatLyricsForDiff(rawLyricsB);
+
+    let contentA = '';
+    let contentB = '';
+
+    if (!songA) {
+      contentA = '<div class="diff-textbox-placeholder">(Song does not exist in Database A — New Song)</div>';
+    } else if (!textA) {
+      contentA = '<div class="diff-textbox-placeholder">(No lyrics available in Database A)</div>';
+    }
+
+    if (!songB) {
+      contentB = '<div class="diff-textbox-placeholder">(Song does not exist in Database B — Removed)</div>';
+    } else if (!textB) {
+      contentB = '<div class="diff-textbox-placeholder">(No lyrics available in Database B)</div>';
+    }
+
+    if (textA && textB) {
+      const wordDiff = computeWordDiff(textA, textB);
+      const detailed = buildDetailedDiffHtml(wordDiff);
+      contentA = detailed.contentA;
+      contentB = detailed.contentB;
+    } else if (textA && !contentA) {
+      contentA = escapeHtml(textA);
+    } else if (textB && !contentB) {
+      contentB = escapeHtml(textB);
+    }
+
+    const linesA = textA ? textA.split('\n').filter(l => l.trim().length > 0).length : 0;
+    const wordsA = textA ? textA.split(/\s+/).filter(Boolean).length : 0;
+    const linesB = textB ? textB.split('\n').filter(l => l.trim().length > 0).length : 0;
+    const wordsB = textB ? textB.split(/\s+/).filter(Boolean).length : 0;
+
     el.modalDiffBody.innerHTML = `
-      <div class="diff-pane" id="diff-pane-a">
-        <div class="diff-pane-header">
-          <span style="color: #38bdf8;">Database A: ${escapeHtml(dbA.name)}</span>
-          <span style="font-size: 11px; color: #94a3b8;">${slidesA.length} Slides</span>
+      <div class="diff-textbox-pane" id="pane-container-a">
+        <div class="diff-textbox-header">
+          <div class="diff-textbox-meta">
+            <span class="db-badge-icon db-badge-a" style="width: 20px; height: 20px; font-size: 10px;">A</span>
+            <strong style="color: #38bdf8;">Database A (Reference)</strong>
+            <span class="diff-textbox-filename">${escapeHtml(dbA.name)}</span>
+            <span class="diff-textbox-counter">${linesA} lines • ${wordsA} words</span>
+          </div>
+          <div class="diff-textbox-actions">
+            ${textA ? `<button type="button" class="btn-cleaner-nav btn-copy-textbox" id="btn-copy-diff-a" title="Copy Database A lyrics text">📋 Copy</button>` : ''}
+          </div>
         </div>
-        ${leftPaneHtml}
+        <div class="diff-textbox" id="diff-textbox-a" spellcheck="false">${contentA}</div>
       </div>
-      <div class="diff-pane" id="diff-pane-b">
-        <div class="diff-pane-header">
-          <span style="color: #c084fc;">Database B: ${escapeHtml(dbB.name)}</span>
-          <span style="font-size: 11px; color: #94a3b8;">${slidesB.length} Slides</span>
+
+      <div class="diff-textbox-pane" id="pane-container-b">
+        <div class="diff-textbox-header">
+          <div class="diff-textbox-meta">
+            <span class="db-badge-icon db-badge-b" style="width: 20px; height: 20px; font-size: 10px;">B</span>
+            <strong style="color: #c084fc;">Database B (Modified)</strong>
+            <span class="diff-textbox-filename">${escapeHtml(dbB.name)}</span>
+            <span class="diff-textbox-counter">${linesB} lines • ${wordsB} words</span>
+          </div>
+          <div class="diff-textbox-actions">
+            ${textB ? `<button type="button" class="btn-cleaner-nav btn-copy-textbox" id="btn-copy-diff-b" title="Copy Database B lyrics text">📋 Copy</button>` : ''}
+          </div>
         </div>
-        ${rightPaneHtml}
+        <div class="diff-textbox" id="diff-textbox-b" spellcheck="false">${contentB}</div>
       </div>
     `;
 
-    // Synchronized scrolling
-    const paneA = document.getElementById('diff-pane-a');
-    const paneB = document.getElementById('diff-pane-b');
-    let isSyncingA = false;
-    let isSyncingB = false;
-
-    paneA.addEventListener('scroll', () => {
-      if (!isSyncingA) {
-        isSyncingB = true;
-        paneB.scrollTop = paneA.scrollTop;
-      }
-      isSyncingA = false;
+    // Copy to clipboard handlers
+    document.getElementById('btn-copy-diff-a')?.addEventListener('click', () => {
+      navigator.clipboard.writeText(textA).then(() => {
+        showToast('Database A lyrics copied', 'success');
+      }).catch(() => {
+        showToast('Failed to copy', 'error');
+      });
     });
 
-    paneB.addEventListener('scroll', () => {
-      if (!isSyncingB) {
-        isSyncingA = true;
-        paneA.scrollTop = paneB.scrollTop;
-      }
-      isSyncingB = false;
+    document.getElementById('btn-copy-diff-b')?.addEventListener('click', () => {
+      navigator.clipboard.writeText(textB).then(() => {
+        showToast('Database B lyrics copied', 'success');
+      }).catch(() => {
+        showToast('Failed to copy', 'error');
+      });
     });
+
+    // Synchronized scrolling between the two textboxes
+    const boxA = document.getElementById('diff-textbox-a');
+    const boxB = document.getElementById('diff-textbox-b');
+    if (boxA && boxB) {
+      let isSyncingA = false;
+      let isSyncingB = false;
+
+      boxA.addEventListener('scroll', () => {
+        if (!isSyncingA) {
+          isSyncingB = true;
+          const maxScrollA = boxA.scrollHeight - boxA.clientHeight;
+          const maxScrollB = boxB.scrollHeight - boxB.clientHeight;
+          if (maxScrollA > 0 && maxScrollB > 0) {
+            boxB.scrollTop = (boxA.scrollTop / maxScrollA) * maxScrollB;
+          } else {
+            boxB.scrollTop = boxA.scrollTop;
+          }
+        }
+        isSyncingA = false;
+      });
+
+      boxB.addEventListener('scroll', () => {
+        if (!isSyncingB) {
+          isSyncingA = true;
+          const maxScrollA = boxA.scrollHeight - boxA.clientHeight;
+          const maxScrollB = boxB.scrollHeight - boxB.clientHeight;
+          if (maxScrollA > 0 && maxScrollB > 0) {
+            boxA.scrollTop = (boxB.scrollTop / maxScrollB) * maxScrollA;
+          } else {
+            boxA.scrollTop = boxB.scrollTop;
+          }
+        }
+        isSyncingB = false;
+      });
+    }
   }
 
   function navigateModalChange(direction) {
