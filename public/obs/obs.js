@@ -193,6 +193,56 @@ const CONFIG = {
 
     content.style.fontSize = best + 'px';
   }
+  
+
+
+function stateChanged(eventdata)
+{
+		
+	try		{
+	
+	if (obsEventAdded == false) return;
+    //window.obsstudio.setCurrentScene("_Verse Full - Camera 200");
+	//window.addEventListener('message', (event) => 
+	//{
+		if (eventdata == "VerseviewClosed")
+		{
+			window.obsstudio.getCurrentScene(function(scene)
+			{
+				if (scene.name == "_Verse Full - Camera 200")
+				{
+					previous_scene_name =  scene.name;
+					new_scene_name = "_Verse Bottom";
+					scene_Change_Count = 0;
+					window.obsstudio.setCurrentScene(new_scene_name);
+				}
+				if (scene.name == "_Verse Full")
+				{
+					previous_scene_name =  scene.name;
+					new_scene_name = "_Verse Bottom";
+					scene_Change_Count = 0;
+					window.obsstudio.setCurrentScene(new_scene_name);
+				}
+			})
+		}
+		
+		if (eventdata == "VerseviewChanged")
+		{
+			window.obsstudio.getCurrentScene(function(scene)
+			{
+				if (scene.name == "_Verse Bottom" && scene_Change_Count < 2)
+				{
+					window.obsstudio.setCurrentScene(previous_scene_name);
+				}
+			})
+		}
+	//});
+	}
+	catch 		{}
+
+}
+
+
 
   // Main Render Routine
   function render(state) {
@@ -209,8 +259,11 @@ const CONFIG = {
         cardEl.classList.remove('obs-visible');
         cardEl.classList.add('obs-hidden');
       }
+	  stateChanged("VerseviewClosed");
       return;
     }
+	
+	stateChanged("VerseviewChanged");
 
     // 2. Make visible
     if (viewport) {
