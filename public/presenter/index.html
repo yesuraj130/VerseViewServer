@@ -119,9 +119,9 @@
       <!-- ==================== TAB 1: SONGS ==================== -->
       <div class="tab-item active" id="workspace-songs">
         <aside class="navigation-pane">
-          <div class="search-input-container">
+          <form class="search-input-container" role="search" action="javascript:void(0);" autocomplete="off" onsubmit="event.preventDefault();">
             <div class="search-input-wrapper">
-              <input type="text" id="song-search-input" class="input-search" placeholder="Type title / click 🔍 for lyrics..." autocomplete="off" spellcheck="false">
+              <input type="search" id="song-search-input" name="song_search" class="input-search" placeholder="Type title / click 🔍 for lyrics..." autocomplete="one-time-code" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="search" data-form-type="other" data-lpignore="true" data-1p-ignore="true">
               <button type="button" id="btn-clear-song-search" class="search-clear-button" title="Clear search" aria-label="Clear search" style="display: none;">&times;</button>
             </div>
             <button type="button" id="btn-execute-song-search" class="search-submit-button" title="Search inside song lyrics on server (Enter)" aria-label="Search lyrics on server">
@@ -130,7 +130,7 @@
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
             </button>
-          </div>
+          </form>
 
           <!-- Status badge for Content / Lyrics search mode -->
           <div id="song-search-status-bar" class="song-search-status-bar" style="display: none;">
@@ -206,9 +206,9 @@
 
       <!-- ==================== TAB 3: BIBLE SEARCH ==================== -->
       <div class="tab-item" id="workspace-biblesearch" style="width: 100%; height: 100%; flex-direction: column;">
-        <div class="search-input-container">
+        <form class="search-input-container" role="search" action="javascript:void(0);" autocomplete="off" onsubmit="event.preventDefault();">
           <div class="search-input-wrapper">
-            <input type="text" id="bible-search-tab-input" class="input-search" placeholder="Search scripture in Tamil or phonetics..." autocomplete="off" spellcheck="false">
+            <input type="search" id="bible-search-tab-input" name="bible_search" class="input-search" placeholder="Search scripture in Tamil or phonetics..." autocomplete="one-time-code" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="search" data-form-type="other" data-lpignore="true" data-1p-ignore="true">
             <button type="button" id="btn-clear-bible-tab-search" class="search-clear-button" title="Clear search" aria-label="Clear search" style="display: none;">&times;</button>
           </div>
           <button type="button" id="btn-execute-bible-tab-search" class="search-submit-button" title="Search Bible Scriptures (Enter)" aria-label="Search scripture">
@@ -217,7 +217,7 @@
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
           </button>
-        </div>
+        </form>
 
         <!-- Custom Range Book Filter (From Book - To Book) -->
         <div class="bible-search-filter-row" id="bible-search-filter-row">
@@ -293,22 +293,22 @@
         <h3 id="edit-song-dialog-heading">Add New Song</h3>
         <button id="btn-close-edit-song-dialog" class="btn-icon-tiny" style="font-size: 20px; color: #fff;">&times;</button>
       </div>
-      <div class="dialog-body song-editor-dialog-body">
+      <form class="dialog-body song-editor-dialog-body" autocomplete="off" onsubmit="event.preventDefault();">
         <input type="hidden" id="edit-song-id-hidden-input">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
           <div class="form-group">
             <label class="form-label" for="edit-song-title-textbox">Song Title</label>
-            <input type="text" id="edit-song-title-textbox" class="input-text" placeholder="e.g. Amazing Grace or English / Romanized title">
+            <input type="text" id="edit-song-title-textbox" class="input-text" placeholder="e.g. Amazing Grace or English / Romanized title" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" data-form-type="other">
           </div>
           <div class="form-group">
             <label class="form-label" for="edit-song-secondary-title-textbox">Alternative / Secondary Title <span style="font-weight: normal; font-size: 11px; opacity: 0.7;">(Optional)</span></label>
-            <input type="text" id="edit-song-secondary-title-textbox" class="input-text" placeholder="e.g. Vernacular script title or alternate title">
+            <input type="text" id="edit-song-secondary-title-textbox" class="input-text" placeholder="e.g. Vernacular script title or alternate title" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" data-form-type="other">
           </div>
         </div>
 
         <div class="form-group" style="margin-bottom: 10px;">
           <label class="form-label" for="edit-song-font-textbox">Font Name</label>
-          <input type="text" id="edit-song-font-textbox" class="input-text" list="font-list-options" placeholder="e.g. Arial, Baloo Thambi, Latha">
+          <input type="text" id="edit-song-font-textbox" class="input-text" list="font-list-options" placeholder="e.g. Arial, Baloo Thambi, Latha" autocomplete="off">
           <datalist id="font-list-options">
             <option value="Baloo Thambi 2">
             <option value="Baloo Thambi">
@@ -330,7 +330,7 @@
           </div>
           <textarea id="edit-song-lyrics-textarea" class="editsong-textbox" style="flex-grow: 1; min-height: 240px; font-size: 13px; line-height: 1.5; outline: none; resize: vertical;" placeholder="Slide 1 line 1&#10;Slide 1 line 2&#10;&#10;&#10;Slide 2 line 1&#10;Slide 2 line 2"></textarea>
         </div>
-      </div>
+      </form>
       <div class="dialog-footer">
         <button type="button" class="btn-danger" id="btn-delete-song-dialog" style="display: none; margin-right: auto;">Delete Song</button>
         <button type="button" class="btn-secondary" id="btn-cancel-edit-song-dialog">Cancel</button>

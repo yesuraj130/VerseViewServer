@@ -643,6 +643,27 @@ body.presenter-body
   color: var(--color-font);
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Suppress native browser search decorations and clear buttons so they do not collide with app clear buttons */
+.search-input-wrapper .input-search::-webkit-search-decoration,
+.search-input-wrapper .input-search::-webkit-search-cancel-button,
+.search-input-wrapper .input-search::-webkit-search-results-button,
+.search-input-wrapper .input-search::-webkit-search-results-decoration,
+#song-search-input::-webkit-search-decoration,
+#song-search-input::-webkit-search-cancel-button,
+#song-search-input::-webkit-search-results-button,
+#song-search-input::-webkit-search-results-decoration,
+#bible-search-tab-input::-webkit-search-decoration,
+#bible-search-tab-input::-webkit-search-cancel-button,
+#bible-search-tab-input::-webkit-search-results-button,
+#bible-search-tab-input::-webkit-search-results-decoration
+{
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
 }
 
 .search-input-wrapper .input-search::placeholder,
